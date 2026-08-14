@@ -1013,17 +1013,13 @@
 
         // --- Генерация QR-кода ---
         function renderQrCode() {
-          // Если открыто на публичном домене (Vercel/Netlify/GitHub Pages/Сервер):
-          let baseUrl = window.location.origin;
-          if (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1') || window.location.protocol === 'file:') {
-            // Для локального тестирования
-            baseUrl = `${window.location.protocol}//${window.location.host}`;
-          }
+          // Автоматически учитываем подпапку репозитория (например /flexy-way/)
+          const pathName = window.location.pathname;
+          let dirPath = pathName.substring(0, pathName.lastIndexOf('/') + 1);
+          if (!dirPath.endsWith('/')) dirPath += '/';
+          const fullBase = `${window.location.origin}${dirPath}`;
 
-          let controllerUrl = `${baseUrl}/controller.html?room=${roomId}`;
-          if (!window.location.pathname.endsWith('.html') && !window.location.pathname.includes('.')) {
-            controllerUrl = `${baseUrl}/controller?room=${roomId}`;
-          }
+          const controllerUrl = `${fullBase}controller.html?room=${roomId}`;
 
           const qrcodeEl = document.getElementById('qrcode');
           qrcodeEl.innerHTML = '';
