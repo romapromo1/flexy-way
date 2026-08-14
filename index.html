@@ -215,6 +215,36 @@
         transform: translateY(-50%) scale(1.1);
       }
 
+      /* Фраза на стартовом экране шрифтом Aeroport */
+      @font-face {
+        font-family: 'Aeroport';
+        src: local('Aeroport Bold'), local('Aeroport-Bold'), local('Aeroport'), local('Aeroport-Regular');
+        font-weight: 800;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      .start-tagline {
+        position: absolute;
+        top: 24%;
+        left: 50%;
+        transform: translate(-50%, 0);
+        font-family: 'Aeroport', 'Outfit', sans-serif;
+        font-size: clamp(20px, 3.4vmin, 30px);
+        font-weight: 800;
+        line-height: 1.25;
+        letter-spacing: -0.015em;
+        color: #0f172a;
+        text-align: center;
+        margin: 0;
+        padding: 0;
+        pointer-events: none;
+        user-select: none;
+        white-space: pre-line;
+        z-index: 20;
+        transition: opacity 0.4s ease;
+      }
+
       /* Кнопка "Начать" на стартовом экране (расположена прямо под центральным логотипом) */
       .start-screen-overlay {
         position: absolute;
@@ -797,8 +827,11 @@
         </div>
       </div>
 
-      <!-- Стартовый оверлей с кнопкой "Начать" -->
+      <!-- Стартовый оверлей с фразой и кнопкой "Начать" -->
       <div class="start-screen-overlay" id="startOverlay">
+        <div class="start-tagline" id="startTagline">Играй.
+Собирай всё женское.
+Выигрывай суперпризы от</div>
         <button class="start-game-btn" id="startBtn" onclick="startGame()">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -1098,6 +1131,22 @@
           maxSize: 800,
           instance: null
         },
+        tagline: {
+          id: 'tagline',
+          name: '📝 Фраза «Играй...» (Aeroport)',
+          type: 'dom',
+          size: 1.0,
+          x: 0,
+          y: 0,
+          z: 0,
+          defaultSize: 1.0,
+          defaultX: 0,
+          defaultY: 0,
+          defaultZ: 0,
+          minSize: 0.4,
+          maxSize: 3.0,
+          stepSize: 0.05
+        },
         startButton: {
           id: 'startButton',
           name: '▶️ Кнопка «Начать» (Liquid Glass)',
@@ -1385,11 +1434,18 @@
         if (!item) return;
 
         if (item.type === 'dom') {
-          if (startOverlayEl) {
-            startOverlayEl.style.paddingTop = `${item.y}px`;
-          }
-          if (startBtnEl) {
-            startBtnEl.style.transform = `translate(${item.x}px, 0) scale(${item.size})`;
+          if (id === 'startButton') {
+            if (startOverlayEl) {
+              startOverlayEl.style.paddingTop = `${item.y}px`;
+            }
+            if (startBtnEl) {
+              startBtnEl.style.transform = `translate(${item.x}px, 0) scale(${item.size})`;
+            }
+          } else if (id === 'tagline') {
+            const el = document.getElementById('startTagline');
+            if (el) {
+              el.style.transform = `translate(calc(-50% + ${item.x}px), ${item.y}px) scale(${item.size})`;
+            }
           }
         } else if (item.instance) {
           const model = item.instance;
@@ -1408,8 +1464,9 @@
         }
       }
 
-      // Применяем начальные параметры кнопки
+      // Применяем начальные параметры DOM элементов
       applyObjectConfig('startButton');
+      applyObjectConfig('tagline');
 
       window.updateObjectProp = function(id, prop, value) {
         const numVal = parseFloat(value);
