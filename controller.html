@@ -37,7 +37,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: space-between;
-      padding: 0.85rem;
+      padding: 0.75rem;
       overflow-x: hidden;
       touch-action: manipulation;
     }
@@ -112,13 +112,13 @@
       background: rgba(15, 23, 42, 0.7);
       border: 1px dashed rgba(56, 189, 248, 0.3);
       border-radius: 14px;
-      padding: 0.45rem 0.8rem;
+      padding: 0.4rem 0.8rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 0.5rem;
-      font-size: 0.85rem;
-      margin-top: 0.3rem;
+      font-size: 0.82rem;
+      margin-top: 0.25rem;
     }
 
     .room-input {
@@ -146,14 +146,63 @@
       font-size: 0.8rem;
     }
 
+    /* Переключатель режимов Указка / Тачпад */
+    .mode-switch-container {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      gap: 0.4rem;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 0.3rem;
+      margin-top: 0.3rem;
+    }
+
+    .mode-switch-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.55rem 0.5rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .mode-switch-btn.active {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(129, 140, 248, 0.25));
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
+    }
+
+    .sensor-info-bar {
+      font-size: 0.72rem;
+      color: #38bdf8;
+      text-align: center;
+      background: rgba(14, 165, 233, 0.1);
+      border-radius: 8px;
+      padding: 0.3rem 0.6rem;
+      width: 100%;
+      max-width: 440px;
+      margin-top: 0.25rem;
+    }
+
     .gyro-container {
       width: 100%;
       max-width: 440px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.65rem;
-      margin: 0.3rem 0;
+      gap: 0.6rem;
+      margin: 0.25rem 0;
     }
 
     .radar-card {
@@ -170,6 +219,12 @@
       overflow: hidden;
       touch-action: none;
       cursor: crosshair;
+    }
+
+    .radar-card.manual-mode {
+      border-color: rgba(16, 185, 129, 0.5);
+      box-shadow: 0 0 40px rgba(16, 185, 129, 0.25), inset 0 0 30px rgba(16, 185, 129, 0.15);
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, rgba(15, 23, 42, 0.8) 70%);
     }
 
     .radar-ring {
@@ -251,7 +306,7 @@
     .start-btn {
       width: 100%;
       max-width: 440px;
-      padding: 1.1rem 1rem;
+      padding: 1.05rem 1rem;
       background: linear-gradient(135deg, #10b981 0%, #059669 100%);
       border: 1px solid rgba(255, 255, 255, 0.3);
       border-radius: 18px;
@@ -339,17 +394,6 @@
       color: #38bdf8;
     }
 
-    .sensor-info-bar {
-      font-size: 0.72rem;
-      color: #38bdf8;
-      text-align: center;
-      background: rgba(14, 165, 233, 0.1);
-      border-radius: 8px;
-      padding: 0.3rem 0.6rem;
-      width: 100%;
-      max-width: 440px;
-    }
-
     .hint-footer {
       font-size: 0.72rem;
       color: var(--text-muted);
@@ -384,8 +428,30 @@
     <button class="room-btn" onclick="applyCustomRoom()">Подключить</button>
   </div>
 
+  <!-- Переключатель режима управления -->
+  <div class="mode-switch-container">
+    <button class="mode-switch-btn active" id="modeGyroBtn" onclick="setControlMode('gyro')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="22" y1="12" x2="18" y2="12"></line>
+        <line x1="6" y1="12" x2="2" y2="12"></line>
+        <line x1="12" y1="6" x2="12" y2="2"></line>
+        <line x1="12" y1="22" x2="12" y2="18"></line>
+      </svg>
+      🎯 Указка (Z-Поворот)
+    </button>
+    <button class="mode-switch-btn" id="modeManualBtn" onclick="setControlMode('manual')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="6" width="20" height="12" rx="4"></rect>
+        <circle cx="8" cy="12" r="2"></circle>
+        <path d="M15 9h2v6h-2z"></path>
+      </svg>
+      🕹 Ручной тачпад
+    </button>
+  </div>
+
   <div class="sensor-info-bar" id="sensorInfo">
-    Датчики: Ожидание активации...
+    🟢 Режим: Лазерная указка (Поворот Z + Наклон Y)
   </div>
 
   <!-- Интерактивный радар + Тачпад -->
@@ -401,7 +467,7 @@
     <!-- Показания -->
     <div class="gyro-stats">
       <div class="stat-pill">
-        X Наклон
+        Z Поворот (X)
         <span id="statX">0°</span>
       </div>
       <div class="stat-pill">
@@ -424,7 +490,7 @@
       <line x1="12" y1="6" x2="12" y2="2"></line>
       <line x1="12" y1="22" x2="12" y2="18"></line>
     </svg>
-    <span id="btnLabel">🎯 КАЛИБРОВАТЬ ЦЕНТР</span>
+    <span id="btnLabel">🎯 КАЛИБРОВАТЬ УКАЗКУ</span>
   </button>
 
   <!-- Тонкие настройки -->
@@ -440,14 +506,14 @@
       <span>Инверсия осей</span>
       <div class="toggle-group">
         <button class="toggle-btn" id="invXBtn" onclick="toggleInvert('x')">Инверт X</button>
-        <button class="toggle-btn" id="invYBtn" onclick="toggleInvert('y')">Инверт Y</button>
+        <button class="toggle-btn active" id="invYBtn" onclick="toggleInvert('y')">Инверт Y</button>
       </div>
     </div>
   </div>
 
-  <div class="hint-footer">
-    Поворачивайте телефон в воздухе как указку.<br>
-    Либо ведите пальцем по кругу радара.
+  <div class="hint-footer" id="hintFooter">
+    Поворачивайте телефон в воздухе влево-вправо как лазерную указку.<br>
+    Наклоняйте вверх-вниз для движения по вертикали.
   </div>
 
   <script>
@@ -483,19 +549,25 @@
     const invXBtn = document.getElementById('invXBtn');
     const invYBtn = document.getElementById('invYBtn');
     const sensorInfo = document.getElementById('sensorInfo');
+    const hintFooter = document.getElementById('hintFooter');
+    const modeGyroBtn = document.getElementById('modeGyroBtn');
+    const modeManualBtn = document.getElementById('modeManualBtn');
 
+    // --- State & Options ---
+    let controlMode = 'gyro'; // 'gyro' | 'manual'
     let sensitivity = 1.4;
     let invertX = false;
-    let invertY = false;
+    let invertY = true; // ПО ДЕФОЛТУ ИНВЕРТИРОВАН Y
 
-    // Rock-solid sensor state
-    let baseGamma = null;
+    // Laser pointer calibration state
+    // Z-axis Yaw rotation (Alpha), Y-axis Pitch (Beta), and Roll (Gamma)
+    let baseAlpha = null;
     let baseBeta = null;
+    let baseGamma = null;
     let baseAccX = null;
     let baseAccY = null;
     let isCalibrated = false;
     let packetsSent = 0;
-    let activeSensorType = 'none';
 
     let pahoClient = null;
     let isConnected = false;
@@ -517,6 +589,31 @@
       }
     }
 
+    // --- Mode Switcher ---
+    function setControlMode(mode) {
+      controlMode = mode;
+      vibratePhone(30);
+
+      if (mode === 'gyro') {
+        modeGyroBtn.classList.add('active');
+        modeManualBtn.classList.remove('active');
+        radar.classList.remove('manual-mode');
+        btnLabel.textContent = '🎯 КАЛИБРОВАТЬ УКАЗКУ';
+        sensorInfo.textContent = '🟢 Режим: Лазерная указка (Поворот Z + Наклон Y)';
+        hintFooter.innerHTML = 'Поворачивайте телефон в воздухе влево-вправо как лазерную указку.<br>Наклоняйте вверх-вниз для вертикали.';
+        activateAndCalibrate();
+      } else {
+        modeManualBtn.classList.add('active');
+        modeGyroBtn.classList.remove('active');
+        radar.classList.add('manual-mode');
+        btnLabel.textContent = '🕹 СБРОС В ЦЕНТР';
+        sensorInfo.textContent = '🕹 Ручной режим: ведите пальцем по кругу радара';
+        hintFooter.innerHTML = 'Ведите пальцем по экрану как по тачпаду.<br>Гироскоп отключен — руки не будут влиять.';
+        updateRadarUI(0, 0, 0, 0);
+        sendMotion(0, 0);
+      }
+    }
+
     // --- Paho MQTT WebSocket Connection ---
     function initPahoMQTT() {
       try {
@@ -526,7 +623,6 @@
         }
 
         const clientId = 'c_' + Math.random().toString(36).substring(2, 10);
-        // Using broker.hivemq.com port 8884 (SSL WSS)
         pahoClient = new Paho.MQTT.Client('broker.hivemq.com', 8884, '/mqtt', clientId);
 
         pahoClient.onConnectionLost = (responseObject) => {
@@ -552,14 +648,12 @@
             vibratePhone(40);
             pahoClient.subscribe(`flexy/events/${roomId}`);
 
-            // Notify game host screen immediately
             const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'controller_joined' }));
             msg.destinationName = `flexy/events/${roomId}`;
             pahoClient.send(msg);
           },
           onFailure: (err) => {
             setConnectedUI(false);
-            // Fallback to EMQX broker if HiveMQ fails
             setTimeout(initFallbackMQTT, 1500);
           }
         });
@@ -619,29 +713,48 @@
       statY.textContent = `${Math.round(dispY)}°`;
     }
 
-    // --- SENSOR 1: DeviceOrientation (Gamma = Roll, Beta = Pitch) ---
+    // Угол разницы с учетом перехода 360° -> 0°
+    function angleDelta(target, base) {
+      let diff = target - base;
+      while (diff < -180) diff += 360;
+      while (diff > 180) diff -= 360;
+      return diff;
+    }
+
+    // --- 1. Лазерная указка: Z-ось (Yaw/Alpha поворот) + Y-ось (Pitch/Beta наклон) ---
     function handleOrientation(e) {
-      let gamma = e.gamma; // [-90..90]
-      let beta = e.beta;   // [-180..180]
+      if (controlMode !== 'gyro') return; // В ручном режиме датчики игнорируются
 
-      if (gamma === null || beta === null) return;
+      let alpha = e.alpha; // Поворот вокруг оси Z (Yaw / азимут) [0..360]
+      let beta = e.beta;   // Наклон вверх/вниз (Pitch) [-180..180]
+      let gamma = e.gamma; // Наклон влево/вправо (Roll)
 
-      activeSensorType = 'Гироскоп IMU';
-      sensorInfo.textContent = `🟢 Датчик: ${activeSensorType} (Активен)`;
+      if (alpha === null && beta === null) return;
 
-      if (!isCalibrated || baseGamma === null) {
-        baseGamma = gamma;
-        baseBeta = beta;
+      if (!isCalibrated || baseAlpha === null) {
+        baseAlpha = alpha !== null ? alpha : 0;
+        baseBeta = beta !== null ? beta : 0;
+        baseGamma = gamma !== null ? gamma : 0;
         isCalibrated = true;
       }
 
-      let deltaX = gamma - baseGamma;
-      let deltaY = baseBeta - beta;
+      // Принцип лазерной указки:
+      // Влево/вправо = вращение телефона как указки (Z / Alpha)
+      let deltaX = 0;
+      if (alpha !== null) {
+        deltaX = -angleDelta(alpha, baseAlpha); // поворот указки вправо увеличивает X
+      } else if (gamma !== null) {
+        deltaX = gamma - baseGamma;
+      }
 
-      const MAX_TILT = 25.0;
+      // Вверх/вниз = наклон указки вверх/вниз (Beta)
+      let deltaY = (baseBeta - beta);
 
-      let normX = (deltaX / MAX_TILT) * sensitivity;
-      let normY = (deltaY / MAX_TILT) * sensitivity;
+      const MAX_YAW = 28.0;   // 28 градусов поворота кисти на полный размах
+      const MAX_PITCH = 24.0; // 24 градуса наклона кисти на полный размах
+
+      let normX = (deltaX / MAX_YAW) * sensitivity;
+      let normY = (deltaY / MAX_PITCH) * sensitivity;
 
       if (invertX) normX = -normX;
       if (invertY) normY = -normY;
@@ -653,15 +766,13 @@
       sendMotion(normX, normY);
     }
 
-    // --- SENSOR 2: DeviceMotion Accelerometer (Yandex Browser 100% Support) ---
+    // --- 2. Fallback акселерометра для специфических браузеров ---
     function handleMotion(e) {
-      if (activeSensorType === 'Гироскоп IMU') return; // Prefer orientation if working
+      if (controlMode !== 'gyro') return;
+      if (baseAlpha !== null) return; // Если DeviceOrientation работает, используем его Z-поворот
 
       const acc = e.accelerationIncludingGravity || e.acceleration;
       if (!acc || acc.x === null || acc.y === null) return;
-
-      activeSensorType = 'Акселерометр';
-      sensorInfo.textContent = `🟢 Датчик: ${activeSensorType} (Активен)`;
 
       let gx = acc.x;
       let gy = acc.y;
@@ -676,7 +787,6 @@
       let deltaY = gy - baseAccY;
 
       const MAX_ACCEL = 4.2;
-
       let normX = (deltaX / MAX_ACCEL) * sensitivity;
       let normY = (deltaY / MAX_ACCEL) * sensitivity;
 
@@ -690,7 +800,7 @@
       sendMotion(normX, normY);
     }
 
-    // --- SENSOR 3: Touchpad Dragging on radar ---
+    // --- 3. Ручной сенсорный тачпад (Manual Mode) ---
     function handleTouchRadar(clientX, clientY) {
       const rect = radar.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
@@ -710,24 +820,44 @@
       sendMotion(dx, dy);
     }
 
-    radar.addEventListener('pointerdown', (e) => handleTouchRadar(e.clientX, e.clientY));
+    radar.addEventListener('pointerdown', (e) => {
+      handleTouchRadar(e.clientX, e.clientY);
+    });
+
     radar.addEventListener('pointermove', (e) => {
-      if (e.buttons > 0) handleTouchRadar(e.clientX, e.clientY);
+      if (e.buttons > 0 || e.pointerType === 'touch') {
+        handleTouchRadar(e.clientX, e.clientY);
+      }
     });
 
     // --- Калибровка и активация датчиков ---
     async function activateAndCalibrate() {
-      vibratePhone(50);
+      vibratePhone(40);
+
+      if (controlMode === 'manual') {
+        // Сброс в центр в ручном режиме
+        updateRadarUI(0, 0, 0, 0);
+        sendMotion(0, 0);
+        startBtn.classList.add('calibrating');
+        btnLabel.textContent = '🕹 ЦЕНТР СБРОШЕН';
+        setTimeout(() => {
+          btnLabel.textContent = '🕹 СБРОС В ЦЕНТР';
+          startBtn.classList.remove('calibrating');
+        }, 500);
+        return;
+      }
+
       isCalibrated = false;
-      baseGamma = null;
+      baseAlpha = null;
       baseBeta = null;
+      baseGamma = null;
       baseAccX = null;
       baseAccY = null;
 
       startBtn.classList.add('calibrating');
-      btnLabel.textContent = '🎯 ЦЕНТР ЗАДАН!';
+      btnLabel.textContent = '🎯 УКАЗКА НАЦЕЛЕНА!';
       setTimeout(() => {
-        btnLabel.textContent = '🎯 КАЛИБРОВАТЬ ЦЕНТР';
+        btnLabel.textContent = '🎯 КАЛИБРОВАТЬ УКАЗКУ';
         startBtn.classList.remove('calibrating');
       }, 700);
 
