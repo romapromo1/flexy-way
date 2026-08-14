@@ -4,8 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Пульт Управления — Flexy Way</title>
-  <!-- MQTT for cloud messaging -->
-  <script src="https://unpkg.com/mqtt@5.5.2/dist/mqtt.min.js"></script>
+  <!-- Paho MQTT: rock-solid standard WebSocket MQTT client -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+  <!-- PeerJS WebRTC -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     :root {
       --bg-dark: #070913;
@@ -42,7 +44,6 @@
       touch-action: manipulation;
     }
 
-    /* Шапка */
     .header {
       width: 100%;
       max-width: 440px;
@@ -107,7 +108,6 @@
       50% { transform: scale(1.3); opacity: 0.6; }
     }
 
-    /* Ввод PIN комнаты */
     .room-bar {
       width: 100%;
       max-width: 440px;
@@ -148,7 +148,6 @@
       font-size: 0.8rem;
     }
 
-    /* Радар / 3D Гироскоп + Тачпад */
     .gyro-container {
       width: 100%;
       max-width: 440px;
@@ -209,6 +208,7 @@
       box-shadow: 0 0 18px #38bdf8, 0 0 36px #0ea5e9;
       transform: translate(0px, 0px);
       pointer-events: none;
+      transition: transform 0.03s linear;
     }
 
     .laser-reticle::after {
@@ -250,7 +250,6 @@
       margin-top: 0.2rem;
     }
 
-    /* Главная кнопка старта / активации */
     .start-btn {
       width: 100%;
       max-width: 440px;
@@ -281,7 +280,6 @@
       box-shadow: 0 10px 30px rgba(14, 165, 233, 0.4);
     }
 
-    /* Панель настроек */
     .controls-panel {
       width: 100%;
       max-width: 440px;
@@ -390,7 +388,7 @@
     <!-- Показания -->
     <div class="gyro-stats">
       <div class="stat-pill">
-        X Поворот
+        X Наклон
         <span id="statX">0°</span>
       </div>
       <div class="stat-pill">
@@ -398,7 +396,7 @@
         <span id="statY">0°</span>
       </div>
       <div class="stat-pill">
-        Передано
+        Пакеты
         <span id="statPackets">0</span>
       </div>
     </div>
@@ -413,7 +411,7 @@
       <line x1="12" y1="6" x2="12" y2="2"></line>
       <line x1="12" y1="22" x2="12" y2="18"></line>
     </svg>
-    <span id="btnLabel">🚀 СТАРТ / КАЛИБРОВКА</span>
+    <span id="btnLabel">🎯 КАЛИБРОВАТЬ ЦЕНТР</span>
   </button>
 
   <!-- Тонкие настройки -->
@@ -453,7 +451,7 @@
       if (val && val !== roomId) {
         roomId = val;
         window.history.replaceState({}, '', `?room=${roomId}`);
-        initMQTT();
+        initPahoMQTT();
       }
     }
 
@@ -476,14 +474,14 @@
     let invertX = false;
     let invertY = false;
 
-    let baseAlpha = null;
-    let baseBeta = null;
+    // Rock-solid accelerometer IMU calibration (Gamma = Roll, Beta = Pitch)
     let baseGamma = null;
+    let baseBeta = null;
     let isCalibrated = false;
     let sensorsActive = false;
     let packetsSent = 0;
 
-    let mqttClient = null;
+    let pahoClient = null;
     let isConnected = false;
 
     function vibratePhone(pattern = 35) {
@@ -503,67 +501,81 @@
       }
     }
 
-    // --- MQTT WSS Connection ---
-    function initMQTT() {
+    // --- Paho MQTT WebSocket Connection ---
+    function initPahoMQTT() {
       try {
-        if (typeof mqtt === 'undefined') return;
-        if (mqttClient) {
-          try { mqttClient.end(true); } catch (e) {}
+        if (typeof Paho === 'undefined' || !Paho.MQTT) return;
+        if (pahoClient && pahoClient.isConnected()) {
+          try { pahoClient.disconnect(); } catch (e) {}
         }
 
-        const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
-        const clientId = 'ctrl_' + Math.random().toString(16).substring(2, 10);
+        const clientId = 'c_' + Math.random().toString(36).substring(2, 10);
+        // Using broker.hivemq.com port 8884 (SSL WSS)
+        pahoClient = new Paho.MQTT.Client('broker.hivemq.com', 8884, '/mqtt', clientId);
 
-        mqttClient = mqtt.connect(brokerUrl, {
-          clientId,
-          clean: true,
-          connectTimeout: 4000,
-          reconnectPeriod: 2000
-        });
+        pahoClient.onConnectionLost = (responseObject) => {
+          setConnectedUI(false);
+          setTimeout(initPahoMQTT, 2500);
+        };
 
-        mqttClient.on('connect', () => {
-          setConnectedUI(true);
-          vibratePhone(40);
-          
-          // Слушаем события от экрана (вибрации, гамовер)
-          mqttClient.subscribe(`flexy/events/${roomId}`);
-
-          // Шлем сигнал экрану что пульт подключился
-          mqttClient.publish(`flexy/events/${roomId}`, JSON.stringify({ type: 'controller_joined' }));
-        });
-
-        mqttClient.on('message', (topic, message) => {
+        pahoClient.onMessageArrived = (message) => {
           try {
-            const data = JSON.parse(message.toString());
+            const data = JSON.parse(message.payloadString);
             if (data.type === 'haptic') {
               if (data.pattern === 'coin') vibratePhone([30, 40, 50]);
               else if (data.pattern === 'gameover') vibratePhone([100, 50, 150]);
             }
           } catch (e) {}
-        });
+        };
 
-        mqttClient.on('close', () => {
-          setConnectedUI(false);
-        });
+        pahoClient.connect({
+          useSSL: true,
+          timeout: 4,
+          onSuccess: () => {
+            setConnectedUI(true);
+            vibratePhone(40);
+            pahoClient.subscribe(`flexy/events/${roomId}`);
 
-        mqttClient.on('error', () => {
-          setConnectedUI(false);
+            // Notify game host screen immediately
+            const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'controller_joined' }));
+            msg.destinationName = `flexy/events/${roomId}`;
+            pahoClient.send(msg);
+          },
+          onFailure: (err) => {
+            setConnectedUI(false);
+            // Fallback to EMQX broker if HiveMQ fails
+            setTimeout(initFallbackMQTT, 1500);
+          }
         });
       } catch (e) {
-        console.warn('MQTT error:', e);
+        console.warn('Paho error:', e);
       }
     }
 
-    // Периодический пинг экрана
-    setInterval(() => {
-      if (mqttClient && mqttClient.connected) {
-        mqttClient.publish(`flexy/events/${roomId}`, JSON.stringify({ type: 'ping' }));
-      }
-    }, 2000);
+    function initFallbackMQTT() {
+      try {
+        const clientId = 'c_' + Math.random().toString(36).substring(2, 10);
+        pahoClient = new Paho.MQTT.Client('broker.emqx.io', 8084, '/mqtt', clientId);
+        pahoClient.connect({
+          useSSL: true,
+          timeout: 4,
+          onSuccess: () => {
+            setConnectedUI(true);
+            pahoClient.subscribe(`flexy/events/${roomId}`);
+            const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'controller_joined' }));
+            msg.destinationName = `flexy/events/${roomId}`;
+            pahoClient.send(msg);
+          },
+          onFailure: () => {
+            setTimeout(initPahoMQTT, 3000);
+          }
+        });
+      } catch (e) {}
+    }
 
-    // --- Отправка координат ---
+    // Send motion packet to PC screen
     let lastSendTime = 0;
-    function sendMotion(normX, normY, rawAlpha = 0, rawBeta = 0) {
+    function sendMotion(normX, normY) {
       const now = performance.now();
       if (now - lastSendTime < 16) return; // 60 FPS
       lastSendTime = now;
@@ -571,47 +583,39 @@
       packetsSent++;
       statPackets.textContent = packetsSent;
 
-      if (mqttClient && mqttClient.connected) {
+      if (pahoClient && pahoClient.isConnected()) {
         const payload = JSON.stringify({
           type: 'motion',
           x: normX,
-          y: normY,
-          rawAlpha,
-          rawBeta
+          y: normY
         });
-        mqttClient.publish(`flexy/motion/${roomId}`, payload);
+        const msg = new Paho.MQTT.Message(payload);
+        msg.destinationName = `flexy/motion/${roomId}`;
+        pahoClient.send(msg);
       }
     }
 
-    function angleDelta(target, base) {
-      let diff = target - base;
-      while (diff < -180) diff += 360;
-      while (diff > 180) diff -= 360;
-      return diff;
-    }
-
-    // --- Обработка Гироскопа ---
+    // --- Rock-solid Gyro IMU: Gamma (Roll left/right), Beta (Pitch up/down) ---
     function handleOrientation(e) {
-      let alpha = e.alpha;
-      let beta = e.beta;
-      let gamma = e.gamma;
+      let gamma = e.gamma; // Left/Right tilt [-90..90]
+      let beta = e.beta;   // Front/Back tilt [-180..180]
 
-      if (alpha === null || beta === null) return;
+      if (gamma === null || beta === null) return;
 
-      if (!isCalibrated || baseAlpha === null) {
-        baseAlpha = alpha;
-        baseBeta = beta;
+      if (!isCalibrated || baseGamma === null) {
         baseGamma = gamma;
+        baseBeta = beta;
         isCalibrated = true;
       }
 
-      let deltaYaw = angleDelta(alpha, baseAlpha);
-      let deltaPitch = beta - baseBeta;
+      // Calculate deviation from calibrated center
+      let deltaX = gamma - baseGamma;
+      let deltaY = baseBeta - beta; // Tilting phone up (beta decreases) makes deltaY positive (up)
 
-      const MAX_DEFLECTION_ANGLE = 25;
+      const MAX_TILT_ANGLE = 25.0; // 25 degrees full deflection
 
-      let normX = (-deltaYaw / MAX_DEFLECTION_ANGLE) * sensitivity;
-      let normY = (deltaPitch / MAX_DEFLECTION_ANGLE) * sensitivity;
+      let normX = (deltaX / MAX_TILT_ANGLE) * sensitivity;
+      let normY = (deltaY / MAX_TILT_ANGLE) * sensitivity;
 
       if (invertX) normX = -normX;
       if (invertY) normY = -normY;
@@ -622,13 +626,13 @@
       const radarRadius = 85;
       laserReticle.style.transform = `translate(${normX * radarRadius}px, ${-normY * radarRadius}px)`;
 
-      statX.textContent = `${Math.round(deltaYaw)}°`;
-      statY.textContent = `${Math.round(deltaPitch)}°`;
+      statX.textContent = `${Math.round(deltaX)}°`;
+      statY.textContent = `${Math.round(deltaY)}°`;
 
-      sendMotion(normX, normY, alpha, beta);
+      sendMotion(normX, normY);
     }
 
-    // --- Дополнительное сенсорное управление пальцем по радару ---
+    // --- Touchpad Fallback: Dragging on radar ---
     function handleTouchRadar(clientX, clientY) {
       const rect = radar.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
@@ -658,47 +662,45 @@
       if (e.buttons > 0) handleTouchRadar(e.clientX, e.clientY);
     });
 
-    // --- Кнопка СТАРТ / КАЛИБРОВКА ---
+    // --- Калибровка центра ---
     async function activateAndCalibrate() {
       vibratePhone(50);
       isCalibrated = false;
-      baseAlpha = null;
-      baseBeta = null;
       baseGamma = null;
+      baseBeta = null;
 
       startBtn.classList.add('calibrating');
       btnLabel.textContent = '🎯 ЦЕНТР ЗАДАН!';
       setTimeout(() => {
         btnLabel.textContent = '🎯 КАЛИБРОВАТЬ ЦЕНТР';
         startBtn.classList.remove('calibrating');
-      }, 800);
+      }, 700);
 
       // Держим экран включенным
       if ('wakeLock' in navigator) {
         try { await navigator.wakeLock.request('screen'); } catch (err) {}
       }
 
-      // Активируем датчики
+      // Запрос прав на iOS
       if (!sensorsActive) {
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
           try {
             const state = await DeviceOrientationEvent.requestPermission();
             if (state === 'granted') {
               window.addEventListener('deviceorientation', handleOrientation, true);
-              window.addEventListener('deviceorientationabsolute', handleOrientation, true);
               sensorsActive = true;
             }
           } catch (e) {}
         } else {
           window.addEventListener('deviceorientation', handleOrientation, true);
-          window.addEventListener('deviceorientationabsolute', handleOrientation, true);
           sensorsActive = true;
         }
       }
 
-      if (mqttClient && mqttClient.connected) {
-        mqttClient.publish(`flexy/events/${roomId}`, JSON.stringify({ type: 'recalibrate' }));
-        mqttClient.publish(`flexy/events/${roomId}`, JSON.stringify({ type: 'controller_joined' }));
+      if (pahoClient && pahoClient.isConnected()) {
+        const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'recalibrate' }));
+        msg.destinationName = `flexy/events/${roomId}`;
+        pahoClient.send(msg);
       }
     }
 
@@ -718,10 +720,9 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      initMQTT();
+      initPahoMQTT();
 
       window.addEventListener('deviceorientation', handleOrientation, true);
-      window.addEventListener('deviceorientationabsolute', handleOrientation, true);
       sensorsActive = true;
     });
   </script>
