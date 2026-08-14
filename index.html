@@ -327,6 +327,145 @@
         transform: scale(0.98) translateY(1px);
       }
 
+      /* Модальное окно подсказки/правил (Frosted Liquid Glass) */
+      .rules-modal-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 70;
+        background: rgba(15, 23, 42, 0.22);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s;
+        visibility: hidden;
+      }
+
+      .rules-modal-overlay.visible {
+        opacity: 1;
+        pointer-events: auto;
+        visibility: visible;
+      }
+
+      .rules-modal-card {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(248, 250, 252, 0.72) 50%, rgba(241, 245, 249, 0.82) 100%);
+        backdrop-filter: blur(32px) saturate(190%);
+        -webkit-backdrop-filter: blur(32px) saturate(190%);
+        border: 1.5px solid rgba(255, 255, 255, 0.95);
+        border-radius: 32px;
+        padding: clamp(1.6rem, 4vmin, 2.4rem);
+        max-width: 450px;
+        width: 88%;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.25rem;
+        box-shadow: 
+          0 28px 65px rgba(0, 0, 0, 0.12),
+          0 8px 20px rgba(0, 0, 0, 0.04),
+          inset 0 1.5px 2px rgba(255, 255, 255, 1);
+        transform: scale(0.92) translateY(16px);
+        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .rules-modal-overlay.visible .rules-modal-card {
+        transform: scale(1) translateY(0);
+      }
+
+      .rules-badge {
+        font-family: 'Outfit', -apple-system, sans-serif;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #0284c7;
+        background: rgba(2, 132, 199, 0.08);
+        border: 1px solid rgba(2, 132, 199, 0.18);
+        padding: 0.35rem 1.1rem;
+        border-radius: 9999px;
+      }
+
+      .rules-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
+        font-family: 'Aeroport', 'Outfit', sans-serif;
+        color: #0f172a;
+        font-size: clamp(14px, 2.2vmin, 16.5px);
+        line-height: 1.55;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      .rules-p {
+        margin: 0;
+        padding: 0;
+      }
+
+      /* Кнопка "Ну всё, поняла" в стиле Frosted Liquid Glass */
+      .rules-confirm-btn {
+        margin-top: 0.4rem;
+        position: relative;
+        padding: 0.95rem 2.8rem;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(224, 242, 254, 0.18) 50%, rgba(56, 189, 248, 0.22) 100%);
+        backdrop-filter: blur(20px) saturate(190%) brightness(105%);
+        -webkit-backdrop-filter: blur(20px) saturate(190%) brightness(105%);
+        border: 1.5px solid rgba(255, 255, 255, 0.85);
+        border-radius: 9999px;
+        color: #0284c7;
+        font-family: 'Aeroport', 'Outfit', sans-serif;
+        font-size: clamp(16px, 2.6vmin, 19px);
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        cursor: pointer;
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
+        box-shadow: 
+          0 14px 32px rgba(0, 0, 0, 0.08),
+          0 3px 10px rgba(0, 0, 0, 0.03),
+          inset 0 1.5px 2px rgba(255, 255, 255, 0.9),
+          inset 0 -1.5px 4px rgba(2, 132, 199, 0.2);
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .rules-confirm-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -120%;
+        width: 80%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+        transform: skewX(-22deg);
+        transition: left 0.6s ease;
+      }
+
+      .rules-confirm-btn:hover {
+        transform: scale(1.04) translateY(-2px);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0%, rgba(224, 242, 254, 0.28) 50%, rgba(56, 189, 248, 0.32) 100%);
+        box-shadow: 
+          0 18px 40px rgba(0, 0, 0, 0.12),
+          0 5px 14px rgba(0, 0, 0, 0.05),
+          inset 0 2px 3px rgba(255, 255, 255, 1),
+          inset 0 -2px 5px rgba(2, 132, 199, 0.25);
+        color: #0369a1;
+      }
+
+      .rules-confirm-btn:hover::before {
+        left: 140%;
+      }
+
+      .rules-confirm-btn:active {
+        transform: scale(0.98) translateY(1px);
+      }
+
       /* Шестеренка настроек сцены (Liquid Glass Gear Button) */
       .settings-gear-btn {
         position: absolute;
@@ -831,15 +970,27 @@
 
       <!-- Стартовый оверлей с фразой и кнопкой "Начать" -->
       <div class="start-screen-overlay" id="startOverlay">
-        <div class="start-tagline" id="startTagline">Играй.
-Собирай всё женское.
-Выигрывай суперпризы от</div>
+        <div class="start-tagline" id="startTagline">Играй.<br>Собирай все женское.<br>Выигрывай суперпризы от</div>
         <button class="start-game-btn" id="startBtn" onclick="startGame()">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
           <span>Начать</span>
         </button>
+      </div>
+
+      <!-- Модальное окно подсказки/правил (Frosted Liquid Glass) -->
+      <div class="rules-modal-overlay" id="rulesModal">
+        <div class="rules-modal-card">
+          <div class="rules-badge">✨ КАК ИГРАТЬ</div>
+          <div class="rules-content">
+            <p class="rules-p">Собирай все женские атрибуты в сумку. Все не женские пропускай.</p>
+            <p class="rules-p">Чем больше соберешь "правильных" предметов за 20 секунд, тем ценнее будет твой приз. Чтобы выиграть суперприз, собери все туфли и не поймай ничего лишнего.</p>
+          </div>
+          <button class="rules-confirm-btn" id="rulesConfirmBtn" onclick="onRulesUnderstood()">
+            <span>Ну всё, поняла</span>
+          </button>
+        </div>
       </div>
 
       <!-- Шестеренка настроек сцены (Liquid Glass Gear Button) -->
@@ -1714,8 +1865,22 @@
         return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
       }
 
-      // Запуск игры со стартового экрана
+      // Нажатие на кнопку "Начать" со стартового экрана -> показываем подсказку/правила
       window.startGame = function() {
+        if (gameState !== 'start') return;
+        const rulesModal = document.getElementById('rulesModal');
+        if (rulesModal) {
+          rulesModal.classList.add('visible');
+        }
+      };
+
+      // Нажатие на кнопку "Ну всё, поняла" -> закрываем подсказку, запускаем переход и открываем QR-код
+      window.onRulesUnderstood = function() {
+        const rulesModal = document.getElementById('rulesModal');
+        if (rulesModal) {
+          rulesModal.classList.remove('visible');
+        }
+
         if (gameState !== 'start') return;
         gameState = 'transitioning';
         startOverlayEl.classList.add('hidden');
@@ -1723,6 +1888,9 @@
         if (settingsBtnEl) settingsBtnEl.style.display = 'none';
         topBarEl.classList.add('visible');
         gameHintEl.classList.add('visible');
+
+        // Показываем QR-код для сканирования смартфоном
+        toggleQrModal(true);
 
         let transitionTime = 0;
         const duration = 0.4;
