@@ -12,10 +12,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- Paho MQTT WebSocket Client -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-    <!-- PeerJS WebRTC -->
-    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <!-- Three.js -->
+    <!-- Three.js + Loaders -->
     <script src="https://unpkg.com/three@0.159.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/fflate@0.8.0/umd/index.js"></script>
+    <script src="https://unpkg.com/three@0.159.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://unpkg.com/three@0.159.0/examples/js/loaders/FBXLoader.js"></script>
 
     <style>
       :root {
@@ -115,6 +116,12 @@
         align-items: center;
         pointer-events: none;
         z-index: 20;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+      }
+
+      .top-bar.visible {
+        opacity: 1;
       }
 
       .remote-pill {
@@ -203,7 +210,54 @@
         transform: translateY(-50%) scale(1.1);
       }
 
+      /* Кнопка "Начать" на стартовом экране */
+      .start-screen-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        padding-bottom: 18vh;
+        z-index: 25;
+        pointer-events: none;
+        transition: opacity 0.4s ease, transform 0.4s ease;
+      }
 
+      .start-screen-overlay.hidden {
+        opacity: 0;
+        transform: scale(0.92);
+        pointer-events: none;
+        visibility: hidden;
+      }
+
+      .start-game-btn {
+        pointer-events: auto;
+        padding: 1.15rem 3.4rem;
+        background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+        border: none;
+        border-radius: 9999px;
+        color: #ffffff;
+        font-size: clamp(18px, 3.2vmin, 26px);
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+        box-shadow: 0 14px 35px rgba(2, 132, 199, 0.45), 0 4px 12px rgba(0,0,0,0.15);
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .start-game-btn:hover {
+        transform: scale(1.06);
+        box-shadow: 0 18px 45px rgba(2, 132, 199, 0.6);
+      }
+
+      .start-game-btn:active {
+        transform: scale(0.96);
+      }
 
       .qr-overlay {
         position: absolute;
@@ -216,55 +270,49 @@
         justify-content: center;
         padding: 1.5rem;
         z-index: 100;
-        opacity: 1;
-        visibility: visible;
-        transition: opacity 0.35s ease, visibility 0.35s ease;
-        text-align: center;
-      }
-
-      .qr-overlay.hidden {
         opacity: 0;
         visibility: hidden;
-        pointer-events: none;
+        transition: opacity 0.35s ease, visibility 0.35s ease;
+      }
+
+      .qr-overlay.visible {
+        opacity: 1;
+        visibility: visible;
       }
 
       .qr-card {
-        background: rgba(20, 26, 45, 0.95);
-        border: 1px solid rgba(56, 189, 248, 0.35);
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(56, 189, 248, 0.3);
         border-radius: 28px;
-        padding: 1.6rem 1.35rem;
-        width: 88%;
-        max-width: 340px;
-        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7), 0 0 48px rgba(56, 189, 248, 0.25);
+        padding: 2rem;
+        max-width: 360px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 0.9rem;
+        gap: 1.1rem;
         position: relative;
-        animation: floatModal 4s ease-in-out infinite;
-      }
-
-      @keyframes floatModal {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-4px); }
       }
 
       .qr-badge {
-        background: linear-gradient(135deg, #0ea5e9, #6366f1);
-        color: white;
-        padding: 0.35rem 0.9rem;
-        border-radius: 9999px;
         font-size: 0.75rem;
         font-weight: 800;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.15em;
         text-transform: uppercase;
+        color: #38bdf8;
+        background: rgba(56, 189, 248, 0.12);
+        padding: 0.35rem 0.9rem;
+        border-radius: 9999px;
+        border: 1px solid rgba(56, 189, 248, 0.3);
       }
 
       .qr-title {
-        font-size: clamp(20px, 3vmin, 24px);
+        font-size: clamp(20px, 3.5vmin, 26px);
         font-weight: 900;
-        color: #f8fafc;
         margin: 0;
+        color: #fff;
         line-height: 1.2;
       }
 
@@ -372,6 +420,11 @@
         pointer-events: none;
         text-align: center;
         white-space: nowrap;
+        display: none;
+      }
+
+      .hint.visible {
+        display: block;
       }
     </style>
   </head>
@@ -379,7 +432,7 @@
     <div class="game" id="game">
       
       <!-- Верхний HUD -->
-      <div class="top-bar">
+      <div class="top-bar" id="topBar">
         <div class="remote-pill" id="remotePill" onclick="toggleQrModal(true)" title="Нажмите для QR-кода подключения">
           <span class="status-dot"></span>
           <span id="remoteStatusText">📱 Подключить телефон</span>
@@ -388,6 +441,16 @@
           <span class="coin-icon"></span>
           <span id="coinTotal">0</span>
         </div>
+      </div>
+
+      <!-- Стартовый оверлей с кнопкой "Начать" -->
+      <div class="start-screen-overlay" id="startOverlay">
+        <button class="start-game-btn" id="startBtn" onclick="startGame()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          <span>Начать</span>
+        </button>
       </div>
 
       <!-- Игровой оверлей -->
@@ -431,92 +494,75 @@
     </div>
 
     <script>
-      (() => {
-        // --- Звуки отключены по запросу ---
+      (function() {
+        // Константы и параметры
+        const RENDER_WIDTH = 1000;
+        const RENDER_HEIGHT = 1600;
+        const ASPECT = 9 / 16;
+        const halfH = 800;
+        const halfW = 450;
+
+        const PLAYER_SIZE = 135;
+        const OBJECT_SIZE = 95;
+        const TOP_Y = 820;
+        const BOTTOM_Y = -820;
+        const PLAYER_MOVE_Y = halfH * 0.45;
+        const SPAWN_INTERVAL_BASE = 0.55;
+        const BASE_FALL_SPEED = 240;
+        const MAX_VX = 140;
+        const ROT_SPEED = 1.6;
+        const MIN_DISTANCE = OBJECT_SIZE * 0.8;
+        const COIN_SCALE = 0.72;
+        const COIN_INTERVAL = 3.6;
+
+        const REPULSION_RADIUS = OBJECT_SIZE * 2.2;
+        const REPULSION_STRENGTH = 260;
+        const DAMPING = 0.985;
+        const VX_CLAMP = 240;
+        const VY_CLAMP = 180;
+        const BOUNCE_X = 0.7;
+        const FUNNEL_STRENGTH = 0.16;
+        const VANISH_RADIUS_X = halfW * 0.42;
+
+        // Room ID
+        const urlParams = new URLSearchParams(window.location.search);
+        let roomId = (urlParams.get('room') || 'FLEXY').toUpperCase();
+        document.getElementById('roomPinDisplay').textContent = roomId;
+
+        // Без звуков по запросу
         const AudioFX = {
-          playCoin() {},
-          playExplosion() {},
-          playConnect() {}
+          playCoin: () => {},
+          playExplosion: () => {},
+          playConnect: () => {}
         };
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const roomId = (urlParams.get('room') || 'FLEXY').toUpperCase();
-
-        const roomPinDisplayEl = document.getElementById('roomPinDisplay');
-        if (roomPinDisplayEl) roomPinDisplayEl.textContent = roomId;
-
-        const RENDER_WIDTH = 2160;
-        const RENDER_HEIGHT = 3840;
-        const ASPECT = RENDER_WIDTH / RENDER_HEIGHT;
-
-        const halfW = 1080;
-        const halfH = 1920;
-
-        const OBJECT_SIZE = 160;
-        const MIN_DISTANCE = 1.5 * OBJECT_SIZE;
-        const BASE_FALL_SPEED = 320;
-        const MAX_VX = 200;
-        const FUNNEL_STRENGTH = 1.5;
-        const SPAWN_INTERVAL_BASE = 1.0;
-        const ROT_SPEED = 0.6;
-        const PLAYER_MOVE_Y = 660;
-        const PLAYER_SIZE = OBJECT_SIZE;
-        const COIN_INTERVAL = 5.0;
-
-        const REPULSION_RADIUS = OBJECT_SIZE * 8.2;
-        const REPULSION_STRENGTH = 9800;
-        const VX_CLAMP = 420;
-        const VY_CLAMP = 220;
-        const DAMPING = 0.992;
-        const BOUNCE_X = 0.85;
-
-        const OBJECT_COLOR_PALETTE = [0xd81b60, 0xffe066, 0x10b981, 0xff8f1f, 0xef4444];
-        const OBJECT_MATERIALS = OBJECT_COLOR_PALETTE.map((color) =>
-          new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.15 })
-        );
-
+        // Геометрии и материалы препятствий
         const SHAPE_GEOMETRIES = [
-          new THREE.SphereGeometry(OBJECT_SIZE * 0.5, 24, 16),
-          new THREE.BoxGeometry(OBJECT_SIZE, OBJECT_SIZE, OBJECT_SIZE),
-          new THREE.TorusGeometry(OBJECT_SIZE * 0.42, OBJECT_SIZE * 0.20, 12, 24),
-          new THREE.IcosahedronGeometry(OBJECT_SIZE * 0.58),
-          new THREE.ConeGeometry(OBJECT_SIZE * 0.6, OBJECT_SIZE * 1.1, 4),
-          new THREE.ConeGeometry(OBJECT_SIZE * 0.6, OBJECT_SIZE * 1.1, 16)
+          new THREE.TetrahedronGeometry(OBJECT_SIZE * 0.6),
+          new THREE.OctahedronGeometry(OBJECT_SIZE * 0.55),
+          new THREE.ConeGeometry(OBJECT_SIZE * 0.45, OBJECT_SIZE * 0.9, 5),
+          new THREE.CylinderGeometry(OBJECT_SIZE * 0.35, OBJECT_SIZE * 0.35, OBJECT_SIZE * 0.85, 6),
+          new THREE.DodecahedronGeometry(OBJECT_SIZE * 0.5)
         ];
 
-        const COIN_SCALE = 1.5;
-        const COIN_GEOMETRY = new THREE.CylinderGeometry(
-          OBJECT_SIZE * 0.48 * COIN_SCALE,
-          OBJECT_SIZE * 0.48 * COIN_SCALE,
-          Math.max(6, OBJECT_SIZE * 0.18 * COIN_SCALE),
-          32
-        );
+        const OBJECT_MATERIALS = [
+          new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.3, metalness: 0.2 }),
+          new THREE.MeshStandardMaterial({ color: 0x8b5cf6, roughness: 0.3, metalness: 0.2 }),
+          new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.3, metalness: 0.2 }),
+          new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.3, metalness: 0.2 }),
+          new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.3, metalness: 0.2 })
+        ];
+
+        const COIN_GEOMETRY = new THREE.CylinderGeometry(OBJECT_SIZE * 0.42 * COIN_SCALE, OBJECT_SIZE * 0.42 * COIN_SCALE, 16, 24);
         const COIN_MATERIAL = new THREE.MeshStandardMaterial({
-          color: 0xf5c542,
-          metalness: 0.8,
+          color: 0xfbbf24,
           roughness: 0.2,
-          emissive: 0xffcc33,
-          emissiveIntensity: 1.2
-        });
-        const PARTICLE_GEOMETRY = new THREE.BoxGeometry(1, 1, 1);
-        const GOLD_PARTICLE_MATERIAL = new THREE.MeshStandardMaterial({
-          color: 0xffd166,
-          roughness: 0.35,
-          metalness: 0.3,
-          emissive: 0xffc34d,
-          emissiveIntensity: 0.8
-        });
-        const EXPLOSION_PARTICLE_MATERIAL = new THREE.MeshStandardMaterial({
-          color: 0xff5555,
-          roughness: 0.4,
-          metalness: 0.05
+          metalness: 0.85,
+          emissive: 0xf59e0b,
+          emissiveIntensity: 0.25
         });
 
-        const TOP_Y = halfH - OBJECT_SIZE * 1.2;
-        const BOTTOM_Y = -halfH + OBJECT_SIZE * 1.2;
-        const VANISH_RADIUS_X = OBJECT_SIZE * 0.9;
-
-        // DOM
+        // DOM элементы
         const container = document.getElementById('game');
         const gameoverEl = document.getElementById('gameover');
         const scoreSummaryEl = document.getElementById('scoreSummary');
@@ -526,8 +572,10 @@
         const remoteStatusTextEl = document.getElementById('remoteStatusText');
         const qrOverlayEl = document.getElementById('qrOverlay');
         const gameHintEl = document.getElementById('gameHint');
+        const startOverlayEl = document.getElementById('startOverlay');
+        const topBarEl = document.getElementById('topBar');
 
-        // Сцена Three.js
+        // Сцена Three.js — идеально белый фон
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xffffff);
 
@@ -546,39 +594,35 @@
         container.appendChild(renderer.domElement);
 
         // Свет
-        const hemi = new THREE.HemisphereLight(0xffffff, 0xffffff, 1);
+        const hemi = new THREE.HemisphereLight(0xffffff, 0xf1f5f9, 0.95);
         scene.add(hemi);
-        const dir = new THREE.DirectionalLight(0xffffff, 1.4);
-        dir.position.set(halfW * 0.35, halfH * 0.12, dist);
+
+        const dir = new THREE.DirectionalLight(0xffffff, 1.35);
+        dir.position.set(halfW * 0.45, halfH * 0.55, dist * 0.95);
         dir.target.position.set(0, 0, 0);
         dir.castShadow = true;
         dir.shadow.mapSize.set(2048, 2048);
-        dir.shadow.radius = 50.5;
-        dir.shadow.camera.left = -halfW * 2.4;
-        dir.shadow.camera.right = halfW * 2.4;
-        dir.shadow.camera.top = halfH * 2.4;
-        dir.shadow.camera.bottom = -halfH * 2.4;
+        dir.shadow.radius = 28;
+        dir.shadow.camera.left = -halfW * 2.5;
+        dir.shadow.camera.right = halfW * 2.5;
+        dir.shadow.camera.top = halfH * 2.5;
+        dir.shadow.camera.bottom = -halfH * 2.5;
         dir.shadow.camera.near = 1;
         dir.shadow.camera.far = 8000;
-        dir.shadow.bias = -0.0006;
+        dir.shadow.bias = -0.0004;
         dir.shadow.camera.updateProjectionMatrix();
         scene.add(dir);
         scene.add(dir.target);
 
-        const under = new THREE.DirectionalLight(0xffffff, 0.6);
-        under.position.set(0, -1200, 400);
-        under.target.position.set(0, 0, 0);
-        scene.add(under);
-        scene.add(under.target);
+        // Задний Plane (в 2 раза больше экрана, полностью прозрачный, принимает легкую тень)
+        const shadowPlaneGeom = new THREE.PlaneGeometry(halfW * 4.0, halfH * 4.0);
+        const shadowPlaneMat = new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.13 });
+        const shadowPlane = new THREE.Mesh(shadowPlaneGeom, shadowPlaneMat);
+        shadowPlane.position.set(0, 0, -100);
+        shadowPlane.receiveShadow = true;
+        scene.add(shadowPlane);
 
-        const backGeom = new THREE.PlaneGeometry(halfW * 8.4, halfH * 4.2);
-        const backMat = new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.22 });
-        const backWall = new THREE.Mesh(backGeom, backMat);
-        backWall.position.set(0, 0, -600);
-        backWall.receiveShadow = true;
-        scene.add(backWall);
-
-        // Игрок — куб
+        // Игрок — куб (скрыт на стартовом экране)
         const playerMat = new THREE.MeshStandardMaterial({
           color: 0x38bdf8,
           roughness: 0.3,
@@ -590,13 +634,166 @@
         const player = new THREE.Mesh(playerGeo, playerMat);
         player.position.set(0, 0, 0);
         player.castShadow = true;
+        player.visible = false;
         scene.add(player);
         const playerRadius = PLAYER_SIZE * 0.6;
 
+        // ----------------------------------------------------
+        // СТАРТОВЫЙ ЭКРАН: Загрузка 3D моделей (flexyway + good)
+        // ----------------------------------------------------
+        let gameState = 'start'; // 'start' | 'transitioning' | 'playing' | 'gameover'
+        const startScreenGroup = new THREE.Group();
+        scene.add(startScreenGroup);
+
+        let flexywayLogo = null;
+        const goodObjects = [];
+
+        const gltfLoader = new THREE.GLTFLoader();
+        const fbxLoader = new THREE.FBXLoader();
+
+        function normalizeModel(object, targetSize) {
+          const box = new THREE.Box3().setFromObject(object);
+          const size = new THREE.Vector3();
+          box.getSize(size);
+          const center = new THREE.Vector3();
+          box.getCenter(center);
+
+          object.position.x -= center.x;
+          object.position.y -= center.y;
+          object.position.z -= center.z;
+
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const scale = maxDim > 0 ? (targetSize / maxDim) : 1;
+
+          const container = new THREE.Group();
+          container.add(object);
+          container.userData.targetScale = scale;
+          container.scale.set(0, 0, 0);
+
+          object.traverse((child) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = false;
+              if (child.material) {
+                if (Array.isArray(child.material)) {
+                  child.material.forEach(m => { m.roughness = 0.35; });
+                } else {
+                  child.material.roughness = 0.35;
+                }
+              }
+            }
+          });
+
+          return container;
+        }
+
+        // Загрузка центрального логотипа flexyway.glb
+        gltfLoader.load(
+          'flexyway.glb',
+          (gltf) => {
+            const logo = normalizeModel(gltf.scene, 420);
+            logo.position.set(0, 90, 0);
+            logo.userData.baseY = 90;
+            logo.userData.spawnDelay = 0.05;
+            logo.userData.spawnProgress = 0;
+            startScreenGroup.add(logo);
+            flexywayLogo = logo;
+          },
+          undefined,
+          (err) => {
+            console.warn('Could not load flexyway.glb, using fallback text mesh:', err);
+            const fallbackGeo = new THREE.BoxGeometry(320, 80, 40);
+            const fallbackMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8 });
+            const fallbackMesh = new THREE.Mesh(fallbackGeo, fallbackMat);
+            const logo = normalizeModel(fallbackMesh, 320);
+            logo.position.set(0, 90, 0);
+            logo.userData.baseY = 90;
+            logo.userData.spawnDelay = 0.05;
+            logo.userData.spawnProgress = 0;
+            startScreenGroup.add(logo);
+            flexywayLogo = logo;
+          }
+        );
+
+        // Список объектов из папки good/ с позициями на плоскости XY
+        const goodModelsConfig = [
+          { file: 'good/bottle.fbx', x: -280, y: 440, size: 155, delay: 0.15, rotSpeed: 0.4 },
+          { file: 'good/bottle_2.fbx', x: 280, y: 410, size: 165, delay: 0.28, rotSpeed: -0.35 },
+          { file: 'good/diadem.fbx', x: -310, y: 60, size: 160, delay: 0.42, rotSpeed: 0.5 },
+          { file: 'good/lipstick.fbx', x: 310, y: 40, size: 145, delay: 0.55, rotSpeed: -0.45 },
+          { file: 'good/sport_wear.fbx', x: -270, y: -420, size: 170, delay: 0.68, rotSpeed: 0.3 },
+          { file: 'good/sun glasses.fbx', x: 270, y: -450, size: 160, delay: 0.80, rotSpeed: -0.4 }
+        ];
+
+        goodModelsConfig.forEach((cfg) => {
+          fbxLoader.load(
+            cfg.file,
+            (fbx) => {
+              const model = normalizeModel(fbx, cfg.size);
+              model.position.set(cfg.x, cfg.y, 0);
+              model.userData.baseX = cfg.x;
+              model.userData.baseY = cfg.y;
+              model.userData.spawnDelay = cfg.delay;
+              model.userData.spawnProgress = 0;
+              model.userData.rotSpeed = cfg.rotSpeed;
+              startScreenGroup.add(model);
+              goodObjects.push(model);
+            },
+            undefined,
+            (err) => {
+              console.warn(`Error loading FBX ${cfg.file}:`, err);
+            }
+          );
+        });
+
+        // Функция плавного отскока для появления (Ease Out Back)
+        function easeOutBack(x) {
+          const c1 = 1.70158;
+          const c3 = c1 + 1;
+          return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+        }
+
+        // Запуск игры со стартового экрана
+        window.startGame = function() {
+          if (gameState !== 'start') return;
+          gameState = 'transitioning';
+          startOverlayEl.classList.add('hidden');
+          topBarEl.classList.add('visible');
+          gameHintEl.classList.add('visible');
+
+          let transitionTime = 0;
+          const duration = 0.4;
+
+          function transitionStep(time) {
+            transitionTime += 0.016;
+            const progress = Math.min(1, transitionTime / duration);
+            const scaleFactor = 1 - progress;
+
+            startScreenGroup.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
+            if (progress < 1) {
+              requestAnimationFrame(transitionStep);
+            } else {
+              startScreenGroup.visible = false;
+              gameState = 'playing';
+              player.visible = true;
+              player.position.set(0, 0, 0);
+              targetWorldX = 0;
+              targetWorldY = 0;
+              resetGame();
+            }
+          }
+
+          requestAnimationFrame(transitionStep);
+        };
+
+        // ----------------------------------------------------
+        // Игровой процесс
+        // ----------------------------------------------------
         const objects = [];
         const particles = [];
 
-        let running = true;
+        let running = false;
         let spawnAccumulator = 0;
         let spawnInterval = SPAWN_INTERVAL_BASE;
         let spawnIntervalTimer = 0;
@@ -683,69 +880,68 @@
           }
         }
 
-        function flashCoinCount() {
-          coinFlashEl.textContent = `+${coinCount}`;
+        function collectCoin(index) {
+          const obj = objects[index];
+          if (!obj) return;
+          scene.remove(obj.mesh);
+          objects.splice(index, 1);
+
+          coinCount += 1;
           coinTotalEl.textContent = coinCount;
+          coinFlashEl.textContent = `+${coinCount}`;
           coinFlashEl.classList.add('visible');
           if (coinFlashTimer) clearTimeout(coinFlashTimer);
           coinFlashTimer = setTimeout(() => {
             coinFlashEl.classList.remove('visible');
-          }, 900);
-        }
+          }, 300);
 
-        function collectCoin(index) {
-          const o = objects[index];
-          if (!o) return;
-          const pos = o.mesh.position.clone();
-          for (let i = 0; i < 40; i++) {
-            const p = new THREE.Mesh(PARTICLE_GEOMETRY, GOLD_PARTICLE_MATERIAL);
-            const size = randRange(4, 10);
-            p.scale.set(size, size, size);
-            p.position.copy(pos);
-            scene.add(p);
-            const dir = new THREE.Vector3(randRange(-1, 1), randRange(-1, 1), randRange(-1, 1)).normalize();
-            const speed = randRange(180, 520);
-            particles.push({ mesh: p, vel: dir.multiplyScalar(speed), life: 0.8 });
-          }
-          scene.remove(o.mesh);
-          objects.splice(index, 1);
-          coinCount += 1;
-          flashCoinCount();
           AudioFX.playCoin();
           sendHapticToPhone('coin');
         }
 
         function explodeAt(position) {
-          const COUNT = 80;
-          for (let i = 0; i < COUNT; i++) {
-            const p = new THREE.Mesh(PARTICLE_GEOMETRY, EXPLOSION_PARTICLE_MATERIAL);
-            const size = randRange(6, 16);
-            p.scale.set(size, size, size);
+          const count = 40;
+          const geo = new THREE.BoxGeometry(PLAYER_SIZE * 0.18, PLAYER_SIZE * 0.18, PLAYER_SIZE * 0.18);
+          for (let i = 0; i < count; i++) {
+            const mat = new THREE.MeshStandardMaterial({
+              color: 0x38bdf8,
+              roughness: 0.3,
+              metalness: 0.4,
+              emissive: 0x0284c7,
+              emissiveIntensity: 0.6
+            });
+            const p = new THREE.Mesh(geo, mat);
+            p.castShadow = true;
             p.position.copy(position);
+            const theta = Math.random() * Math.PI * 2;
+            const phi = (Math.random() - 0.5) * Math.PI;
+            const speed = 250 + Math.random() * 550;
+            const vel = new THREE.Vector3(
+              Math.cos(phi) * Math.cos(theta) * speed,
+              Math.cos(phi) * Math.sin(theta) * speed,
+              Math.sin(phi) * speed
+            );
             scene.add(p);
-            const dir = new THREE.Vector3(randRange(-1, 1), randRange(-1, 1), randRange(-1, 1)).normalize();
-            const speed = randRange(200, 600);
-            particles.push({ mesh: p, vel: dir.multiplyScalar(speed), life: 1.2 });
+            particles.push({ mesh: p, vel, life: 0.9 + Math.random() * 0.5 });
           }
         }
 
         function resetGame() {
+          gameoverEl.classList.remove('visible');
           for (const o of objects) scene.remove(o.mesh);
           objects.length = 0;
           for (const p of particles) scene.remove(p.mesh);
           particles.length = 0;
-          player.visible = true;
+
           player.position.set(0, 0, 0);
-          targetWorldX = 0;
-          targetWorldY = 0;
-          gameoverEl.classList.remove('visible');
-          spawnAccumulator = 0;
+          player.rotation.set(0, 0, 0);
+          player.visible = true;
+
           spawnInterval = SPAWN_INTERVAL_BASE;
           spawnIntervalTimer = 0;
+          coinInterval = COIN_INTERVAL;
           fallSpeed = BASE_FALL_SPEED;
           fallSpeedTimer = 0;
-          coinAccumulator = 0;
-          coinInterval = COIN_INTERVAL;
           coinCount = 0;
           coinsSpawned = 0;
           coinFlashEl.textContent = `+${coinCount}`;
@@ -835,7 +1031,6 @@
                 pahoClient.subscribe(`flexy/events/${roomId}`);
               },
               onFailure: () => {
-                // Fallback to EMQX broker
                 setTimeout(initFallbackMQTT, 1500);
               }
             });
@@ -884,9 +1079,9 @@
 
         window.toggleQrModal = function(show) {
           if (show) {
-            qrOverlayEl.classList.remove('hidden');
+            qrOverlayEl.classList.add('visible');
           } else {
-            qrOverlayEl.classList.add('hidden');
+            qrOverlayEl.classList.remove('visible');
           }
         };
 
@@ -899,12 +1094,48 @@
           return f * f;
         }
 
+        let startElapsedTime = 0;
+
         function animate() {
           const now = performance.now() / 1000;
           const dt = Math.min(0.05, now - lastTime);
           lastTime = now;
 
-          if (running) {
+          // --------------------------------------------------
+          // Анимация стартового экрана
+          // --------------------------------------------------
+          if (gameState === 'start' || gameState === 'transitioning') {
+            startElapsedTime += dt;
+
+            // Центральный логотип flexyway: мягкое парение и покачивание
+            if (flexywayLogo) {
+              if (startElapsedTime > flexywayLogo.userData.spawnDelay) {
+                flexywayLogo.userData.spawnProgress = Math.min(1, flexywayLogo.userData.spawnProgress + dt * 1.8);
+                const s = flexywayLogo.userData.targetScale * easeOutBack(flexywayLogo.userData.spawnProgress);
+                flexywayLogo.scale.set(s, s, s);
+              }
+              flexywayLogo.position.y = flexywayLogo.userData.baseY + Math.sin(startElapsedTime * 1.5) * 12;
+              flexywayLogo.rotation.y = Math.sin(startElapsedTime * 0.8) * 0.06;
+              flexywayLogo.rotation.z = Math.cos(startElapsedTime * 1.1) * 0.03;
+            }
+
+            // Объекты из good: плавный pop-in из scale = 0 и легкое парение
+            goodObjects.forEach((obj) => {
+              if (startElapsedTime > obj.userData.spawnDelay) {
+                obj.userData.spawnProgress = Math.min(1, obj.userData.spawnProgress + dt * 1.5);
+                const s = obj.userData.targetScale * easeOutBack(obj.userData.spawnProgress);
+                obj.scale.set(s, s, s);
+              }
+              obj.position.y = obj.userData.baseY + Math.sin(startElapsedTime * 1.4 + obj.userData.baseX) * 10;
+              obj.rotation.y += dt * obj.userData.rotSpeed;
+              obj.rotation.x = Math.sin(startElapsedTime * 1.1 + obj.userData.baseY) * 0.08;
+            });
+          }
+
+          // --------------------------------------------------
+          // Игровой цикл
+          // --------------------------------------------------
+          if (running && gameState === 'playing') {
             elapsed += dt;
             spawnAccumulator += dt;
             if (elapsed < 20) spawnIntervalTimer += dt;
