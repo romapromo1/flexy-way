@@ -223,7 +223,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding-top: 180px;
+        padding-top: 70px;
         z-index: 25;
         pointer-events: none;
         transition: opacity 0.4s ease, transform 0.4s ease;
@@ -602,10 +602,11 @@
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       container.appendChild(renderer.domElement);
 
-      // Свет
-      const hemi = new THREE.HemisphereLight(0xffffff, 0xf1f5f9, 0.95);
+      // Студийное освещение
+      const hemi = new THREE.HemisphereLight(0xffffff, 0xe2e8f0, 1.4);
       scene.add(hemi);
 
+      // Основной направленный свет с мягкой тенью
       const dir = new THREE.DirectionalLight(0xffffff, 1.35);
       dir.position.set(halfW * 0.45, halfH * 0.55, dist * 0.95);
       dir.target.position.set(0, 0, 0);
@@ -622,6 +623,16 @@
       dir.shadow.camera.updateProjectionMatrix();
       scene.add(dir);
       scene.add(dir.target);
+
+      // Фронтальный заполняющий студийный свет (освещает все объекты со всех сторон)
+      const fillLight = new THREE.DirectionalLight(0xffffff, 1.1);
+      fillLight.position.set(-halfW * 0.5, -halfH * 0.2, 1200);
+      scene.add(fillLight);
+
+      // Нижний заполняющий свет (подсвечивает нижние объекты: костюм, очки)
+      const bottomLight = new THREE.DirectionalLight(0xffffff, 0.9);
+      bottomLight.position.set(0, -halfH * 0.8, 1000);
+      scene.add(bottomLight);
 
       // Задний Plane (в 2 раза больше экрана, полностью прозрачный, принимает легкую тень)
       const shadowPlaneGeom = new THREE.PlaneGeometry(halfW * 4.0, halfH * 4.0);
@@ -660,7 +671,7 @@
       const gltfLoader = new GLTFLoader();
       const fbxLoader = new FBXLoader();
 
-      function normalizeModel(object, targetSize) {
+      function normalizeModel(object, targetSize, defaultPalette = null) {
         const box = new THREE.Box3().setFromObject(object);
         const size = new THREE.Vector3();
         box.getSize(size);
@@ -679,16 +690,57 @@
         container.userData.targetScale = scale;
         container.scale.set(0, 0, 0);
 
+        let meshIdx = 0;
         object.traverse((child) => {
           if (child.isMesh) {
             child.castShadow = true;
             child.receiveShadow = false;
-            if (child.material) {
-              if (Array.isArray(child.material)) {
-                child.material.forEach(m => { m.roughness = 0.35; });
+
+            if (child.geometry) {
+              child.geometry.computeVertexNormals();
+            }
+
+            const enhanceMat = (oldMat) => {
+              let baseColor = null;
+
+              // Если задана палитра для этого объекта — берем цвет из палитры
+              if (defaultPalette && defaultPalette.length > 0) {
+                baseColor = new THREE.Color(defaultPalette[meshIdx % defaultPalette.length]);
+              } else if (oldMat && oldMat.color) {
+                baseColor = oldMat.color.clone();
+                const hsl = {};
+                baseColor.getHSL(hsl);
+                // Если цвет чисто черный или слишком темный
+                if (hsl.l < 0.22 || (baseColor.r < 0.15 && baseColor.g < 0.15 && baseColor.b < 0.15)) {
+                  baseColor = new THREE.Color(0x38bdf8);
+                }
               } else {
-                child.material.roughness = 0.35;
+                baseColor = new THREE.Color(0x38bdf8);
               }
+
+              // Проверяем валидность текстуры (не используем пустые/битые FBX текстуры, которые вызывают черноту)
+              let validMap = null;
+              if (oldMat && oldMat.map && oldMat.map.image && oldMat.map.image.width > 0) {
+                validMap = oldMat.map;
+              }
+
+              meshIdx++;
+
+              return new THREE.MeshStandardMaterial({
+                color: baseColor,
+                map: validMap,
+                roughness: 0.25,
+                metalness: 0.2,
+                emissive: baseColor.clone().multiplyScalar(0.2), // Собственное мягкое свечение граней
+                emissiveIntensity: 0.25,
+                side: THREE.DoubleSide
+              });
+            };
+
+            if (Array.isArray(child.material)) {
+              child.material = child.material.map(enhanceMat);
+            } else {
+              child.material = enhanceMat(child.material);
             }
           }
         });
@@ -714,21 +766,21 @@
         }
       );
 
-      // Список объектов из папки good/ с позициями на плоскости XY
+      // Список объектов из папки good/ с видимыми позициями в кадре и сочной студийной палитрой
       const goodModelsConfig = [
-        { file: 'good/bottle.fbx', x: -280, y: 460, size: 155, delay: 0.15, rotSpeed: 0.4 },
-        { file: 'good/bottle_2.fbx', x: 280, y: 430, size: 165, delay: 0.28, rotSpeed: -0.35 },
-        { file: 'good/diadem.fbx', x: -320, y: 80, size: 160, delay: 0.42, rotSpeed: 0.5 },
-        { file: 'good/lipstick.fbx', x: 320, y: 60, size: 145, delay: 0.55, rotSpeed: -0.45 },
-        { file: 'good/sport_wear.fbx', x: -270, y: -420, size: 170, delay: 0.68, rotSpeed: 0.3 },
-        { file: 'good/sun glasses.fbx', x: 270, y: -450, size: 160, delay: 0.80, rotSpeed: -0.4 }
+        { file: 'good/bottle.fbx', x: -280, y: 460, size: 200, delay: 0.12, rotSpeed: 0.35, palette: [0x06b6d4, 0xf8fafc] },
+        { file: 'good/bottle_2.fbx', x: 280, y: 440, size: 210, delay: 0.24, rotSpeed: -0.35, palette: [0xf97316, 0xf43f5e, 0x94a3b8] },
+        { file: 'good/diadem.fbx', x: -320, y: 110, size: 210, delay: 0.36, rotSpeed: 0.45, palette: [0xf59e0b, 0xfbbf24, 0xfef08a] },
+        { file: 'good/lipstick.fbx', x: 320, y: 90, size: 230, delay: 0.48, rotSpeed: -0.45, palette: [0xe11d48, 0xfbbf24, 0xf43f5e] },
+        { file: 'good/sport_wear.fbx', x: -260, y: -340, size: 220, delay: 0.60, rotSpeed: 0.3, palette: [0x8b5cf6, 0x6366f1, 0xec4899] },
+        { file: 'good/sun glasses.fbx', x: 260, y: -350, size: 210, delay: 0.72, rotSpeed: -0.4, palette: [0xa855f7, 0x0284c7, 0xec4899] }
       ];
 
       goodModelsConfig.forEach((cfg) => {
         fbxLoader.load(
           cfg.file,
           (fbx) => {
-            const model = normalizeModel(fbx, cfg.size);
+            const model = normalizeModel(fbx, cfg.size, cfg.palette);
             model.position.set(cfg.x, cfg.y, 0);
             model.userData.baseX = cfg.x;
             model.userData.baseY = cfg.y;
