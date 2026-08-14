@@ -954,42 +954,42 @@
       container.appendChild(renderer.domElement);
 
       // Студийное освещение
-      const hemi = new THREE.HemisphereLight(0xffffff, 0xe2e8f0, 1.4);
+      const hemi = new THREE.HemisphereLight(0xffffff, 0xe2e8f0, 1.2);
       scene.add(hemi);
 
-      // Основной направленный свет с мягкой тенью
-      const dir = new THREE.DirectionalLight(0xffffff, 1.35);
-      dir.position.set(halfW * 0.45, halfH * 0.55, dist * 0.95);
-      dir.target.position.set(0, 0, 0);
+      // Основной направленный свет с красивой студийной тенью
+      const dir = new THREE.DirectionalLight(0xffffff, 1.45);
+      dir.position.set(240, 340, 950);
+      dir.target.position.set(0, -50, 0);
       dir.castShadow = true;
       dir.shadow.mapSize.set(2048, 2048);
-      dir.shadow.radius = 28;
-      dir.shadow.camera.left = -halfW * 2.5;
-      dir.shadow.camera.right = halfW * 2.5;
-      dir.shadow.camera.top = halfH * 2.5;
-      dir.shadow.camera.bottom = -halfH * 2.5;
-      dir.shadow.camera.near = 1;
-      dir.shadow.camera.far = 8000;
-      dir.shadow.bias = -0.0004;
+      dir.shadow.radius = 16;
+      dir.shadow.camera.left = -halfW * 1.8;
+      dir.shadow.camera.right = halfW * 1.8;
+      dir.shadow.camera.top = halfH * 1.8;
+      dir.shadow.camera.bottom = -halfH * 1.8;
+      dir.shadow.camera.near = 100;
+      dir.shadow.camera.far = 4000;
+      dir.shadow.bias = -0.0003;
       dir.shadow.camera.updateProjectionMatrix();
       scene.add(dir);
       scene.add(dir.target);
 
-      // Фронтальный заполняющий студийный свет (освещает все объекты со всех сторон)
-      const fillLight = new THREE.DirectionalLight(0xffffff, 1.1);
-      fillLight.position.set(-halfW * 0.5, -halfH * 0.2, 1200);
+      // Фронтальный заполняющий студийный свет
+      const fillLight = new THREE.DirectionalLight(0xffffff, 0.65);
+      fillLight.position.set(-halfW * 0.4, -halfH * 0.2, 1200);
       scene.add(fillLight);
 
-      // Нижний заполняющий свет (подсвечивает нижние объекты: костюм, очки)
-      const bottomLight = new THREE.DirectionalLight(0xffffff, 0.9);
-      bottomLight.position.set(0, -halfH * 0.8, 1000);
+      // Нижний мягкий заполняющий свет (не перебивает тени)
+      const bottomLight = new THREE.DirectionalLight(0xffffff, 0.25);
+      bottomLight.position.set(0, -halfH * 0.6, 1200);
       scene.add(bottomLight);
 
       // Задний Plane (в 2 раза больше экрана, полностью прозрачный, принимает четкую мягкую тень)
       const shadowPlaneGeom = new THREE.PlaneGeometry(halfW * 4.0, halfH * 4.0);
-      const shadowPlaneMat = new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.18 });
+      const shadowPlaneMat = new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.38 });
       const shadowPlane = new THREE.Mesh(shadowPlaneGeom, shadowPlaneMat);
-      shadowPlane.position.set(0, 0, -40);
+      shadowPlane.position.set(0, 0, -85);
       shadowPlane.receiveShadow = true;
       scene.add(shadowPlane);
 
