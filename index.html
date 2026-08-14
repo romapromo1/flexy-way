@@ -10,7 +10,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
     <!-- QR Code Generator -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- PeerJS for direct global WebRTC P2P (works over any mobile 4G/5G network) -->
+    <!-- MQTT for instant cloud signaling without NAT delays -->
+    <script src="https://unpkg.com/mqtt@5.5.2/dist/mqtt.min.js"></script>
+    <!-- PeerJS for WebRTC P2P -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <!-- Three.js -->
     <script src="https://unpkg.com/three@0.159.0/build/three.min.js"></script>
@@ -41,7 +43,7 @@
         justify-content: center;
       }
 
-      /* Контейнер 9:16 под фестивальный вертикальный экран */
+      /* Контейнер 9:16 под вертикальный фестивальный экран */
       .game {
         position: relative;
         height: 100vh;
@@ -334,6 +336,26 @@
         max-height: 155px !important;
       }
 
+      .room-pin-display {
+        background: rgba(56, 189, 248, 0.15);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        border-radius: 12px;
+        padding: 0.4rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        color: #cbd5e1;
+      }
+
+      .room-pin-code {
+        font-family: monospace;
+        font-size: 1.2rem;
+        font-weight: 900;
+        color: #38bdf8;
+        letter-spacing: 0.15em;
+      }
+
       .qr-desc {
         color: #cbd5e1;
         font-size: clamp(12px, 1.8vmin, 14px);
@@ -377,16 +399,6 @@
         justify-content: center;
       }
 
-      .room-tag {
-        font-family: monospace;
-        font-size: 0.75rem;
-        color: #38bdf8;
-        background: rgba(56, 189, 248, 0.12);
-        padding: 0.25rem 0.6rem;
-        border-radius: 6px;
-        letter-spacing: 0.05em;
-      }
-
       /* Подсказка */
       .hint {
         position: absolute;
@@ -411,7 +423,7 @@
       <div class="top-bar">
         <div class="remote-pill" id="remotePill" onclick="toggleQrModal(true)" title="Нажмите для QR-кода подключения">
           <span class="status-dot"></span>
-          <span id="remoteStatusText">📱 Наведите телефон на QR</span>
+          <span id="remoteStatusText">📱 Подключить телефон</span>
         </div>
         <div class="coins-badge">
           <span class="coin-icon"></span>
@@ -431,7 +443,7 @@
       <div class="coin-flash" id="coinFlash">+0</div>
       <div class="laser-dot" id="laserDot"></div>
 
-      <!-- Модальное окно с QR-кодом для подключения смартфона -->
+      <!-- Модальное окно с QR-кодом -->
       <div class="qr-overlay" id="qrOverlay">
         <div class="qr-card">
           <button class="close-qr-btn" onclick="toggleQrModal(false)">✕</button>
@@ -442,15 +454,18 @@
             <div id="qrcode"></div>
           </div>
           
-          <div class="room-tag" id="roomTagDisplay">Комната: ...</div>
+          <div class="room-pin-display">
+            <span>PIN:</span>
+            <span class="room-pin-code" id="roomPinDisplay">----</span>
+          </div>
 
           <p class="qr-desc">
-            Наведите камеру любого телефона на QR-код.<br>
-            Смартфон превратится в лазерную указку!
+            Наведите камеру смартфона на QR-код.<br>
+            Телефон станет пультом-указкой для управления кубом.
           </p>
           
           <button class="qr-btn-play" onclick="toggleQrModal(false)">
-            🎮 Закрыть QR / Играть
+            🎮 Играть / Закрыть QR
           </button>
         </div>
       </div>
@@ -459,7 +474,7 @@
 
     <script>
       (() => {
-        // --- Звуковые эффекты (Web Audio API) ---
+        // --- Web Audio FX ---
         const AudioFX = {
           ctx: null,
           init() {
@@ -525,10 +540,15 @@
           }
         };
 
-        // --- Уникальный ID комнаты фестиваля ---
-        const roomId = 'room-' + Math.random().toString(36).substring(2, 7);
+        // --- Уникальный 4-значный PIN комнаты ---
+        const generatePin = () => Math.random().toString(36).substring(2, 6).toUpperCase();
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = (urlParams.get('room') || generatePin()).toUpperCase();
 
-        // --- Целевое внутреннее разрешение рендера (9:16) ---
+        const roomPinDisplayEl = document.getElementById('roomPinDisplay');
+        if (roomPinDisplayEl) roomPinDisplayEl.textContent = roomId;
+
+        // --- Разрешение рендера (9:16) ---
         const RENDER_WIDTH = 2160;
         const RENDER_HEIGHT = 3840;
         const ASPECT = RENDER_WIDTH / RENDER_HEIGHT;
@@ -536,7 +556,6 @@
         const halfW = 1080;
         const halfH = 1920;
 
-        // Параметры игры
         const OBJECT_SIZE = 160;
         const MIN_DISTANCE = 1.5 * OBJECT_SIZE;
         const BASE_FALL_SPEED = 320;
@@ -548,7 +567,6 @@
         const PLAYER_SIZE = OBJECT_SIZE;
         const COIN_INTERVAL = 5.0;
 
-        // Магнитное отталкивание
         const REPULSION_RADIUS = OBJECT_SIZE * 8.2;
         const REPULSION_STRENGTH = 9800;
         const VX_CLAMP = 420;
@@ -556,10 +574,7 @@
         const DAMPING = 0.992;
         const BOUNCE_X = 0.85;
 
-        // Палитра
-        const OBJECT_COLOR_PALETTE = [
-          0xd81b60, 0xffe066, 0x10b981, 0xff8f1f, 0xef4444
-        ];
+        const OBJECT_COLOR_PALETTE = [0xd81b60, 0xffe066, 0x10b981, 0xff8f1f, 0xef4444];
         const OBJECT_MATERIALS = OBJECT_COLOR_PALETTE.map((color) =>
           new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.15 })
         );
@@ -616,9 +631,6 @@
         const qrOverlayEl = document.getElementById('qrOverlay');
         const laserDotEl = document.getElementById('laserDot');
         const gameHintEl = document.getElementById('gameHint');
-        const roomTagDisplayEl = document.getElementById('roomTagDisplay');
-
-        if (roomTagDisplayEl) roomTagDisplayEl.textContent = `ID: ${roomId}`;
 
         // Сцена Three.js
         const scene = new THREE.Scene();
@@ -671,7 +683,7 @@
         backWall.receiveShadow = true;
         scene.add(backWall);
 
-        // Игрок — управляемый куб
+        // Игрок — куб
         const playerMat = new THREE.MeshStandardMaterial({
           color: 0x38bdf8,
           roughness: 0.3,
@@ -877,34 +889,8 @@
           laserDotEl.style.top = `${screenY}px`;
         }
 
-        // Мышь / тач при отсутствии смартфона
-        function handlePointer(clientX, clientY) {
-          if (isPhoneConnected) return;
-          const rect = container.getBoundingClientRect();
-          const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
-          const ndcY = -(((clientY - rect.top) / rect.height) * 2 - 1);
-          const origin = new THREE.Vector3();
-          const dir = new THREE.Vector3(ndcX, ndcY, 0.5).unproject(camera).sub(camera.position).normalize();
-          origin.copy(camera.position);
-          const t = -origin.z / dir.z;
-          const hitX = origin.x + dir.x * t;
-          const hitY = origin.y + dir.y * t;
-          setPlayerWorld(hitX, hitY);
-        }
-
-        container.addEventListener('mousemove', (e) => handlePointer(e.clientX, e.clientY));
-        container.addEventListener('touchmove', (e) => {
-          if (e.touches && e.touches.length) {
-            handlePointer(e.touches[0].clientX, e.touches[0].clientY);
-          }
-        }, { passive: true });
-
-        // --- WebRTC P2P (PeerJS) & WebSocket Hybrid ---
-        let peer = null;
-        let peerConn = null;
-        let ws = null;
-
         function setPhoneConnected(connected) {
+          if (isPhoneConnected === connected) return;
           isPhoneConnected = connected;
           if (connected) {
             remotePillEl.classList.add('connected');
@@ -915,18 +901,68 @@
             toggleQrModal(false);
           } else {
             remotePillEl.classList.remove('connected');
-            remoteStatusTextEl.textContent = '📱 Наведите телефон на QR';
+            remoteStatusTextEl.textContent = '📱 Подключить телефон';
             laserDotEl.classList.remove('active');
             gameHintEl.textContent = 'Сканируйте QR-код со смартфона для игры';
           }
         }
 
+        // --- Двойной канал связи: MQTT Cloud + WebRTC P2P ---
+        let mqttClient = null;
+        let peer = null;
+        let peerConn = null;
+
         function sendHapticToPhone(pattern) {
-          if (peerConn && peerConn.open) peerConn.send({ type: 'haptic', pattern });
-          if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'haptic', pattern }));
+          if (mqttClient && mqttClient.connected) {
+            mqttClient.publish(`flexy/events/${roomId}`, JSON.stringify({ type: 'haptic', pattern }));
+          }
+          if (peerConn && peerConn.open) {
+            peerConn.send({ type: 'haptic', pattern });
+          }
         }
 
-        // WebRTC P2P Host
+        // 1. MQTT Cloud Channel
+        function initMQTT() {
+          try {
+            if (typeof mqtt === 'undefined') return;
+            const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
+            const clientId = 'host_' + Math.random().toString(16).substring(2, 10);
+
+            mqttClient = mqtt.connect(brokerUrl, {
+              clientId,
+              clean: true,
+              connectTimeout: 5000,
+              reconnectPeriod: 2500
+            });
+
+            mqttClient.on('connect', () => {
+              mqttClient.subscribe(`flexy/motion/${roomId}`);
+              mqttClient.subscribe(`flexy/events/${roomId}`);
+            });
+
+            mqttClient.on('message', (topic, message) => {
+              try {
+                const data = JSON.parse(message.toString());
+                if (data.type === 'motion') {
+                  setPhoneConnected(true);
+                  const wx = data.x * (halfW * 0.95);
+                  const wy = data.y * PLAYER_MOVE_Y;
+                  setPlayerWorld(wx, wy);
+                  updateLaserDot(wx, wy);
+                } else if (data.type === 'recalibrate') {
+                  targetWorldX = 0;
+                  targetWorldY = 0;
+                } else if (data.type === 'controller_joined') {
+                  setPhoneConnected(true);
+                }
+              } catch (e) {}
+            });
+          } catch (e) {
+            console.warn('MQTT init failed:', e);
+          }
+        }
+
+        // 2. PeerJS WebRTC P2P Host
         function initPeerJS() {
           if (typeof Peer === 'undefined') return;
           try {
@@ -934,14 +970,9 @@
               config: {
                 iceServers: [
                   { urls: 'stun:stun.l.google.com:19302' },
-                  { urls: 'stun:stun1.l.google.com:19302' },
-                  { urls: 'stun:stun2.l.google.com:19302' }
+                  { urls: 'stun:stun1.l.google.com:19302' }
                 ]
               }
-            });
-
-            peer.on('open', (id) => {
-              console.log('PeerJS Host Ready:', id);
             });
 
             peer.on('connection', (conn) => {
@@ -961,59 +992,14 @@
               });
 
               conn.on('close', () => {
-                setPhoneConnected(false);
+                if (!mqttClient || !mqttClient.connected) setPhoneConnected(false);
               });
             });
-
-            peer.on('error', (err) => {
-              console.warn('PeerJS Host Error:', err);
-            });
-          } catch (e) {
-            console.warn('PeerJS init failed:', e);
-          }
-        }
-
-        // WebSocket Fallback
-        function initWebSocket() {
-          if (window.location.protocol === 'file:') return;
-          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-          const wsUrl = `${protocol}//${window.location.host}`;
-
-          try {
-            ws = new WebSocket(wsUrl);
-
-            ws.onopen = () => {
-              ws.send(JSON.stringify({ type: 'join', roomId, role: 'host' }));
-            };
-
-            ws.onmessage = (event) => {
-              try {
-                const data = JSON.parse(event.data);
-                if (data.type === 'controller_connected') {
-                  setPhoneConnected(true);
-                } else if (data.type === 'controller_disconnected') {
-                  setPhoneConnected(false);
-                } else if (data.type === 'motion') {
-                  const wx = data.x * (halfW * 0.95);
-                  const wy = data.y * PLAYER_MOVE_Y;
-                  setPlayerWorld(wx, wy);
-                  updateLaserDot(wx, wy);
-                } else if (data.type === 'recalibrate') {
-                  targetWorldX = 0;
-                  targetWorldY = 0;
-                }
-              } catch (e) {}
-            };
-
-            ws.onclose = () => {
-              setTimeout(initWebSocket, 4000);
-            };
           } catch (e) {}
         }
 
-        // --- Генерация QR-кода ---
+        // Генерация QR-кода
         function renderQrCode() {
-          // Автоматически учитываем подпапку репозитория (например /flexy-way/)
           const pathName = window.location.pathname;
           let dirPath = pathName.substring(0, pathName.lastIndexOf('/') + 1);
           if (!dirPath.endsWith('/')) dirPath += '/';
@@ -1041,7 +1027,7 @@
           }
         };
 
-        // --- Анимация ---
+        // Анимация
         function centerFactor(pos) {
           const rx = Math.abs(pos.x) / halfW;
           const ry = Math.abs(pos.y) / halfH;
@@ -1112,7 +1098,6 @@
               }
             }
 
-            // Затухание скоростей
             for (const o of objects) {
               o.vx *= DAMPING;
               o.vy *= DAMPING;
@@ -1122,7 +1107,6 @@
               else if (o.vy < -VY_CLAMP) o.vy = -VY_CLAMP;
             }
 
-            // Движение падающих объектов
             for (let i = objects.length - 1; i >= 0; i--) {
               const o = objects[i];
               const m = o.mesh;
@@ -1135,7 +1119,6 @@
               m.rotation.y += o.rot.y * dt;
               m.rotation.z += o.rot.z * dt;
 
-              // Отскок
               const left = -halfW + o.radius;
               const right = halfW - o.radius;
               if (m.position.x < left) {
@@ -1146,7 +1129,6 @@
                 o.vx = -Math.abs(o.vx) * BOUNCE_X;
               }
 
-              // Исчезновение
               if (m.position.y <= BOTTOM_Y) {
                 const nearCenter = Math.abs(m.position.x) < VANISH_RADIUS_X;
                 if (nearCenter) {
@@ -1158,7 +1140,6 @@
               }
             }
 
-            // Lerp следование куба
             const SMOOTH_FACTOR = 0.22;
             player.position.x = THREE.MathUtils.lerp(player.position.x, targetWorldX, SMOOTH_FACTOR);
             player.position.y = THREE.MathUtils.lerp(player.position.y, targetWorldY, SMOOTH_FACTOR);
@@ -1168,7 +1149,6 @@
             player.rotation.z = THREE.MathUtils.lerp(player.rotation.z, targetRotZ, 0.15);
             player.rotation.x = THREE.MathUtils.lerp(player.rotation.x, targetRotX, 0.15);
 
-            // Столкновения
             for (let i = 0; i < objects.length; i++) {
               const o = objects[i];
               const dx = o.mesh.position.x - player.position.x;
@@ -1185,7 +1165,6 @@
             }
           }
 
-          // Частицы
           for (let i = particles.length - 1; i >= 0; i--) {
             const p = particles[i];
             p.life -= dt;
@@ -1206,8 +1185,8 @@
         }
 
         // Запуск
+        initMQTT();
         initPeerJS();
-        initWebSocket();
         renderQrCode();
         animate();
       })();
