@@ -2070,18 +2070,24 @@
         if (gameState === 'start' || gameState === 'transitioning') {
           startElapsedTime += dt;
 
-          // Центральный логотип flexyway: мягкое парение и покачивание
+          // Центральный логотип flexyway: плавное, медленное приближение и отдаление (zoom in / zoom out) без парения по Y
           if (flexywayLogo) {
             if (startElapsedTime > flexywayLogo.userData.spawnDelay) {
               flexywayLogo.userData.spawnProgress = Math.min(1, flexywayLogo.userData.spawnProgress + dt * 1.8);
-              const s = flexywayLogo.userData.targetScale * easeOutBack(flexywayLogo.userData.spawnProgress);
-              flexywayLogo.scale.set(s, s, s);
             }
-            flexywayLogo.position.y = (flexywayLogo.userData.baseY !== undefined ? flexywayLogo.userData.baseY : sceneConfig.flexyway.y) + Math.sin(startElapsedTime * 1.5) * 12;
+            // Медленное дыхание / зум (приближение и отдаление)
+            const breatheScale = 1.0 + (flexywayLogo.userData.spawnProgress >= 1 ? Math.sin(startElapsedTime * 0.75) * 0.05 : 0);
+            const s = flexywayLogo.userData.targetScale * easeOutBack(flexywayLogo.userData.spawnProgress) * breatheScale;
+            flexywayLogo.scale.set(s, s, s);
+
+            const baseZ = flexywayLogo.userData.baseZ !== undefined ? flexywayLogo.userData.baseZ : sceneConfig.flexyway.z;
+            const breatheZ = flexywayLogo.userData.spawnProgress >= 1 ? Math.sin(startElapsedTime * 0.75) * 35 : 0;
+            flexywayLogo.position.z = baseZ + breatheZ;
+
             flexywayLogo.position.x = flexywayLogo.userData.baseX !== undefined ? flexywayLogo.userData.baseX : sceneConfig.flexyway.x;
-            flexywayLogo.position.z = sceneConfig.flexyway.z;
-            flexywayLogo.rotation.y = Math.sin(startElapsedTime * 0.8) * 0.06;
-            flexywayLogo.rotation.z = Math.cos(startElapsedTime * 1.1) * 0.03;
+            flexywayLogo.position.y = flexywayLogo.userData.baseY !== undefined ? flexywayLogo.userData.baseY : sceneConfig.flexyway.y;
+            flexywayLogo.rotation.y = Math.sin(startElapsedTime * 0.5) * 0.035;
+            flexywayLogo.rotation.z = 0;
           }
 
           // Объекты из good: плавный pop-in из scale = 0 и легкое парение
