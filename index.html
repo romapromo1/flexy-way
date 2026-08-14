@@ -12,11 +12,16 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- Paho MQTT WebSocket Client -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-    <!-- Three.js + Loaders -->
-    <script src="https://unpkg.com/three@0.159.0/build/three.min.js"></script>
-    <script src="https://unpkg.com/fflate@0.8.0/umd/index.js"></script>
-    <script src="https://unpkg.com/three@0.159.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://unpkg.com/three@0.159.0/examples/js/loaders/FBXLoader.js"></script>
+
+    <!-- Three.js ES Modules via ImportMap -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.159.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.159.0/examples/jsm/"
+        }
+      }
+    </script>
 
     <style>
       :root {
@@ -210,15 +215,15 @@
         transform: translateY(-50%) scale(1.1);
       }
 
-      /* Кнопка "Начать" на стартовом экране */
+      /* Кнопка "Начать" на стартовом экране (расположена выше, сразу под центральным логотипом) */
       .start-screen-overlay {
         position: absolute;
         inset: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: flex-end;
-        padding-bottom: 18vh;
+        justify-content: center;
+        padding-top: 140px;
         z-index: 25;
         pointer-events: none;
         transition: opacity 0.4s ease, transform 0.4s ease;
@@ -233,17 +238,17 @@
 
       .start-game-btn {
         pointer-events: auto;
-        padding: 1.15rem 3.4rem;
+        padding: 1.1rem 3.4rem;
         background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
         border: none;
         border-radius: 9999px;
         color: #ffffff;
-        font-size: clamp(18px, 3.2vmin, 26px);
+        font-size: clamp(18px, 3vmin, 25px);
         font-weight: 900;
         letter-spacing: 0.08em;
         text-transform: uppercase;
         cursor: pointer;
-        box-shadow: 0 14px 35px rgba(2, 132, 199, 0.45), 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 12px 35px rgba(2, 132, 199, 0.45), 0 4px 12px rgba(0,0,0,0.15);
         transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
         display: flex;
         align-items: center;
@@ -252,7 +257,7 @@
 
       .start-game-btn:hover {
         transform: scale(1.06);
-        box-shadow: 0 18px 45px rgba(2, 132, 199, 0.6);
+        box-shadow: 0 16px 45px rgba(2, 132, 199, 0.6);
       }
 
       .start-game-btn:active {
@@ -493,795 +498,788 @@
 
     </div>
 
-    <script>
-      (function() {
-        // Константы и параметры
-        const RENDER_WIDTH = 1000;
-        const RENDER_HEIGHT = 1600;
-        const ASPECT = 9 / 16;
-        const halfH = 800;
-        const halfW = 450;
+    <!-- Main Module Script -->
+    <script type="module">
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+      import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
-        const PLAYER_SIZE = 135;
-        const OBJECT_SIZE = 95;
-        const TOP_Y = 820;
-        const BOTTOM_Y = -820;
-        const PLAYER_MOVE_Y = halfH * 0.45;
-        const SPAWN_INTERVAL_BASE = 0.55;
-        const BASE_FALL_SPEED = 240;
-        const MAX_VX = 140;
-        const ROT_SPEED = 1.6;
-        const MIN_DISTANCE = OBJECT_SIZE * 0.8;
-        const COIN_SCALE = 0.72;
-        const COIN_INTERVAL = 3.6;
+      // Константы и параметры
+      const RENDER_WIDTH = 1000;
+      const RENDER_HEIGHT = 1600;
+      const ASPECT = 9 / 16;
+      const halfH = 800;
+      const halfW = 450;
 
-        const REPULSION_RADIUS = OBJECT_SIZE * 2.2;
-        const REPULSION_STRENGTH = 260;
-        const DAMPING = 0.985;
-        const VX_CLAMP = 240;
-        const VY_CLAMP = 180;
-        const BOUNCE_X = 0.7;
-        const FUNNEL_STRENGTH = 0.16;
-        const VANISH_RADIUS_X = halfW * 0.42;
+      const PLAYER_SIZE = 135;
+      const OBJECT_SIZE = 95;
+      const TOP_Y = 820;
+      const BOTTOM_Y = -820;
+      const PLAYER_MOVE_Y = halfH * 0.45;
+      const SPAWN_INTERVAL_BASE = 0.55;
+      const BASE_FALL_SPEED = 240;
+      const MAX_VX = 140;
+      const ROT_SPEED = 1.6;
+      const MIN_DISTANCE = OBJECT_SIZE * 0.8;
+      const COIN_SCALE = 0.72;
+      const COIN_INTERVAL = 3.6;
 
-        // Room ID
-        const urlParams = new URLSearchParams(window.location.search);
-        let roomId = (urlParams.get('room') || 'FLEXY').toUpperCase();
-        document.getElementById('roomPinDisplay').textContent = roomId;
+      const REPULSION_RADIUS = OBJECT_SIZE * 2.2;
+      const REPULSION_STRENGTH = 260;
+      const DAMPING = 0.985;
+      const VX_CLAMP = 240;
+      const VY_CLAMP = 180;
+      const BOUNCE_X = 0.7;
+      const FUNNEL_STRENGTH = 0.16;
+      const VANISH_RADIUS_X = halfW * 0.42;
 
-        // Без звуков по запросу
-        const AudioFX = {
-          playCoin: () => {},
-          playExplosion: () => {},
-          playConnect: () => {}
-        };
+      // Room ID
+      const urlParams = new URLSearchParams(window.location.search);
+      let roomId = (urlParams.get('room') || 'FLEXY').toUpperCase();
+      document.getElementById('roomPinDisplay').textContent = roomId;
 
-        // Геометрии и материалы препятствий
-        const SHAPE_GEOMETRIES = [
-          new THREE.TetrahedronGeometry(OBJECT_SIZE * 0.6),
-          new THREE.OctahedronGeometry(OBJECT_SIZE * 0.55),
-          new THREE.ConeGeometry(OBJECT_SIZE * 0.45, OBJECT_SIZE * 0.9, 5),
-          new THREE.CylinderGeometry(OBJECT_SIZE * 0.35, OBJECT_SIZE * 0.35, OBJECT_SIZE * 0.85, 6),
-          new THREE.DodecahedronGeometry(OBJECT_SIZE * 0.5)
-        ];
+      // Без звуков по запросу
+      const AudioFX = {
+        playCoin: () => {},
+        playExplosion: () => {},
+        playConnect: () => {}
+      };
 
-        const OBJECT_MATERIALS = [
-          new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.3, metalness: 0.2 }),
-          new THREE.MeshStandardMaterial({ color: 0x8b5cf6, roughness: 0.3, metalness: 0.2 }),
-          new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.3, metalness: 0.2 }),
-          new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.3, metalness: 0.2 }),
-          new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.3, metalness: 0.2 })
-        ];
+      // Геометрии и материалы препятствий
+      const SHAPE_GEOMETRIES = [
+        new THREE.TetrahedronGeometry(OBJECT_SIZE * 0.6),
+        new THREE.OctahedronGeometry(OBJECT_SIZE * 0.55),
+        new THREE.ConeGeometry(OBJECT_SIZE * 0.45, OBJECT_SIZE * 0.9, 5),
+        new THREE.CylinderGeometry(OBJECT_SIZE * 0.35, OBJECT_SIZE * 0.35, OBJECT_SIZE * 0.85, 6),
+        new THREE.DodecahedronGeometry(OBJECT_SIZE * 0.5)
+      ];
 
-        const COIN_GEOMETRY = new THREE.CylinderGeometry(OBJECT_SIZE * 0.42 * COIN_SCALE, OBJECT_SIZE * 0.42 * COIN_SCALE, 16, 24);
-        const COIN_MATERIAL = new THREE.MeshStandardMaterial({
-          color: 0xfbbf24,
-          roughness: 0.2,
-          metalness: 0.85,
-          emissive: 0xf59e0b,
-          emissiveIntensity: 0.25
-        });
+      const OBJECT_MATERIALS = [
+        new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.3, metalness: 0.2 }),
+        new THREE.MeshStandardMaterial({ color: 0x8b5cf6, roughness: 0.3, metalness: 0.2 }),
+        new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.3, metalness: 0.2 }),
+        new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.3, metalness: 0.2 }),
+        new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.3, metalness: 0.2 })
+      ];
 
-        // DOM элементы
-        const container = document.getElementById('game');
-        const gameoverEl = document.getElementById('gameover');
-        const scoreSummaryEl = document.getElementById('scoreSummary');
-        const coinFlashEl = document.getElementById('coinFlash');
-        const coinTotalEl = document.getElementById('coinTotal');
-        const remotePillEl = document.getElementById('remotePill');
-        const remoteStatusTextEl = document.getElementById('remoteStatusText');
-        const qrOverlayEl = document.getElementById('qrOverlay');
-        const gameHintEl = document.getElementById('gameHint');
-        const startOverlayEl = document.getElementById('startOverlay');
-        const topBarEl = document.getElementById('topBar');
+      const COIN_GEOMETRY = new THREE.CylinderGeometry(OBJECT_SIZE * 0.42 * COIN_SCALE, OBJECT_SIZE * 0.42 * COIN_SCALE, 16, 24);
+      const COIN_MATERIAL = new THREE.MeshStandardMaterial({
+        color: 0xfbbf24,
+        roughness: 0.2,
+        metalness: 0.85,
+        emissive: 0xf59e0b,
+        emissiveIntensity: 0.25
+      });
 
-        // Сцена Three.js — идеально белый фон
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xffffff);
+      // DOM элементы
+      const container = document.getElementById('game');
+      const gameoverEl = document.getElementById('gameover');
+      const scoreSummaryEl = document.getElementById('scoreSummary');
+      const coinFlashEl = document.getElementById('coinFlash');
+      const coinTotalEl = document.getElementById('coinTotal');
+      const remotePillEl = document.getElementById('remotePill');
+      const remoteStatusTextEl = document.getElementById('remoteStatusText');
+      const qrOverlayEl = document.getElementById('qrOverlay');
+      const gameHintEl = document.getElementById('gameHint');
+      const startOverlayEl = document.getElementById('startOverlay');
+      const topBarEl = document.getElementById('topBar');
 
-        const FOV = 50;
-        const camera = new THREE.PerspectiveCamera(FOV, ASPECT, 0.1, 8000);
-        const fovRad = THREE.MathUtils.degToRad(FOV * 0.5);
-        const dist = halfH / Math.tan(fovRad);
-        camera.position.set(0, 0, dist);
-        camera.lookAt(0, 0, 0);
+      // Сцена Three.js — идеально белый фон
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xffffff);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-        renderer.setPixelRatio(1);
-        renderer.setSize(RENDER_WIDTH, RENDER_HEIGHT, false);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        container.appendChild(renderer.domElement);
+      const FOV = 50;
+      const camera = new THREE.PerspectiveCamera(FOV, ASPECT, 0.1, 8000);
+      const fovRad = THREE.MathUtils.degToRad(FOV * 0.5);
+      const dist = halfH / Math.tan(fovRad);
+      camera.position.set(0, 0, dist);
+      camera.lookAt(0, 0, 0);
 
-        // Свет
-        const hemi = new THREE.HemisphereLight(0xffffff, 0xf1f5f9, 0.95);
-        scene.add(hemi);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      renderer.setPixelRatio(1);
+      renderer.setSize(RENDER_WIDTH, RENDER_HEIGHT, false);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
 
-        const dir = new THREE.DirectionalLight(0xffffff, 1.35);
-        dir.position.set(halfW * 0.45, halfH * 0.55, dist * 0.95);
-        dir.target.position.set(0, 0, 0);
-        dir.castShadow = true;
-        dir.shadow.mapSize.set(2048, 2048);
-        dir.shadow.radius = 28;
-        dir.shadow.camera.left = -halfW * 2.5;
-        dir.shadow.camera.right = halfW * 2.5;
-        dir.shadow.camera.top = halfH * 2.5;
-        dir.shadow.camera.bottom = -halfH * 2.5;
-        dir.shadow.camera.near = 1;
-        dir.shadow.camera.far = 8000;
-        dir.shadow.bias = -0.0004;
-        dir.shadow.camera.updateProjectionMatrix();
-        scene.add(dir);
-        scene.add(dir.target);
+      // Свет
+      const hemi = new THREE.HemisphereLight(0xffffff, 0xf1f5f9, 0.95);
+      scene.add(hemi);
 
-        // Задний Plane (в 2 раза больше экрана, полностью прозрачный, принимает легкую тень)
-        const shadowPlaneGeom = new THREE.PlaneGeometry(halfW * 4.0, halfH * 4.0);
-        const shadowPlaneMat = new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.13 });
-        const shadowPlane = new THREE.Mesh(shadowPlaneGeom, shadowPlaneMat);
-        shadowPlane.position.set(0, 0, -100);
-        shadowPlane.receiveShadow = true;
-        scene.add(shadowPlane);
+      const dir = new THREE.DirectionalLight(0xffffff, 1.35);
+      dir.position.set(halfW * 0.45, halfH * 0.55, dist * 0.95);
+      dir.target.position.set(0, 0, 0);
+      dir.castShadow = true;
+      dir.shadow.mapSize.set(2048, 2048);
+      dir.shadow.radius = 28;
+      dir.shadow.camera.left = -halfW * 2.5;
+      dir.shadow.camera.right = halfW * 2.5;
+      dir.shadow.camera.top = halfH * 2.5;
+      dir.shadow.camera.bottom = -halfH * 2.5;
+      dir.shadow.camera.near = 1;
+      dir.shadow.camera.far = 8000;
+      dir.shadow.bias = -0.0004;
+      dir.shadow.camera.updateProjectionMatrix();
+      scene.add(dir);
+      scene.add(dir.target);
 
-        // Игрок — куб (скрыт на стартовом экране)
-        const playerMat = new THREE.MeshStandardMaterial({
-          color: 0x38bdf8,
-          roughness: 0.3,
-          metalness: 0.2,
-          emissive: 0x0284c7,
-          emissiveIntensity: 0.3
-        });
-        const playerGeo = new THREE.BoxGeometry(PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
-        const player = new THREE.Mesh(playerGeo, playerMat);
-        player.position.set(0, 0, 0);
-        player.castShadow = true;
-        player.visible = false;
-        scene.add(player);
-        const playerRadius = PLAYER_SIZE * 0.6;
+      // Задний Plane (в 2 раза больше экрана, полностью прозрачный, принимает легкую тень)
+      const shadowPlaneGeom = new THREE.PlaneGeometry(halfW * 4.0, halfH * 4.0);
+      const shadowPlaneMat = new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.14 });
+      const shadowPlane = new THREE.Mesh(shadowPlaneGeom, shadowPlaneMat);
+      shadowPlane.position.set(0, 0, -100);
+      shadowPlane.receiveShadow = true;
+      scene.add(shadowPlane);
 
-        // ----------------------------------------------------
-        // СТАРТОВЫЙ ЭКРАН: Загрузка 3D моделей (flexyway + good)
-        // ----------------------------------------------------
-        let gameState = 'start'; // 'start' | 'transitioning' | 'playing' | 'gameover'
-        const startScreenGroup = new THREE.Group();
-        scene.add(startScreenGroup);
+      // Игрок — куб (скрыт на стартовом экране)
+      const playerMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        roughness: 0.3,
+        metalness: 0.2,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.3
+      });
+      const playerGeo = new THREE.BoxGeometry(PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
+      const player = new THREE.Mesh(playerGeo, playerMat);
+      player.position.set(0, 0, 0);
+      player.castShadow = true;
+      player.visible = false;
+      scene.add(player);
+      const playerRadius = PLAYER_SIZE * 0.6;
 
-        let flexywayLogo = null;
-        const goodObjects = [];
+      // ----------------------------------------------------
+      // СТАРТОВЫЙ ЭКРАН: Загрузка 3D моделей (flexyway + good)
+      // ----------------------------------------------------
+      let gameState = 'start'; // 'start' | 'transitioning' | 'playing' | 'gameover'
+      const startScreenGroup = new THREE.Group();
+      scene.add(startScreenGroup);
 
-        const gltfLoader = new THREE.GLTFLoader();
-        const fbxLoader = new THREE.FBXLoader();
+      let flexywayLogo = null;
+      const goodObjects = [];
 
-        function normalizeModel(object, targetSize) {
-          const box = new THREE.Box3().setFromObject(object);
-          const size = new THREE.Vector3();
-          box.getSize(size);
-          const center = new THREE.Vector3();
-          box.getCenter(center);
+      const gltfLoader = new GLTFLoader();
+      const fbxLoader = new FBXLoader();
 
-          object.position.x -= center.x;
-          object.position.y -= center.y;
-          object.position.z -= center.z;
+      function normalizeModel(object, targetSize) {
+        const box = new THREE.Box3().setFromObject(object);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const center = new THREE.Vector3();
+        box.getCenter(center);
 
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const scale = maxDim > 0 ? (targetSize / maxDim) : 1;
+        object.position.x -= center.x;
+        object.position.y -= center.y;
+        object.position.z -= center.z;
 
-          const container = new THREE.Group();
-          container.add(object);
-          container.userData.targetScale = scale;
-          container.scale.set(0, 0, 0);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const scale = maxDim > 0 ? (targetSize / maxDim) : 1;
 
-          object.traverse((child) => {
-            if (child.isMesh) {
-              child.castShadow = true;
-              child.receiveShadow = false;
-              if (child.material) {
-                if (Array.isArray(child.material)) {
-                  child.material.forEach(m => { m.roughness = 0.35; });
-                } else {
-                  child.material.roughness = 0.35;
-                }
+        const container = new THREE.Group();
+        container.add(object);
+        container.userData.targetScale = scale;
+        container.scale.set(0, 0, 0);
+
+        object.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = false;
+            if (child.material) {
+              if (Array.isArray(child.material)) {
+                child.material.forEach(m => { m.roughness = 0.35; });
+              } else {
+                child.material.roughness = 0.35;
               }
             }
-          });
+          }
+        });
 
-          return container;
+        return container;
+      }
+
+      // Загрузка центрального логотипа flexyway.glb (по центру Y = 100)
+      gltfLoader.load(
+        'flexyway.glb',
+        (gltf) => {
+          const logo = normalizeModel(gltf.scene, 420);
+          logo.position.set(0, 100, 0);
+          logo.userData.baseY = 100;
+          logo.userData.spawnDelay = 0.05;
+          logo.userData.spawnProgress = 0;
+          startScreenGroup.add(logo);
+          flexywayLogo = logo;
+        },
+        undefined,
+        (err) => {
+          console.warn('Could not load flexyway.glb:', err);
         }
+      );
 
-        // Загрузка центрального логотипа flexyway.glb
-        gltfLoader.load(
-          'flexyway.glb',
-          (gltf) => {
-            const logo = normalizeModel(gltf.scene, 420);
-            logo.position.set(0, 90, 0);
-            logo.userData.baseY = 90;
-            logo.userData.spawnDelay = 0.05;
-            logo.userData.spawnProgress = 0;
-            startScreenGroup.add(logo);
-            flexywayLogo = logo;
+      // Список объектов из папки good/ с позициями на плоскости XY
+      const goodModelsConfig = [
+        { file: 'good/bottle.fbx', x: -280, y: 460, size: 155, delay: 0.15, rotSpeed: 0.4 },
+        { file: 'good/bottle_2.fbx', x: 280, y: 430, size: 165, delay: 0.28, rotSpeed: -0.35 },
+        { file: 'good/diadem.fbx', x: -320, y: 80, size: 160, delay: 0.42, rotSpeed: 0.5 },
+        { file: 'good/lipstick.fbx', x: 320, y: 60, size: 145, delay: 0.55, rotSpeed: -0.45 },
+        { file: 'good/sport_wear.fbx', x: -270, y: -420, size: 170, delay: 0.68, rotSpeed: 0.3 },
+        { file: 'good/sun glasses.fbx', x: 270, y: -450, size: 160, delay: 0.80, rotSpeed: -0.4 }
+      ];
+
+      goodModelsConfig.forEach((cfg) => {
+        fbxLoader.load(
+          cfg.file,
+          (fbx) => {
+            const model = normalizeModel(fbx, cfg.size);
+            model.position.set(cfg.x, cfg.y, 0);
+            model.userData.baseX = cfg.x;
+            model.userData.baseY = cfg.y;
+            model.userData.spawnDelay = cfg.delay;
+            model.userData.spawnProgress = 0;
+            model.userData.rotSpeed = cfg.rotSpeed;
+            startScreenGroup.add(model);
+            goodObjects.push(model);
           },
           undefined,
           (err) => {
-            console.warn('Could not load flexyway.glb, using fallback text mesh:', err);
-            const fallbackGeo = new THREE.BoxGeometry(320, 80, 40);
-            const fallbackMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8 });
-            const fallbackMesh = new THREE.Mesh(fallbackGeo, fallbackMat);
-            const logo = normalizeModel(fallbackMesh, 320);
-            logo.position.set(0, 90, 0);
-            logo.userData.baseY = 90;
-            logo.userData.spawnDelay = 0.05;
-            logo.userData.spawnProgress = 0;
-            startScreenGroup.add(logo);
-            flexywayLogo = logo;
+            console.warn(`Error loading FBX ${cfg.file}:`, err);
           }
         );
+      });
 
-        // Список объектов из папки good/ с позициями на плоскости XY
-        const goodModelsConfig = [
-          { file: 'good/bottle.fbx', x: -280, y: 440, size: 155, delay: 0.15, rotSpeed: 0.4 },
-          { file: 'good/bottle_2.fbx', x: 280, y: 410, size: 165, delay: 0.28, rotSpeed: -0.35 },
-          { file: 'good/diadem.fbx', x: -310, y: 60, size: 160, delay: 0.42, rotSpeed: 0.5 },
-          { file: 'good/lipstick.fbx', x: 310, y: 40, size: 145, delay: 0.55, rotSpeed: -0.45 },
-          { file: 'good/sport_wear.fbx', x: -270, y: -420, size: 170, delay: 0.68, rotSpeed: 0.3 },
-          { file: 'good/sun glasses.fbx', x: 270, y: -450, size: 160, delay: 0.80, rotSpeed: -0.4 }
-        ];
+      // Функция плавного отскока для появления (Ease Out Back)
+      function easeOutBack(x) {
+        const c1 = 1.70158;
+        const c3 = c1 + 1;
+        return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+      }
 
-        goodModelsConfig.forEach((cfg) => {
-          fbxLoader.load(
-            cfg.file,
-            (fbx) => {
-              const model = normalizeModel(fbx, cfg.size);
-              model.position.set(cfg.x, cfg.y, 0);
-              model.userData.baseX = cfg.x;
-              model.userData.baseY = cfg.y;
-              model.userData.spawnDelay = cfg.delay;
-              model.userData.spawnProgress = 0;
-              model.userData.rotSpeed = cfg.rotSpeed;
-              startScreenGroup.add(model);
-              goodObjects.push(model);
-            },
-            undefined,
-            (err) => {
-              console.warn(`Error loading FBX ${cfg.file}:`, err);
-            }
-          );
-        });
+      // Запуск игры со стартового экрана
+      window.startGame = function() {
+        if (gameState !== 'start') return;
+        gameState = 'transitioning';
+        startOverlayEl.classList.add('hidden');
+        topBarEl.classList.add('visible');
+        gameHintEl.classList.add('visible');
 
-        // Функция плавного отскока для появления (Ease Out Back)
-        function easeOutBack(x) {
-          const c1 = 1.70158;
-          const c3 = c1 + 1;
-          return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
-        }
+        let transitionTime = 0;
+        const duration = 0.4;
 
-        // Запуск игры со стартового экрана
-        window.startGame = function() {
-          if (gameState !== 'start') return;
-          gameState = 'transitioning';
-          startOverlayEl.classList.add('hidden');
-          topBarEl.classList.add('visible');
-          gameHintEl.classList.add('visible');
+        function transitionStep() {
+          transitionTime += 0.016;
+          const progress = Math.min(1, transitionTime / duration);
+          const scaleFactor = 1 - progress;
 
-          let transitionTime = 0;
-          const duration = 0.4;
+          startScreenGroup.scale.set(scaleFactor, scaleFactor, scaleFactor);
 
-          function transitionStep(time) {
-            transitionTime += 0.016;
-            const progress = Math.min(1, transitionTime / duration);
-            const scaleFactor = 1 - progress;
-
-            startScreenGroup.scale.set(scaleFactor, scaleFactor, scaleFactor);
-
-            if (progress < 1) {
-              requestAnimationFrame(transitionStep);
-            } else {
-              startScreenGroup.visible = false;
-              gameState = 'playing';
-              player.visible = true;
-              player.position.set(0, 0, 0);
-              targetWorldX = 0;
-              targetWorldY = 0;
-              resetGame();
-            }
-          }
-
-          requestAnimationFrame(transitionStep);
-        };
-
-        // ----------------------------------------------------
-        // Игровой процесс
-        // ----------------------------------------------------
-        const objects = [];
-        const particles = [];
-
-        let running = false;
-        let spawnAccumulator = 0;
-        let spawnInterval = SPAWN_INTERVAL_BASE;
-        let spawnIntervalTimer = 0;
-        let coinAccumulator = 0;
-        let coinInterval = COIN_INTERVAL;
-        let lastTime = performance.now() / 1000;
-        let elapsed = 0;
-        let coinCount = 0;
-        let coinsSpawned = 0;
-        let coinFlashTimer = null;
-        let fallSpeed = BASE_FALL_SPEED;
-        let fallSpeedTimer = 0;
-
-        let targetWorldX = 0;
-        let targetWorldY = 0;
-        let isPhoneConnected = false;
-
-        const randRange = (a, b) => a + Math.random() * (b - a);
-
-        function makeRandomMesh() {
-          const geom = SHAPE_GEOMETRIES[Math.floor(Math.random() * SHAPE_GEOMETRIES.length)];
-          const material = OBJECT_MATERIALS[Math.floor(Math.random() * OBJECT_MATERIALS.length)];
-          const mesh = new THREE.Mesh(geom, material);
-          mesh.castShadow = true;
-          mesh.receiveShadow = false;
-          const radius = OBJECT_SIZE * 0.6;
-          return { mesh, radius };
-        }
-
-        function makeCoin() {
-          const coin = new THREE.Mesh(COIN_GEOMETRY, COIN_MATERIAL);
-          coin.rotation.z = Math.PI * 0.5;
-          coin.castShadow = true;
-          const radius = OBJECT_SIZE * 0.6 * COIN_SCALE;
-          return { mesh: coin, radius };
-        }
-
-        function canPlaceAt(x, y, radius) {
-          for (const o of objects) {
-            const dx = o.mesh.position.x - x;
-            const dy = o.mesh.position.y - y;
-            const d2 = dx * dx + dy * dy;
-            if (d2 < MIN_DISTANCE * MIN_DISTANCE) return false;
-          }
-          return true;
-        }
-
-        function spawnWave() {
-          const count = 1 + Math.floor(Math.random() * 3);
-          const originX = randRange(-OBJECT_SIZE * 0.6, OBJECT_SIZE * 0.6);
-          const originY = TOP_Y + OBJECT_SIZE * 1.6;
-
-          for (let i = 0; i < count; i++) {
-            const { mesh, radius } = makeRandomMesh();
-            mesh.position.set(originX, originY, 0);
-            const speed = randRange(MAX_VX * 0.8, MAX_VX * 1.6);
-            const vx = randRange(-1, 1) * speed;
-            const vy = randRange(40, 140);
-            const rot = new THREE.Vector3(
-              randRange(-ROT_SPEED, ROT_SPEED),
-              randRange(-ROT_SPEED, ROT_SPEED),
-              randRange(-ROT_SPEED, ROT_SPEED)
-            );
-            scene.add(mesh);
-            objects.push({ mesh, vx, vy, rot, radius });
-          }
-        }
-
-        function spawnCoin() {
-          let attempts = 0;
-          const spreadX = OBJECT_SIZE * 2.4;
-          while (attempts++ < 40) {
-            const x = randRange(-spreadX, spreadX);
-            const y = TOP_Y + randRange(-OBJECT_SIZE * 0.4, OBJECT_SIZE * 0.4);
-            if (!canPlaceAt(x, y, OBJECT_SIZE * 0.6)) continue;
-            const { mesh, radius } = makeCoin();
-            mesh.position.set(x, y, 0);
-            const vx = randRange(-MAX_VX, MAX_VX);
-            const vy = 0;
-            const rot = new THREE.Vector3(randRange(-ROT_SPEED, ROT_SPEED), randRange(-ROT_SPEED, ROT_SPEED), randRange(-ROT_SPEED, ROT_SPEED));
-            scene.add(mesh);
-            objects.push({ mesh, vx, vy, rot, radius, isCoin: true });
-            break;
-          }
-        }
-
-        function collectCoin(index) {
-          const obj = objects[index];
-          if (!obj) return;
-          scene.remove(obj.mesh);
-          objects.splice(index, 1);
-
-          coinCount += 1;
-          coinTotalEl.textContent = coinCount;
-          coinFlashEl.textContent = `+${coinCount}`;
-          coinFlashEl.classList.add('visible');
-          if (coinFlashTimer) clearTimeout(coinFlashTimer);
-          coinFlashTimer = setTimeout(() => {
-            coinFlashEl.classList.remove('visible');
-          }, 300);
-
-          AudioFX.playCoin();
-          sendHapticToPhone('coin');
-        }
-
-        function explodeAt(position) {
-          const count = 40;
-          const geo = new THREE.BoxGeometry(PLAYER_SIZE * 0.18, PLAYER_SIZE * 0.18, PLAYER_SIZE * 0.18);
-          for (let i = 0; i < count; i++) {
-            const mat = new THREE.MeshStandardMaterial({
-              color: 0x38bdf8,
-              roughness: 0.3,
-              metalness: 0.4,
-              emissive: 0x0284c7,
-              emissiveIntensity: 0.6
-            });
-            const p = new THREE.Mesh(geo, mat);
-            p.castShadow = true;
-            p.position.copy(position);
-            const theta = Math.random() * Math.PI * 2;
-            const phi = (Math.random() - 0.5) * Math.PI;
-            const speed = 250 + Math.random() * 550;
-            const vel = new THREE.Vector3(
-              Math.cos(phi) * Math.cos(theta) * speed,
-              Math.cos(phi) * Math.sin(theta) * speed,
-              Math.sin(phi) * speed
-            );
-            scene.add(p);
-            particles.push({ mesh: p, vel, life: 0.9 + Math.random() * 0.5 });
-          }
-        }
-
-        function resetGame() {
-          gameoverEl.classList.remove('visible');
-          for (const o of objects) scene.remove(o.mesh);
-          objects.length = 0;
-          for (const p of particles) scene.remove(p.mesh);
-          particles.length = 0;
-
-          player.position.set(0, 0, 0);
-          player.rotation.set(0, 0, 0);
-          player.visible = true;
-
-          spawnInterval = SPAWN_INTERVAL_BASE;
-          spawnIntervalTimer = 0;
-          coinInterval = COIN_INTERVAL;
-          fallSpeed = BASE_FALL_SPEED;
-          fallSpeedTimer = 0;
-          coinCount = 0;
-          coinsSpawned = 0;
-          coinFlashEl.textContent = `+${coinCount}`;
-          coinTotalEl.textContent = '0';
-          elapsed = 0;
-          running = true;
-        }
-
-        function gameOver() {
-          if (!running) return;
-          running = false;
-          explodeAt(player.position);
-          player.visible = false;
-          AudioFX.playExplosion();
-          sendHapticToPhone('gameover');
-          scoreSummaryEl.textContent = `Собрано монет: ${coinCount}`;
-          gameoverEl.classList.add('visible');
-          setTimeout(resetGame, 3000);
-        }
-
-        function setPlayerWorld(worldX, worldY) {
-          const margin = OBJECT_SIZE * 0.8;
-          const clampedX = Math.max(-halfW - 1 + margin, Math.min(halfW + 1 - margin, worldX));
-          const clampedY = Math.max(-PLAYER_MOVE_Y, Math.min(PLAYER_MOVE_Y, worldY));
-          targetWorldX = clampedX;
-          targetWorldY = clampedY;
-        }
-
-        function setPhoneConnected(connected) {
-          if (isPhoneConnected === connected) return;
-          isPhoneConnected = connected;
-          if (connected) {
-            remotePillEl.classList.add('connected');
-            remoteStatusTextEl.textContent = 'Пульт подключен ⚡';
-            gameHintEl.textContent = 'Игрок подключен! Управляйте кубом';
-            AudioFX.playConnect();
-            toggleQrModal(false);
+          if (progress < 1) {
+            requestAnimationFrame(transitionStep);
           } else {
-            remotePillEl.classList.remove('connected');
-            remoteStatusTextEl.textContent = '📱 Подключить телефон';
-            gameHintEl.textContent = 'Сканируйте QR-код со смартфона для игры';
+            startScreenGroup.visible = false;
+            gameState = 'playing';
+            player.visible = true;
+            player.position.set(0, 0, 0);
+            targetWorldX = 0;
+            targetWorldY = 0;
+            resetGame();
           }
         }
 
-        // --- Paho MQTT Client on Game Screen ---
-        let pahoClient = null;
+        requestAnimationFrame(transitionStep);
+      };
 
-        function sendHapticToPhone(pattern) {
-          if (pahoClient && pahoClient.isConnected()) {
-            const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'haptic', pattern }));
-            msg.destinationName = `flexy/events/${roomId}`;
-            pahoClient.send(msg);
-          }
+      // ----------------------------------------------------
+      // Игровой процесс
+      // ----------------------------------------------------
+      const objects = [];
+      const particles = [];
+
+      let running = false;
+      let spawnAccumulator = 0;
+      let spawnInterval = SPAWN_INTERVAL_BASE;
+      let spawnIntervalTimer = 0;
+      let coinAccumulator = 0;
+      let coinInterval = COIN_INTERVAL;
+      let lastTime = performance.now() / 1000;
+      let elapsed = 0;
+      let coinCount = 0;
+      let coinsSpawned = 0;
+      let coinFlashTimer = null;
+      let fallSpeed = BASE_FALL_SPEED;
+      let fallSpeedTimer = 0;
+
+      let targetWorldX = 0;
+      let targetWorldY = 0;
+      let isPhoneConnected = false;
+
+      const randRange = (a, b) => a + Math.random() * (b - a);
+
+      function makeRandomMesh() {
+        const geom = SHAPE_GEOMETRIES[Math.floor(Math.random() * SHAPE_GEOMETRIES.length)];
+        const material = OBJECT_MATERIALS[Math.floor(Math.random() * OBJECT_MATERIALS.length)];
+        const mesh = new THREE.Mesh(geom, material);
+        mesh.castShadow = true;
+        mesh.receiveShadow = false;
+        const radius = OBJECT_SIZE * 0.6;
+        return { mesh, radius };
+      }
+
+      function makeCoin() {
+        const coin = new THREE.Mesh(COIN_GEOMETRY, COIN_MATERIAL);
+        coin.rotation.z = Math.PI * 0.5;
+        coin.castShadow = true;
+        const radius = OBJECT_SIZE * 0.6 * COIN_SCALE;
+        return { mesh: coin, radius };
+      }
+
+      function canPlaceAt(x, y, radius) {
+        for (const o of objects) {
+          const dx = o.mesh.position.x - x;
+          const dy = o.mesh.position.y - y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < MIN_DISTANCE * MIN_DISTANCE) return false;
         }
+        return true;
+      }
 
-        function initPahoMQTT() {
-          try {
-            if (typeof Paho === 'undefined' || !Paho.MQTT) return;
-            const clientId = 'h_' + Math.random().toString(36).substring(2, 10);
-            pahoClient = new Paho.MQTT.Client('broker.hivemq.com', 8884, '/mqtt', clientId);
+      function spawnWave() {
+        const count = 1 + Math.floor(Math.random() * 3);
+        const originX = randRange(-OBJECT_SIZE * 0.6, OBJECT_SIZE * 0.6);
+        const originY = TOP_Y + OBJECT_SIZE * 1.6;
 
-            pahoClient.onConnectionLost = () => {
-              setTimeout(initPahoMQTT, 2500);
-            };
+        for (let i = 0; i < count; i++) {
+          const { mesh, radius } = makeRandomMesh();
+          mesh.position.set(originX, originY, 0);
+          const speed = randRange(MAX_VX * 0.8, MAX_VX * 1.6);
+          const vx = randRange(-1, 1) * speed;
+          const vy = randRange(40, 140);
+          const rot = new THREE.Vector3(
+            randRange(-ROT_SPEED, ROT_SPEED),
+            randRange(-ROT_SPEED, ROT_SPEED),
+            randRange(-ROT_SPEED, ROT_SPEED)
+          );
+          scene.add(mesh);
+          objects.push({ mesh, vx, vy, rot, radius });
+        }
+      }
 
-            pahoClient.onMessageArrived = (message) => {
-              try {
-                const data = JSON.parse(message.payloadString);
-                setPhoneConnected(true);
+      function spawnCoin() {
+        let attempts = 0;
+        const spreadX = OBJECT_SIZE * 2.4;
+        while (attempts++ < 40) {
+          const x = randRange(-spreadX, spreadX);
+          const y = TOP_Y + randRange(-OBJECT_SIZE * 0.4, OBJECT_SIZE * 0.4);
+          if (!canPlaceAt(x, y, OBJECT_SIZE * 0.6)) continue;
+          const { mesh, radius } = makeCoin();
+          mesh.position.set(x, y, 0);
+          const vx = randRange(-MAX_VX, MAX_VX);
+          const vy = 0;
+          const rot = new THREE.Vector3(randRange(-ROT_SPEED, ROT_SPEED), randRange(-ROT_SPEED, ROT_SPEED), randRange(-ROT_SPEED, ROT_SPEED));
+          scene.add(mesh);
+          objects.push({ mesh, vx, vy, rot, radius, isCoin: true });
+          break;
+        }
+      }
 
-                if (data.type === 'motion') {
-                  const wx = data.x * (halfW * 0.95);
-                  const wy = data.y * PLAYER_MOVE_Y;
-                  setPlayerWorld(wx, wy);
-                } else if (data.type === 'recalibrate') {
-                  targetWorldX = 0;
-                  targetWorldY = 0;
-                }
-              } catch (e) {}
-            };
+      function collectCoin(index) {
+        const obj = objects[index];
+        if (!obj) return;
+        scene.remove(obj.mesh);
+        objects.splice(index, 1);
 
-            pahoClient.connect({
-              useSSL: true,
-              timeout: 4,
-              onSuccess: () => {
-                pahoClient.subscribe(`flexy/motion/${roomId}`);
-                pahoClient.subscribe(`flexy/events/${roomId}`);
-              },
-              onFailure: () => {
-                setTimeout(initFallbackMQTT, 1500);
+        coinCount += 1;
+        coinTotalEl.textContent = coinCount;
+        coinFlashEl.textContent = `+${coinCount}`;
+        coinFlashEl.classList.add('visible');
+        if (coinFlashTimer) clearTimeout(coinFlashTimer);
+        coinFlashTimer = setTimeout(() => {
+          coinFlashEl.classList.remove('visible');
+        }, 300);
+
+        AudioFX.playCoin();
+        sendHapticToPhone('coin');
+      }
+
+      function explodeAt(position) {
+        const count = 40;
+        const geo = new THREE.BoxGeometry(PLAYER_SIZE * 0.18, PLAYER_SIZE * 0.18, PLAYER_SIZE * 0.18);
+        for (let i = 0; i < count; i++) {
+          const mat = new THREE.MeshStandardMaterial({
+            color: 0x38bdf8,
+            roughness: 0.3,
+            metalness: 0.4,
+            emissive: 0x0284c7,
+            emissiveIntensity: 0.6
+          });
+          const p = new THREE.Mesh(geo, mat);
+          p.castShadow = true;
+          p.position.copy(position);
+          const theta = Math.random() * Math.PI * 2;
+          const phi = (Math.random() - 0.5) * Math.PI;
+          const speed = 250 + Math.random() * 550;
+          const vel = new THREE.Vector3(
+            Math.cos(phi) * Math.cos(theta) * speed,
+            Math.cos(phi) * Math.sin(theta) * speed,
+            Math.sin(phi) * speed
+          );
+          scene.add(p);
+          particles.push({ mesh: p, vel, life: 0.9 + Math.random() * 0.5 });
+        }
+      }
+
+      function resetGame() {
+        gameoverEl.classList.remove('visible');
+        for (const o of objects) scene.remove(o.mesh);
+        objects.length = 0;
+        for (const p of particles) scene.remove(p.mesh);
+        particles.length = 0;
+
+        player.position.set(0, 0, 0);
+        player.rotation.set(0, 0, 0);
+        player.visible = true;
+
+        spawnInterval = SPAWN_INTERVAL_BASE;
+        spawnIntervalTimer = 0;
+        coinInterval = COIN_INTERVAL;
+        fallSpeed = BASE_FALL_SPEED;
+        fallSpeedTimer = 0;
+        coinCount = 0;
+        coinsSpawned = 0;
+        coinFlashEl.textContent = `+${coinCount}`;
+        coinTotalEl.textContent = '0';
+        elapsed = 0;
+        running = true;
+      }
+
+      function gameOver() {
+        if (!running) return;
+        running = false;
+        explodeAt(player.position);
+        player.visible = false;
+        AudioFX.playExplosion();
+        sendHapticToPhone('gameover');
+        scoreSummaryEl.textContent = `Собрано монет: ${coinCount}`;
+        gameoverEl.classList.add('visible');
+        setTimeout(resetGame, 3000);
+      }
+
+      function setPlayerWorld(worldX, worldY) {
+        const margin = OBJECT_SIZE * 0.8;
+        const clampedX = Math.max(-halfW - 1 + margin, Math.min(halfW + 1 - margin, worldX));
+        const clampedY = Math.max(-PLAYER_MOVE_Y, Math.min(PLAYER_MOVE_Y, worldY));
+        targetWorldX = clampedX;
+        targetWorldY = clampedY;
+      }
+
+      function setPhoneConnected(connected) {
+        if (isPhoneConnected === connected) return;
+        isPhoneConnected = connected;
+        if (connected) {
+          remotePillEl.classList.add('connected');
+          remoteStatusTextEl.textContent = 'Пульт подключен ⚡';
+          gameHintEl.textContent = 'Игрок подключен! Управляйте кубом';
+          AudioFX.playConnect();
+          toggleQrModal(false);
+        } else {
+          remotePillEl.classList.remove('connected');
+          remoteStatusTextEl.textContent = '📱 Подключить телефон';
+          gameHintEl.textContent = 'Сканируйте QR-код со смартфона для игры';
+        }
+      }
+
+      // --- Paho MQTT Client on Game Screen ---
+      let pahoClient = null;
+
+      function sendHapticToPhone(pattern) {
+        if (pahoClient && pahoClient.isConnected()) {
+          const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'haptic', pattern }));
+          msg.destinationName = `flexy/events/${roomId}`;
+          pahoClient.send(msg);
+        }
+      }
+
+      function initPahoMQTT() {
+        try {
+          if (typeof Paho === 'undefined' || !Paho.MQTT) return;
+          const clientId = 'h_' + Math.random().toString(36).substring(2, 10);
+          pahoClient = new Paho.MQTT.Client('broker.hivemq.com', 8884, '/mqtt', clientId);
+
+          pahoClient.onConnectionLost = () => {
+            setTimeout(initPahoMQTT, 2500);
+          };
+
+          pahoClient.onMessageArrived = (message) => {
+            try {
+              const data = JSON.parse(message.payloadString);
+              setPhoneConnected(true);
+
+              if (data.type === 'motion') {
+                const wx = data.x * (halfW * 0.95);
+                const wy = data.y * PLAYER_MOVE_Y;
+                setPlayerWorld(wx, wy);
+              } else if (data.type === 'recalibrate') {
+                targetWorldX = 0;
+                targetWorldY = 0;
               }
-            });
-          } catch (e) {
-            console.warn('Paho init failed:', e);
+            } catch (e) {}
+          };
+
+          pahoClient.connect({
+            useSSL: true,
+            timeout: 4,
+            onSuccess: () => {
+              pahoClient.subscribe(`flexy/motion/${roomId}`);
+              pahoClient.subscribe(`flexy/events/${roomId}`);
+            },
+            onFailure: () => {
+              setTimeout(initFallbackMQTT, 1500);
+            }
+          });
+        } catch (e) {
+          console.warn('Paho init failed:', e);
+        }
+      }
+
+      function initFallbackMQTT() {
+        try {
+          const clientId = 'h_' + Math.random().toString(36).substring(2, 10);
+          pahoClient = new Paho.MQTT.Client('broker.emqx.io', 8084, '/mqtt', clientId);
+          pahoClient.connect({
+            useSSL: true,
+            timeout: 4,
+            onSuccess: () => {
+              pahoClient.subscribe(`flexy/motion/${roomId}`);
+              pahoClient.subscribe(`flexy/events/${roomId}`);
+            },
+            onFailure: () => {
+              setTimeout(initPahoMQTT, 3000);
+            }
+          });
+        } catch (e) {}
+      }
+
+      function renderQrCode() {
+        const pathName = window.location.pathname;
+        let dirPath = pathName.substring(0, pathName.lastIndexOf('/') + 1);
+        if (!dirPath.endsWith('/')) dirPath += '/';
+        const fullBase = `${window.location.origin}${dirPath}`;
+
+        const controllerUrl = `${fullBase}controller.html?room=${roomId}`;
+
+        const qrcodeEl = document.getElementById('qrcode');
+        qrcodeEl.innerHTML = '';
+        new QRCode(qrcodeEl, {
+          text: controllerUrl,
+          width: 155,
+          height: 155,
+          colorDark: "#070913",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+
+      window.toggleQrModal = function(show) {
+        if (show) {
+          qrOverlayEl.classList.add('visible');
+        } else {
+          qrOverlayEl.classList.remove('visible');
+        }
+      };
+
+      // Анимация
+      function centerFactor(pos) {
+        const rx = Math.abs(pos.x) / halfW;
+        const ry = Math.abs(pos.y) / halfH;
+        const r = Math.hypot(rx, ry);
+        const f = 1 - Math.min(1, r);
+        return f * f;
+      }
+
+      let startElapsedTime = 0;
+
+      function animate() {
+        const now = performance.now() / 1000;
+        const dt = Math.min(0.05, now - lastTime);
+        lastTime = now;
+
+        // --------------------------------------------------
+        // Анимация стартового экрана
+        // --------------------------------------------------
+        if (gameState === 'start' || gameState === 'transitioning') {
+          startElapsedTime += dt;
+
+          // Центральный логотип flexyway: мягкое парение и покачивание
+          if (flexywayLogo) {
+            if (startElapsedTime > flexywayLogo.userData.spawnDelay) {
+              flexywayLogo.userData.spawnProgress = Math.min(1, flexywayLogo.userData.spawnProgress + dt * 1.8);
+              const s = flexywayLogo.userData.targetScale * easeOutBack(flexywayLogo.userData.spawnProgress);
+              flexywayLogo.scale.set(s, s, s);
+            }
+            flexywayLogo.position.y = flexywayLogo.userData.baseY + Math.sin(startElapsedTime * 1.5) * 12;
+            flexywayLogo.rotation.y = Math.sin(startElapsedTime * 0.8) * 0.06;
+            flexywayLogo.rotation.z = Math.cos(startElapsedTime * 1.1) * 0.03;
           }
-        }
 
-        function initFallbackMQTT() {
-          try {
-            const clientId = 'h_' + Math.random().toString(36).substring(2, 10);
-            pahoClient = new Paho.MQTT.Client('broker.emqx.io', 8084, '/mqtt', clientId);
-            pahoClient.connect({
-              useSSL: true,
-              timeout: 4,
-              onSuccess: () => {
-                pahoClient.subscribe(`flexy/motion/${roomId}`);
-                pahoClient.subscribe(`flexy/events/${roomId}`);
-              },
-              onFailure: () => {
-                setTimeout(initPahoMQTT, 3000);
-              }
-            });
-          } catch (e) {}
-        }
-
-        function renderQrCode() {
-          const pathName = window.location.pathname;
-          let dirPath = pathName.substring(0, pathName.lastIndexOf('/') + 1);
-          if (!dirPath.endsWith('/')) dirPath += '/';
-          const fullBase = `${window.location.origin}${dirPath}`;
-
-          const controllerUrl = `${fullBase}controller.html?room=${roomId}`;
-
-          const qrcodeEl = document.getElementById('qrcode');
-          qrcodeEl.innerHTML = '';
-          new QRCode(qrcodeEl, {
-            text: controllerUrl,
-            width: 155,
-            height: 155,
-            colorDark: "#070913",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.M
+          // Объекты из good: плавный pop-in из scale = 0 и легкое парение
+          goodObjects.forEach((obj) => {
+            if (startElapsedTime > obj.userData.spawnDelay) {
+              obj.userData.spawnProgress = Math.min(1, obj.userData.spawnProgress + dt * 1.5);
+              const s = obj.userData.targetScale * easeOutBack(obj.userData.spawnProgress);
+              obj.scale.set(s, s, s);
+            }
+            obj.position.y = obj.userData.baseY + Math.sin(startElapsedTime * 1.4 + obj.userData.baseX) * 10;
+            obj.rotation.y += dt * obj.userData.rotSpeed;
+            obj.rotation.x = Math.sin(startElapsedTime * 1.1 + obj.userData.baseY) * 0.08;
           });
         }
 
-        window.toggleQrModal = function(show) {
-          if (show) {
-            qrOverlayEl.classList.add('visible');
-          } else {
-            qrOverlayEl.classList.remove('visible');
+        // --------------------------------------------------
+        // Игровой цикл
+        // --------------------------------------------------
+        if (running && gameState === 'playing') {
+          elapsed += dt;
+          spawnAccumulator += dt;
+          if (elapsed < 20) spawnIntervalTimer += dt;
+          if (spawnIntervalTimer >= 2 && elapsed < 20) {
+            spawnIntervalTimer -= 2;
+            spawnInterval /= 1.1;
+            if (spawnInterval < 0.15) spawnInterval = 0.15;
           }
-        };
+          if (elapsed < 20) fallSpeedTimer += dt;
+          if (fallSpeedTimer >= 2 && elapsed < 20) {
+            fallSpeedTimer -= 2;
+            fallSpeed *= 1.2;
+          }
+          coinAccumulator += dt;
+          if (spawnAccumulator >= spawnInterval) {
+            spawnAccumulator -= spawnInterval;
+            spawnWave();
+          }
+          if (coinAccumulator >= coinInterval) {
+            coinAccumulator -= coinInterval;
+            spawnCoin();
+            coinsSpawned += 1;
+            if (coinsSpawned < 10) coinInterval /= 1.2;
+          }
 
-        // Анимация
-        function centerFactor(pos) {
-          const rx = Math.abs(pos.x) / halfW;
-          const ry = Math.abs(pos.y) / halfH;
-          const r = Math.hypot(rx, ry);
-          const f = 1 - Math.min(1, r);
-          return f * f;
+          // Магнитное отталкивание
+          if (objects.length > 1) {
+            for (let i = 0; i < objects.length - 1; i++) {
+              const A = objects[i];
+              const aPos = A.mesh.position;
+              for (let j = i + 1; j < objects.length; j++) {
+                const B = objects[j];
+                const bPos = B.mesh.position;
+                const dx = aPos.x - bPos.x;
+                const dy = aPos.y - bPos.y;
+                const d2 = dx * dx + dy * dy;
+                if (d2 <= 1e-6) continue;
+                const R = REPULSION_RADIUS;
+                if (d2 < R * R) {
+                  const d = Math.sqrt(d2);
+                  const nx = dx / d;
+                  const ny = dy / d;
+                  const proximity = 1 - (d / R);
+                  const cf = (centerFactor(aPos) + centerFactor(bPos)) * 0.5;
+                  const mag = REPULSION_STRENGTH * proximity * proximity * cf;
+                  const ax = nx * mag;
+                  const ay = ny * mag;
+                  A.vx += ax * dt;
+                  A.vy += ay * dt;
+                  B.vx -= ax * dt;
+                  B.vy -= ay * dt;
+                }
+              }
+            }
+          }
+
+          for (const o of objects) {
+            o.vx *= DAMPING;
+            o.vy *= DAMPING;
+            if (o.vx > VX_CLAMP) o.vx = VX_CLAMP;
+            else if (o.vx < -VX_CLAMP) o.vx = -VX_CLAMP;
+            if (o.vy > VY_CLAMP) o.vy = VY_CLAMP;
+            else if (o.vy < -VY_CLAMP) o.vy = -VY_CLAMP;
+          }
+
+          for (let i = objects.length - 1; i >= 0; i--) {
+            const o = objects[i];
+            const m = o.mesh;
+            const t = (m.position.y - BOTTOM_Y) / (TOP_Y - BOTTOM_Y);
+            const steer = -m.position.x * FUNNEL_STRENGTH * (1 - Math.max(0, Math.min(1, t)));
+            m.position.x += (o.vx + steer) * dt;
+            m.position.y += o.vy * dt;
+            m.position.y -= fallSpeed * dt;
+            m.rotation.x += o.rot.x * dt;
+            m.rotation.y += o.rot.y * dt;
+            m.rotation.z += o.rot.z * dt;
+
+            const left = -halfW + o.radius;
+            const right = halfW - o.radius;
+            if (m.position.x < left) {
+              m.position.x = left;
+              o.vx = Math.abs(o.vx) * BOUNCE_X;
+            } else if (m.position.x > right) {
+              m.position.x = right;
+              o.vx = -Math.abs(o.vx) * BOUNCE_X;
+            }
+
+            if (m.position.y <= BOTTOM_Y) {
+              const nearCenter = Math.abs(m.position.x) < VANISH_RADIUS_X;
+              if (nearCenter) {
+                scene.remove(m);
+                objects.splice(i, 1);
+              } else {
+                m.position.x *= 0.96;
+              }
+            }
+          }
+
+          const SMOOTH_FACTOR = 0.22;
+          player.position.x = THREE.MathUtils.lerp(player.position.x, targetWorldX, SMOOTH_FACTOR);
+          player.position.y = THREE.MathUtils.lerp(player.position.y, targetWorldY, SMOOTH_FACTOR);
+
+          const targetRotZ = (targetWorldX - player.position.x) * -0.0015;
+          const targetRotX = (targetWorldY - player.position.y) * 0.0015;
+          player.rotation.z = THREE.MathUtils.lerp(player.rotation.z, targetRotZ, 0.15);
+          player.rotation.x = THREE.MathUtils.lerp(player.rotation.x, targetRotX, 0.15);
+
+          for (let i = 0; i < objects.length; i++) {
+            const o = objects[i];
+            const dx = o.mesh.position.x - player.position.x;
+            const dy = o.mesh.position.y - player.position.y;
+            const r = o.radius + playerRadius;
+            if (dx * dx + dy * dy <= r * r) {
+              if (o.isCoin) {
+                collectCoin(i);
+              } else {
+                gameOver();
+              }
+              break;
+            }
+          }
         }
 
-        let startElapsedTime = 0;
-
-        function animate() {
-          const now = performance.now() / 1000;
-          const dt = Math.min(0.05, now - lastTime);
-          lastTime = now;
-
-          // --------------------------------------------------
-          // Анимация стартового экрана
-          // --------------------------------------------------
-          if (gameState === 'start' || gameState === 'transitioning') {
-            startElapsedTime += dt;
-
-            // Центральный логотип flexyway: мягкое парение и покачивание
-            if (flexywayLogo) {
-              if (startElapsedTime > flexywayLogo.userData.spawnDelay) {
-                flexywayLogo.userData.spawnProgress = Math.min(1, flexywayLogo.userData.spawnProgress + dt * 1.8);
-                const s = flexywayLogo.userData.targetScale * easeOutBack(flexywayLogo.userData.spawnProgress);
-                flexywayLogo.scale.set(s, s, s);
-              }
-              flexywayLogo.position.y = flexywayLogo.userData.baseY + Math.sin(startElapsedTime * 1.5) * 12;
-              flexywayLogo.rotation.y = Math.sin(startElapsedTime * 0.8) * 0.06;
-              flexywayLogo.rotation.z = Math.cos(startElapsedTime * 1.1) * 0.03;
-            }
-
-            // Объекты из good: плавный pop-in из scale = 0 и легкое парение
-            goodObjects.forEach((obj) => {
-              if (startElapsedTime > obj.userData.spawnDelay) {
-                obj.userData.spawnProgress = Math.min(1, obj.userData.spawnProgress + dt * 1.5);
-                const s = obj.userData.targetScale * easeOutBack(obj.userData.spawnProgress);
-                obj.scale.set(s, s, s);
-              }
-              obj.position.y = obj.userData.baseY + Math.sin(startElapsedTime * 1.4 + obj.userData.baseX) * 10;
-              obj.rotation.y += dt * obj.userData.rotSpeed;
-              obj.rotation.x = Math.sin(startElapsedTime * 1.1 + obj.userData.baseY) * 0.08;
-            });
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.life -= dt;
+          p.mesh.position.addScaledVector(p.vel, dt);
+          p.mesh.rotation.x += 2.0 * dt;
+          p.mesh.rotation.y -= 1.7 * dt;
+          const fade = Math.max(0, p.life);
+          p.mesh.material.opacity = fade;
+          p.mesh.material.transparent = true;
+          if (p.life <= 0) {
+            scene.remove(p.mesh);
+            particles.splice(i, 1);
           }
-
-          // --------------------------------------------------
-          // Игровой цикл
-          // --------------------------------------------------
-          if (running && gameState === 'playing') {
-            elapsed += dt;
-            spawnAccumulator += dt;
-            if (elapsed < 20) spawnIntervalTimer += dt;
-            if (spawnIntervalTimer >= 2 && elapsed < 20) {
-              spawnIntervalTimer -= 2;
-              spawnInterval /= 1.1;
-              if (spawnInterval < 0.15) spawnInterval = 0.15;
-            }
-            if (elapsed < 20) fallSpeedTimer += dt;
-            if (fallSpeedTimer >= 2 && elapsed < 20) {
-              fallSpeedTimer -= 2;
-              fallSpeed *= 1.2;
-            }
-            coinAccumulator += dt;
-            if (spawnAccumulator >= spawnInterval) {
-              spawnAccumulator -= spawnInterval;
-              spawnWave();
-            }
-            if (coinAccumulator >= coinInterval) {
-              coinAccumulator -= coinInterval;
-              spawnCoin();
-              coinsSpawned += 1;
-              if (coinsSpawned < 10) coinInterval /= 1.2;
-            }
-
-            // Магнитное отталкивание
-            if (objects.length > 1) {
-              for (let i = 0; i < objects.length - 1; i++) {
-                const A = objects[i];
-                const aPos = A.mesh.position;
-                for (let j = i + 1; j < objects.length; j++) {
-                  const B = objects[j];
-                  const bPos = B.mesh.position;
-                  const dx = aPos.x - bPos.x;
-                  const dy = aPos.y - bPos.y;
-                  const d2 = dx * dx + dy * dy;
-                  if (d2 <= 1e-6) continue;
-                  const R = REPULSION_RADIUS;
-                  if (d2 < R * R) {
-                    const d = Math.sqrt(d2);
-                    const nx = dx / d;
-                    const ny = dy / d;
-                    const proximity = 1 - (d / R);
-                    const cf = (centerFactor(aPos) + centerFactor(bPos)) * 0.5;
-                    const mag = REPULSION_STRENGTH * proximity * proximity * cf;
-                    const ax = nx * mag;
-                    const ay = ny * mag;
-                    A.vx += ax * dt;
-                    A.vy += ay * dt;
-                    B.vx -= ax * dt;
-                    B.vy -= ay * dt;
-                  }
-                }
-              }
-            }
-
-            for (const o of objects) {
-              o.vx *= DAMPING;
-              o.vy *= DAMPING;
-              if (o.vx > VX_CLAMP) o.vx = VX_CLAMP;
-              else if (o.vx < -VX_CLAMP) o.vx = -VX_CLAMP;
-              if (o.vy > VY_CLAMP) o.vy = VY_CLAMP;
-              else if (o.vy < -VY_CLAMP) o.vy = -VY_CLAMP;
-            }
-
-            for (let i = objects.length - 1; i >= 0; i--) {
-              const o = objects[i];
-              const m = o.mesh;
-              const t = (m.position.y - BOTTOM_Y) / (TOP_Y - BOTTOM_Y);
-              const steer = -m.position.x * FUNNEL_STRENGTH * (1 - Math.max(0, Math.min(1, t)));
-              m.position.x += (o.vx + steer) * dt;
-              m.position.y += o.vy * dt;
-              m.position.y -= fallSpeed * dt;
-              m.rotation.x += o.rot.x * dt;
-              m.rotation.y += o.rot.y * dt;
-              m.rotation.z += o.rot.z * dt;
-
-              const left = -halfW + o.radius;
-              const right = halfW - o.radius;
-              if (m.position.x < left) {
-                m.position.x = left;
-                o.vx = Math.abs(o.vx) * BOUNCE_X;
-              } else if (m.position.x > right) {
-                m.position.x = right;
-                o.vx = -Math.abs(o.vx) * BOUNCE_X;
-              }
-
-              if (m.position.y <= BOTTOM_Y) {
-                const nearCenter = Math.abs(m.position.x) < VANISH_RADIUS_X;
-                if (nearCenter) {
-                  scene.remove(m);
-                  objects.splice(i, 1);
-                } else {
-                  m.position.x *= 0.96;
-                }
-              }
-            }
-
-            const SMOOTH_FACTOR = 0.22;
-            player.position.x = THREE.MathUtils.lerp(player.position.x, targetWorldX, SMOOTH_FACTOR);
-            player.position.y = THREE.MathUtils.lerp(player.position.y, targetWorldY, SMOOTH_FACTOR);
-
-            const targetRotZ = (targetWorldX - player.position.x) * -0.0015;
-            const targetRotX = (targetWorldY - player.position.y) * 0.0015;
-            player.rotation.z = THREE.MathUtils.lerp(player.rotation.z, targetRotZ, 0.15);
-            player.rotation.x = THREE.MathUtils.lerp(player.rotation.x, targetRotX, 0.15);
-
-            for (let i = 0; i < objects.length; i++) {
-              const o = objects[i];
-              const dx = o.mesh.position.x - player.position.x;
-              const dy = o.mesh.position.y - player.position.y;
-              const r = o.radius + playerRadius;
-              if (dx * dx + dy * dy <= r * r) {
-                if (o.isCoin) {
-                  collectCoin(i);
-                } else {
-                  gameOver();
-                }
-                break;
-              }
-            }
-          }
-
-          for (let i = particles.length - 1; i >= 0; i--) {
-            const p = particles[i];
-            p.life -= dt;
-            p.mesh.position.addScaledVector(p.vel, dt);
-            p.mesh.rotation.x += 2.0 * dt;
-            p.mesh.rotation.y -= 1.7 * dt;
-            const fade = Math.max(0, p.life);
-            p.mesh.material.opacity = fade;
-            p.mesh.material.transparent = true;
-            if (p.life <= 0) {
-              scene.remove(p.mesh);
-              particles.splice(i, 1);
-            }
-          }
-
-          renderer.render(scene, camera);
-          requestAnimationFrame(animate);
         }
 
-        initPahoMQTT();
-        renderQrCode();
-        animate();
-      })();
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      }
+
+      initPahoMQTT();
+      renderQrCode();
+      animate();
     </script>
   </body>
 </html>
