@@ -324,21 +324,15 @@
         color: #0284c7;
       }
 
-      /* Модальное окно настроек сцены (Компактная полупрозрачная панель с прокруткой) */
+      /* Модальное окно настроек сцены (Компактная полупрозрачная ПЕРЕТАСКИВАЕМАЯ панель) */
       .settings-modal-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(15, 23, 42, 0.22);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1rem;
         z-index: 200;
         opacity: 0;
         visibility: hidden;
-        transition: opacity 0.3s ease, visibility 0.3s ease;
+        pointer-events: none;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
       }
 
       .settings-modal-overlay.visible {
@@ -347,24 +341,28 @@
       }
 
       .settings-modal-card {
-        background: rgba(255, 255, 255, 0.55);
+        position: absolute;
+        top: 75px;
+        right: 20px;
+        background: rgba(255, 255, 255, 0.65);
         backdrop-filter: blur(28px) saturate(190%);
         -webkit-backdrop-filter: blur(28px) saturate(190%);
-        border: 1.5px solid rgba(255, 255, 255, 0.88);
-        border-radius: 24px;
-        max-width: 450px;
-        width: 94%;
-        max-height: 68vh;
+        border: 1.5px solid rgba(255, 255, 255, 0.9);
+        border-radius: 20px;
+        width: clamp(280px, 23vw, 350px);
+        max-height: clamp(330px, 58vh, 500px);
         display: flex;
         flex-direction: column;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18), inset 0 1.5px 2px rgba(255, 255, 255, 1);
+        box-shadow: 0 16px 45px rgba(0, 0, 0, 0.16), inset 0 1px 2px rgba(255, 255, 255, 1);
         color: #0f172a;
         overflow: hidden;
-        animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        pointer-events: auto;
+        animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        touch-action: none;
       }
 
-      @keyframes modalScaleIn {
-        from { transform: scale(0.94); opacity: 0; }
+      @keyframes modalFadeIn {
+        from { transform: scale(0.95); opacity: 0; }
         to { transform: scale(1); opacity: 1; }
       }
 
@@ -372,28 +370,42 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 1rem 1.4rem;
+        padding: 0.75rem 1rem;
         border-bottom: 1px solid rgba(226, 232, 240, 0.65);
-        background: rgba(255, 255, 255, 0.35);
+        background: rgba(255, 255, 255, 0.45);
+        cursor: grab;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      .settings-modal-header:active {
+        cursor: grabbing;
       }
 
       .settings-modal-title {
-        font-size: 1.05rem;
+        font-size: 0.9rem;
         font-weight: 800;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.4rem;
         color: #0f172a;
+        pointer-events: none;
+      }
+
+      .drag-hint-icon {
+        color: #94a3b8;
+        font-size: 1rem;
+        margin-right: 0.15rem;
       }
 
       .settings-close-btn {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         border: none;
-        background: rgba(255, 255, 255, 0.7);
+        background: rgba(255, 255, 255, 0.75);
         cursor: pointer;
-        font-size: 1rem;
+        font-size: 0.9rem;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -408,15 +420,15 @@
       }
 
       .settings-modal-body {
-        padding: 1rem 1.25rem;
+        padding: 0.75rem 0.9rem;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+        gap: 0.75rem;
       }
 
       .settings-modal-body::-webkit-scrollbar {
-        width: 6px;
+        width: 5px;
       }
       .settings-modal-body::-webkit-scrollbar-track {
         background: rgba(0, 0, 0, 0.04);
@@ -433,39 +445,39 @@
       .object-control-card {
         background: rgba(255, 255, 255, 0.45);
         border: 1px solid rgba(255, 255, 255, 0.75);
-        border-radius: 16px;
-        padding: 0.85rem 1rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+        border-radius: 14px;
+        padding: 0.65rem 0.8rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
       }
 
       .object-control-title {
-        font-size: 0.9rem;
+        font-size: 0.82rem;
         font-weight: 800;
         color: #0f172a;
-        margin-bottom: 0.65rem;
+        margin-bottom: 0.45rem;
         display: flex;
         align-items: center;
-        gap: 0.45rem;
+        gap: 0.35rem;
       }
 
       .param-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 0.65rem 0.85rem;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem 0.65rem;
       }
 
       .param-field {
         display: flex;
         flex-direction: column;
-        gap: 0.25rem;
+        gap: 0.2rem;
       }
 
       .param-label {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         font-weight: 800;
         color: #475569;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.03em;
         display: flex;
         justify-content: space-between;
       }
@@ -473,22 +485,22 @@
       .param-inputs {
         display: flex;
         align-items: center;
-        gap: 0.45rem;
+        gap: 0.35rem;
       }
 
       .param-inputs input[type="range"] {
         flex: 1;
         accent-color: #0284c7;
         cursor: pointer;
-        height: 5px;
+        height: 4px;
       }
 
       .param-inputs input[type="number"] {
-        width: 68px;
-        padding: 0.3rem 0.35rem;
+        width: 58px;
+        padding: 0.25rem 0.3rem;
         border: 1.5px solid rgba(2, 132, 199, 0.25);
-        border-radius: 8px;
-        font-size: 0.85rem;
+        border-radius: 6px;
+        font-size: 0.78rem;
         font-weight: 800;
         color: #0284c7;
         background: rgba(255, 255, 255, 0.85);
@@ -500,58 +512,58 @@
         outline: none;
         border-color: #0284c7;
         background: #ffffff;
-        box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
+        box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25);
       }
 
       .settings-modal-footer {
-        padding: 1.2rem 1.75rem;
-        border-top: 1px solid rgba(226, 232, 240, 0.8);
+        padding: 0.75rem 1rem;
+        border-top: 1px solid rgba(226, 232, 240, 0.65);
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        gap: 0.75rem;
-        background: rgba(248, 250, 252, 0.6);
+        gap: 0.5rem;
+        background: rgba(255, 255, 255, 0.45);
       }
 
       .settings-btn-group {
         display: flex;
-        gap: 0.6rem;
+        gap: 0.4rem;
       }
 
       .btn-save-txt {
-        padding: 0.75rem 1.4rem;
-        border-radius: 12px;
+        padding: 0.55rem 0.9rem;
+        border-radius: 10px;
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
         color: #ffffff;
         border: none;
         font-weight: 800;
-        font-size: 0.9rem;
+        font-size: 0.78rem;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        box-shadow: 0 6px 18px rgba(2, 132, 199, 0.35);
+        gap: 0.35rem;
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
         transition: transform 0.2s, box-shadow 0.2s;
       }
 
       .btn-save-txt:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px rgba(2, 132, 199, 0.45);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(2, 132, 199, 0.4);
       }
 
       .btn-copy-config {
-        padding: 0.75rem 1.2rem;
-        border-radius: 12px;
+        padding: 0.55rem 0.8rem;
+        border-radius: 10px;
         background: #ffffff;
         color: #0f172a;
         border: 1px solid #cbd5e1;
         font-weight: 700;
-        font-size: 0.9rem;
+        font-size: 0.78rem;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.35rem;
         transition: all 0.2s;
       }
 
@@ -561,13 +573,13 @@
       }
 
       .btn-reset-defaults {
-        padding: 0.75rem 1.2rem;
-        border-radius: 12px;
+        padding: 0.55rem 0.8rem;
+        border-radius: 10px;
         background: #f1f5f9;
         color: #64748b;
         border: none;
         font-weight: 700;
-        font-size: 0.85rem;
+        font-size: 0.75rem;
         cursor: pointer;
         transition: all 0.2s;
       }
@@ -803,14 +815,15 @@
         </svg>
       </button>
 
-      <!-- Модальное окно настроек объектов сцены -->
+      <!-- Модальное окно настроек объектов сцены (Компактное перетаскиваемое) -->
       <div class="settings-modal-overlay" id="settingsModal">
-        <div class="settings-modal-card">
-          <div class="settings-modal-header">
+        <div class="settings-modal-card" id="settingsModalCard">
+          <div class="settings-modal-header" id="settingsModalHeader" title="Зажмите и перетащите в любое место сцены">
             <div class="settings-modal-title">
-              <span>⚙️ Настройки сцены и объектов</span>
+              <span class="drag-hint-icon">⋮⋮</span>
+              <span>Настройки сцены</span>
             </div>
-            <button class="settings-close-btn" onclick="toggleSettingsModal(false)">✕</button>
+            <button class="settings-close-btn" onclick="toggleSettingsModal(false)" title="Закрыть">✕</button>
           </div>
           
           <div class="settings-modal-body" id="settingsControlsList">
@@ -820,14 +833,14 @@
           <div class="settings-modal-footer">
             <div class="settings-btn-group">
               <button class="btn-save-txt" onclick="downloadConfigTxt()">
-                💾 Сохранить в TXT
+                💾 Скачать TXT
               </button>
               <button class="btn-copy-config" onclick="copyConfigTxt()">
-                📋 Скопировать TXT
+                📋 Скопировать
               </button>
             </div>
             <button class="btn-reset-defaults" onclick="resetSceneDefaults()">
-              🔄 По умолчанию
+              🔄 Сброс
             </button>
           </div>
         </div>
@@ -966,13 +979,17 @@
       scene.background = new THREE.Color(0xffffff);
 
       const FOV = 50;
-      const camera = new THREE.PerspectiveCamera(FOV, ASPECT, 0.1, 8000);
+      const camera = new THREE.PerspectiveCamera(FOV, ASPECT, 10, 5000);
       const fovRad = THREE.MathUtils.degToRad(FOV * 0.5);
       const dist = halfH / Math.tan(fovRad);
       camera.position.set(0, 0, dist);
       camera.lookAt(0, 0, 0);
 
-      const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      const renderer = new THREE.WebGLRenderer({ 
+        antialias: true, 
+        powerPreference: 'high-performance',
+        logarithmicDepthBuffer: true 
+      });
       renderer.setPixelRatio(1);
       renderer.setSize(RENDER_WIDTH, RENDER_HEIGHT, false);
       renderer.shadowMap.enabled = true;
@@ -985,18 +1002,18 @@
 
       // Основной направленный свет с красивой студийной тенью
       const dir = new THREE.DirectionalLight(0xffffff, 1.45);
-      dir.position.set(240, 340, 950);
-      dir.target.position.set(0, -50, 0);
+      dir.position.set(100, 120, 1100);
+      dir.target.position.set(0, -80, 0);
       dir.castShadow = true;
       dir.shadow.mapSize.set(2048, 2048);
-      dir.shadow.radius = 16;
-      dir.shadow.camera.left = -halfW * 1.8;
-      dir.shadow.camera.right = halfW * 1.8;
-      dir.shadow.camera.top = halfH * 1.8;
-      dir.shadow.camera.bottom = -halfH * 1.8;
+      dir.shadow.radius = 12;
+      dir.shadow.camera.left = -halfW * 2.2;
+      dir.shadow.camera.right = halfW * 2.2;
+      dir.shadow.camera.top = halfH * 2.2;
+      dir.shadow.camera.bottom = -halfH * 2.2;
       dir.shadow.camera.near = 100;
       dir.shadow.camera.far = 4000;
-      dir.shadow.bias = -0.0003;
+      dir.shadow.bias = -0.0002;
       dir.shadow.camera.updateProjectionMatrix();
       scene.add(dir);
       scene.add(dir.target);
@@ -1007,7 +1024,7 @@
       scene.add(fillLight);
 
       // Нижний мягкий заполняющий свет (не перебивает тени)
-      const bottomLight = new THREE.DirectionalLight(0xffffff, 0.25);
+      const bottomLight = new THREE.DirectionalLight(0xffffff, 0.2);
       bottomLight.position.set(0, -halfH * 0.6, 1200);
       scene.add(bottomLight);
 
@@ -1015,7 +1032,7 @@
       const shadowPlaneGeom = new THREE.PlaneGeometry(halfW * 4.0, halfH * 4.0);
       const shadowPlaneMat = new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.38 });
       const shadowPlane = new THREE.Mesh(shadowPlaneGeom, shadowPlaneMat);
-      shadowPlane.position.set(0, 0, -85);
+      shadowPlane.position.set(0, 0, -40);
       shadowPlane.receiveShadow = true;
       scene.add(shadowPlane);
 
@@ -1271,11 +1288,14 @@
             // Сохраняем исходные материалы и текстуры из GLB
             if (child.material) {
               const fixMat = (mat) => {
+                mat.side = THREE.FrontSide; // Предотвращает Z-файтинг и наложение внутренней/внешней стенок (туфля shoe)
+                mat.shadowSide = THREE.DoubleSide; // Тени от тонкой ткани и мешей отбрасываются надежно
                 if (mat.map) {
                   mat.map.colorSpace = THREE.SRGBColorSpace;
                   mat.map.needsUpdate = true;
                 }
-                mat.shadowSide = THREE.DoubleSide;
+                mat.depthWrite = true;
+                mat.depthTest = true;
                 mat.needsUpdate = true;
               };
 
@@ -1541,6 +1561,70 @@
           toast.classList.remove('visible');
         }, 2600);
       };
+
+      // Перетаскивание панели настроек (Drag & Drop мышкой и пальцем)
+      let isDraggingSettings = false;
+      let dragStartX = 0;
+      let dragStartY = 0;
+      let initialLeft = 0;
+      let initialTop = 0;
+
+      function initDraggableSettings() {
+        const header = document.getElementById('settingsModalHeader');
+        const card = document.getElementById('settingsModalCard');
+        if (!header || !card) return;
+
+        function startDrag(e) {
+          if (e.target.closest('.settings-close-btn')) return;
+          isDraggingSettings = true;
+          const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+          const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+          dragStartX = clientX;
+          dragStartY = clientY;
+
+          const rect = card.getBoundingClientRect();
+          card.style.right = 'auto';
+          card.style.left = `${rect.left}px`;
+          card.style.top = `${rect.top}px`;
+          initialLeft = rect.left;
+          initialTop = rect.top;
+
+          e.preventDefault();
+        }
+
+        function onDrag(e) {
+          if (!isDraggingSettings) return;
+          const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+          const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+          const dx = clientX - dragStartX;
+          const dy = clientY - dragStartY;
+
+          let newLeft = initialLeft + dx;
+          let newTop = initialTop + dy;
+
+          const maxLeft = window.innerWidth - card.offsetWidth - 10;
+          const maxTop = window.innerHeight - card.offsetHeight - 10;
+          newLeft = Math.max(10, Math.min(maxLeft, newLeft));
+          newTop = Math.max(10, Math.min(maxTop, newTop));
+
+          card.style.left = `${newLeft}px`;
+          card.style.top = `${newTop}px`;
+        }
+
+        function endDrag() {
+          isDraggingSettings = false;
+        }
+
+        header.addEventListener('mousedown', startDrag);
+        window.addEventListener('mousemove', onDrag);
+        window.addEventListener('mouseup', endDrag);
+
+        header.addEventListener('touchstart', startDrag, { passive: false });
+        window.addEventListener('touchmove', onDrag, { passive: false });
+        window.addEventListener('touchend', endDrag);
+      }
+
+      initDraggableSettings();
 
       // Функция плавного отскока для появления (Ease Out Back)
       function easeOutBack(x) {
