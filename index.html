@@ -236,27 +236,27 @@
         visibility: hidden;
       }
 
-      /* Liquid Glass Button - Кнопка "Начать" из жидкого стекла */
+      /* Liquid Glass Button - Кнопка "Начать" из чистого жидкого стекла */
       .start-game-btn {
         pointer-events: auto;
         position: relative;
         padding: 1.2rem 3.6rem;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(224, 242, 254, 0.45) 50%, rgba(56, 189, 248, 0.35) 100%);
-        backdrop-filter: blur(24px) saturate(190%);
-        -webkit-backdrop-filter: blur(24px) saturate(190%);
-        border: 1.5px solid rgba(255, 255, 255, 0.9);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(248, 250, 252, 0.65) 50%, rgba(241, 245, 249, 0.8) 100%);
+        backdrop-filter: blur(24px) saturate(160%);
+        -webkit-backdrop-filter: blur(24px) saturate(160%);
+        border: 1.5px solid rgba(255, 255, 255, 0.95);
         border-radius: 9999px;
-        color: #0369a1;
+        color: #0f172a;
         font-size: clamp(20px, 3.2vmin, 26px);
         font-weight: 900;
         letter-spacing: 0.1em;
         text-transform: uppercase;
         cursor: pointer;
         box-shadow: 
-          0 20px 45px rgba(2, 132, 199, 0.25),
-          0 4px 16px rgba(0, 0, 0, 0.05),
+          0 14px 35px rgba(0, 0, 0, 0.09),
+          0 4px 12px rgba(0, 0, 0, 0.04),
           inset 0 1.5px 2px rgba(255, 255, 255, 1),
-          inset 0 -2px 6px rgba(2, 132, 199, 0.15);
+          inset 0 -1.5px 3px rgba(0, 0, 0, 0.03);
         transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         display: flex;
         align-items: center;
@@ -271,19 +271,19 @@
         left: -120%;
         width: 80%;
         height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
         transform: skewX(-22deg);
         transition: left 0.7s ease;
       }
 
       .start-game-btn:hover {
         transform: scale(1.06) translateY(-2px);
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(224, 242, 254, 0.6) 50%, rgba(56, 189, 248, 0.45) 100%);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.85) 50%, rgba(248, 250, 252, 0.92) 100%);
         box-shadow: 
-          0 26px 55px rgba(2, 132, 199, 0.35),
-          0 8px 22px rgba(0, 0, 0, 0.08),
+          0 20px 45px rgba(0, 0, 0, 0.13),
+          0 6px 18px rgba(0, 0, 0, 0.06),
           inset 0 2px 3px rgba(255, 255, 255, 1),
-          inset 0 -3px 8px rgba(2, 132, 199, 0.2);
+          inset 0 -2px 4px rgba(0, 0, 0, 0.04);
         color: #0284c7;
       }
 
@@ -936,6 +936,13 @@
       };
 
       // Геометрии и материалы препятствий
+      const SPAWN_CONFIGS = [
+        { type: 'box', sizeScale: 1.0, color: 0x38bdf8, shape: 'box', points: 1 },
+        { type: 'sphere', sizeScale: 0.92, color: 0xa855f7, shape: 'sphere', points: 1 },
+        { type: 'tetra', sizeScale: 1.08, color: 0xf43f5e, shape: 'tetra', points: 2 },
+        { type: 'torus', sizeScale: 0.95, color: 0x10b981, shape: 'torus', points: 2 }
+      ];
+
       const SHAPE_GEOMETRIES = [
         new THREE.TetrahedronGeometry(OBJECT_SIZE * 0.6),
         new THREE.OctahedronGeometry(OBJECT_SIZE * 0.55),
@@ -990,49 +997,59 @@
         powerPreference: 'high-performance',
         logarithmicDepthBuffer: true 
       });
-      renderer.setPixelRatio(1);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.setSize(RENDER_WIDTH, RENDER_HEIGHT, false);
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.24;
       container.appendChild(renderer.domElement);
 
-      // Студийное освещение
-      const hemi = new THREE.HemisphereLight(0xffffff, 0xe2e8f0, 1.2);
+      // Студийная HDRI карта отражений (Studio Environment Map)
+      const pmremGenerator = new THREE.PMREMGenerator(renderer);
+      pmremGenerator.compileEquirectangularShader();
+      const studioEnv = new RoomEnvironment();
+      const studioEnvTexture = pmremGenerator.fromScene(studioEnv, 0.04).texture;
+      scene.environment = studioEnvTexture;
+
+      // Мягкий полусферический свет: делает темные предметы чистыми, читаемыми и контрастными
+      const hemi = new THREE.HemisphereLight(0xffffff, 0xcfdceb, 1.6);
       scene.add(hemi);
 
-      // Основной направленный свет с красивой студийной тенью
+      // Основной студийный направленный свет:
+      // Все тени падают СТРОГО ЛЕВЕЕ и НИЖЕ ВСЕХ объектов (параллельные лучи с правого верхнего угла)
       const dir = new THREE.DirectionalLight(0xffffff, 1.45);
-      dir.position.set(100, 120, 1100);
-      dir.target.position.set(0, -80, 0);
+      dir.position.set(320, 480, 1350);
+      dir.target.position.set(0, 0, 0);
       dir.castShadow = true;
       dir.shadow.mapSize.set(2048, 2048);
-      dir.shadow.radius = 12;
-      dir.shadow.camera.left = -halfW * 2.2;
-      dir.shadow.camera.right = halfW * 2.2;
-      dir.shadow.camera.top = halfH * 2.2;
-      dir.shadow.camera.bottom = -halfH * 2.2;
+      dir.shadow.radius = 9;
+      dir.shadow.camera.left = -halfW * 2.5;
+      dir.shadow.camera.right = halfW * 2.5;
+      dir.shadow.camera.top = halfH * 2.5;
+      dir.shadow.camera.bottom = -halfH * 2.5;
       dir.shadow.camera.near = 100;
-      dir.shadow.camera.far = 4000;
-      dir.shadow.bias = -0.0002;
+      dir.shadow.camera.far = 4500;
+      dir.shadow.bias = -0.00015;
       dir.shadow.camera.updateProjectionMatrix();
       scene.add(dir);
       scene.add(dir.target);
 
-      // Фронтальный заполняющий студийный свет
-      const fillLight = new THREE.DirectionalLight(0xffffff, 0.65);
-      fillLight.position.set(-halfW * 0.4, -halfH * 0.2, 1200);
-      scene.add(fillLight);
+      // Дополнительный заполняющий фронтальный свет слева (проявляет детали темных объектов)
+      const fillLightLeft = new THREE.DirectionalLight(0xffffff, 0.90);
+      fillLightLeft.position.set(-halfW * 0.8, 150, 1200);
+      scene.add(fillLightLeft);
 
-      // Нижний мягкий заполняющий свет (не перебивает тени)
-      const bottomLight = new THREE.DirectionalLight(0xffffff, 0.2);
-      bottomLight.position.set(0, -halfH * 0.6, 1200);
-      scene.add(bottomLight);
+      // Нижний заполняющий свет (подсвечивает низ моделей: кроссовок, шорты, сумку, смартфон)
+      const bottomFillLight = new THREE.DirectionalLight(0xffffff, 0.70);
+      bottomFillLight.position.set(0, -halfH * 0.5, 1200);
+      scene.add(bottomFillLight);
 
-      // Задний Plane (в 2 раза больше экрана, полностью прозрачный, принимает четкую мягкую тень)
-      const shadowPlaneGeom = new THREE.PlaneGeometry(halfW * 4.0, halfH * 4.0);
-      const shadowPlaneMat = new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.38 });
+      // Задний Plane (в 2.5 раза больше экрана, прозрачный, принимает мягкие параллельные тени)
+      const shadowPlaneGeom = new THREE.PlaneGeometry(halfW * 5.0, halfH * 5.0);
+      const shadowPlaneMat = new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.30 });
       const shadowPlane = new THREE.Mesh(shadowPlaneGeom, shadowPlaneMat);
-      shadowPlane.position.set(0, 0, -40);
+      shadowPlane.position.set(0, 0, -35);
       shadowPlane.receiveShadow = true;
       scene.add(shadowPlane);
 
@@ -1069,13 +1086,13 @@
           id: 'flexyway',
           name: '🌟 Логотип Flexy Way',
           type: '3d',
-          size: 420,
+          size: 299,
           x: 0,
-          y: 130,
+          y: 300,
           z: 140,
-          defaultSize: 420,
+          defaultSize: 299,
           defaultX: 0,
-          defaultY: 130,
+          defaultY: 300,
           defaultZ: 140,
           minSize: 50,
           maxSize: 800,
@@ -1085,13 +1102,13 @@
           id: 'startButton',
           name: '▶️ Кнопка «Начать» (Liquid Glass)',
           type: 'dom',
-          size: 1.0,
-          x: 0,
-          y: 70, // padding-top in px
+          size: 0.65,
+          x: -180,
+          y: -800, // padding-top in px
           z: 0,
-          defaultSize: 1.0,
-          defaultX: 0,
-          defaultY: 70,
+          defaultSize: 0.65,
+          defaultX: -180,
+          defaultY: -800,
           defaultZ: 0,
           minSize: 0.4,
           maxSize: 2.5,
@@ -1102,16 +1119,16 @@
           name: '🧃 Термос (bottle_2.glb)',
           type: '3d',
           file: 'good/bottle_2.glb',
-          size: 190,
-          x: 280,
-          y: 470,
+          size: 195,
+          x: -330,
+          y: -235,
           z: 140,
           delay: 0.12,
           rotSpeed: -0.35,
           phase: 1.2,
-          defaultSize: 190,
-          defaultX: 280,
-          defaultY: 470,
+          defaultSize: 195,
+          defaultX: -330,
+          defaultY: -235,
           defaultZ: 140,
           minSize: 40,
           maxSize: 600,
@@ -1122,16 +1139,16 @@
           name: '👑 Диадема (diadem.glb)',
           type: '3d',
           file: 'good/diadem.glb',
-          size: 190,
-          x: -320,
-          y: 190,
+          size: 157,
+          x: 15,
+          y: -655,
           z: 140,
           delay: 0.22,
           rotSpeed: 0.12,
           phase: 2.1,
-          defaultSize: 190,
-          defaultX: -320,
-          defaultY: 190,
+          defaultSize: 157,
+          defaultX: 15,
+          defaultY: -655,
           defaultZ: 140,
           minSize: 40,
           maxSize: 600,
@@ -1142,16 +1159,16 @@
           name: '💄 Помада (lipstick.glb)',
           type: '3d',
           file: 'good/lipstick.glb',
-          size: 135,
+          size: 125,
           x: 320,
-          y: 200,
+          y: -315,
           z: 140,
           delay: 0.32,
           rotSpeed: -0.4,
           phase: 2.8,
-          defaultSize: 135,
+          defaultSize: 125,
           defaultX: 320,
-          defaultY: 200,
+          defaultY: -315,
           defaultZ: 140,
           minSize: 40,
           maxSize: 600,
@@ -1162,17 +1179,17 @@
           name: '🕶 Очки (sun glasses.glb)',
           type: '3d',
           file: 'good/sun glasses.glb',
-          size: 175,
-          x: 320,
-          y: -50,
-          z: 140,
+          size: 176,
+          x: -115,
+          y: -305,
+          z: 70,
           delay: 0.42,
           rotSpeed: -0.12,
           phase: 4.2,
-          defaultSize: 175,
-          defaultX: 320,
-          defaultY: -50,
-          defaultZ: 140,
+          defaultSize: 176,
+          defaultX: -115,
+          defaultY: -305,
+          defaultZ: 70,
           minSize: 40,
           maxSize: 600,
           instance: null
@@ -1182,16 +1199,16 @@
           name: '📱 Смартфон (iphone.glb)',
           type: '3d',
           file: 'good/iphone.glb',
-          size: 180,
-          x: -330,
-          y: -60,
+          size: 163,
+          x: 170,
+          y: -235,
           z: 140,
           delay: 0.52,
           rotSpeed: 0.25,
           phase: 1.8,
-          defaultSize: 180,
-          defaultX: -330,
-          defaultY: -60,
+          defaultSize: 163,
+          defaultX: 170,
+          defaultY: -235,
           defaultZ: 140,
           minSize: 40,
           maxSize: 600,
@@ -1202,16 +1219,16 @@
           name: '👜 Сумка (bag.glb)',
           type: '3d',
           file: 'good/bag.glb',
-          size: 330,
+          size: 177,
           x: 0,
-          y: -300,
+          y: -450,
           z: 140,
           delay: 0.62,
           rotSpeed: 0.0,
           phase: 0.0,
-          defaultSize: 330,
+          defaultSize: 177,
           defaultX: 0,
-          defaultY: -300,
+          defaultY: -450,
           defaultZ: 140,
           minSize: 50,
           maxSize: 800,
@@ -1222,16 +1239,16 @@
           name: '🎽 Спорт костюм (sport_wear.glb)',
           type: '3d',
           file: 'good/sport_wear.glb',
-          size: 210,
-          x: -240,
-          y: -540,
+          size: 283,
+          x: -290,
+          y: -555,
           z: 140,
           delay: 0.72,
           rotSpeed: 0.25,
           phase: 5.0,
-          defaultSize: 210,
-          defaultX: -240,
-          defaultY: -540,
+          defaultSize: 283,
+          defaultX: -290,
+          defaultY: -555,
           defaultZ: 140,
           minSize: 40,
           maxSize: 600,
@@ -1242,14 +1259,14 @@
           name: '👠 Туфля (shoe.glb)',
           type: '3d',
           file: 'good/shoe.glb',
-          size: 190,
+          size: 179,
           x: 240,
           y: -540,
           z: 140,
           delay: 0.82,
           rotSpeed: 0.35,
           phase: 3.5,
-          defaultSize: 190,
+          defaultSize: 179,
           defaultX: 240,
           defaultY: -540,
           defaultZ: 140,
@@ -1390,6 +1407,9 @@
           }
         }
       }
+
+      // Применяем начальные параметры кнопки
+      applyObjectConfig('startButton');
 
       window.updateObjectProp = function(id, prop, value) {
         const numVal = parseFloat(value);
@@ -2013,7 +2033,7 @@
             obj.position.y = (obj.userData.baseY !== undefined ? obj.userData.baseY : 0) + Math.sin(startElapsedTime * 1.4 + (obj.userData.phase || 0)) * 8;
             obj.position.x = obj.userData.baseX !== undefined ? obj.userData.baseX : 0;
             obj.position.z = obj.userData.baseZ !== undefined ? obj.userData.baseZ : 140;
-            obj.rotation.y += dt * (obj.userData.rotSpeed || 0);
+            obj.rotation.y += dt * Math.abs(obj.userData.rotSpeed || 0);
             obj.rotation.x = Math.sin(startElapsedTime * 1.0 + (obj.userData.phase || 0)) * 0.05;
           });
         }
