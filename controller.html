@@ -4,10 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Пульт Управления — Flexy Way</title>
-  <!-- Paho MQTT: rock-solid standard WebSocket MQTT client -->
+  <!-- Paho MQTT -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-  <!-- PeerJS WebRTC -->
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     :root {
       --bg-dark: #070913;
@@ -39,7 +37,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: space-between;
-      padding: 1rem;
+      padding: 0.85rem;
       overflow-x: hidden;
       touch-action: manipulation;
     }
@@ -54,16 +52,16 @@
       backdrop-filter: blur(16px);
       border: 1px solid var(--card-border);
       border-radius: 18px;
-      padding: 0.75rem 1.1rem;
+      padding: 0.65rem 1rem;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 0.6rem;
+      gap: 0.5rem;
       font-weight: 800;
-      font-size: 1rem;
+      font-size: 0.95rem;
       background: linear-gradient(135deg, #38bdf8, #818cf8);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -114,13 +112,13 @@
       background: rgba(15, 23, 42, 0.7);
       border: 1px dashed rgba(56, 189, 248, 0.3);
       border-radius: 14px;
-      padding: 0.5rem 0.8rem;
+      padding: 0.45rem 0.8rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 0.5rem;
       font-size: 0.85rem;
-      margin-top: 0.4rem;
+      margin-top: 0.3rem;
     }
 
     .room-input {
@@ -129,9 +127,9 @@
       border-radius: 8px;
       color: #38bdf8;
       font-weight: 800;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       text-transform: uppercase;
-      padding: 0.25rem 0.5rem;
+      padding: 0.2rem 0.5rem;
       width: 90px;
       text-align: center;
       letter-spacing: 0.1em;
@@ -143,7 +141,7 @@
       border: none;
       border-radius: 8px;
       font-weight: 800;
-      padding: 0.4rem 0.75rem;
+      padding: 0.35rem 0.75rem;
       cursor: pointer;
       font-size: 0.8rem;
     }
@@ -154,13 +152,13 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.75rem;
-      margin: 0.4rem 0;
+      gap: 0.65rem;
+      margin: 0.3rem 0;
     }
 
     .radar-card {
-      width: 220px;
-      height: 220px;
+      width: 210px;
+      height: 210px;
       position: relative;
       border-radius: 50%;
       background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, rgba(15, 23, 42, 0.8) 70%);
@@ -180,8 +178,8 @@
       border: 1px dashed rgba(56, 189, 248, 0.25);
       pointer-events: none;
     }
-    .radar-ring.r1 { width: 70px; height: 70px; }
-    .radar-ring.r2 { width: 140px; height: 140px; }
+    .radar-ring.r1 { width: 68px; height: 68px; }
+    .radar-ring.r2 { width: 136px; height: 136px; }
     
     .radar-crosshair-x {
       position: absolute;
@@ -200,8 +198,8 @@
 
     .laser-reticle {
       position: absolute;
-      width: 34px;
-      height: 34px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       background: radial-gradient(circle, #38bdf8 0%, rgba(56, 189, 248, 0.2) 70%);
       border: 2px solid #ffffff;
@@ -227,7 +225,7 @@
       display: flex;
       justify-content: space-around;
       width: 100%;
-      gap: 0.5rem;
+      gap: 0.4rem;
     }
 
     .stat-pill {
@@ -235,9 +233,9 @@
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 12px;
-      padding: 0.5rem 0.3rem;
+      padding: 0.45rem 0.25rem;
       text-align: center;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--text-muted);
       font-weight: 600;
     }
@@ -245,20 +243,20 @@
     .stat-pill span {
       display: block;
       font-weight: 800;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       color: #38bdf8;
-      margin-top: 0.2rem;
+      margin-top: 0.15rem;
     }
 
     .start-btn {
       width: 100%;
       max-width: 440px;
-      padding: 1.15rem 1rem;
+      padding: 1.1rem 1rem;
       background: linear-gradient(135deg, #10b981 0%, #059669 100%);
       border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 20px;
+      border-radius: 18px;
       color: #ffffff;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 900;
       letter-spacing: 0.04em;
       text-transform: uppercase;
@@ -286,18 +284,18 @@
       background: var(--card-bg);
       backdrop-filter: blur(12px);
       border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 0.75rem 1rem;
+      border-radius: 14px;
+      padding: 0.65rem 0.9rem;
       display: flex;
       flex-direction: column;
-      gap: 0.6rem;
+      gap: 0.5rem;
     }
 
     .control-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 600;
       color: var(--text-muted);
     }
@@ -324,12 +322,12 @@
     }
 
     .toggle-btn {
-      padding: 0.35rem 0.75rem;
+      padding: 0.3rem 0.65rem;
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.15);
       color: var(--text-muted);
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 700;
       cursor: pointer;
       transition: all 0.2s;
@@ -341,12 +339,23 @@
       color: #38bdf8;
     }
 
+    .sensor-info-bar {
+      font-size: 0.72rem;
+      color: #38bdf8;
+      text-align: center;
+      background: rgba(14, 165, 233, 0.1);
+      border-radius: 8px;
+      padding: 0.3rem 0.6rem;
+      width: 100%;
+      max-width: 440px;
+    }
+
     .hint-footer {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--text-muted);
       text-align: center;
-      margin-top: 0.3rem;
-      line-height: 1.3;
+      margin-top: 0.2rem;
+      line-height: 1.25;
     }
   </style>
 </head>
@@ -355,12 +364,12 @@
   <!-- Шапка -->
   <header class="header">
     <div class="brand">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
         <polyline points="2 17 12 22 22 17"></polyline>
         <polyline points="2 12 12 17 22 12"></polyline>
       </svg>
-      <span>FLEXY AIR REMOTE</span>
+      <span>FLEXY REMOTE</span>
     </div>
     <div class="status-badge" id="statusBadge">
       <span class="status-dot"></span>
@@ -373,6 +382,10 @@
     <span>PIN комнаты:</span>
     <input type="text" class="room-input" id="roomInput" maxlength="8" placeholder="PIN">
     <button class="room-btn" onclick="applyCustomRoom()">Подключить</button>
+  </div>
+
+  <div class="sensor-info-bar" id="sensorInfo">
+    Датчики: Ожидание активации...
   </div>
 
   <!-- Интерактивный радар + Тачпад -->
@@ -469,17 +482,20 @@
     const sensValue = document.getElementById('sensValue');
     const invXBtn = document.getElementById('invXBtn');
     const invYBtn = document.getElementById('invYBtn');
+    const sensorInfo = document.getElementById('sensorInfo');
 
     let sensitivity = 1.4;
     let invertX = false;
     let invertY = false;
 
-    // Rock-solid accelerometer IMU calibration (Gamma = Roll, Beta = Pitch)
+    // Rock-solid sensor state
     let baseGamma = null;
     let baseBeta = null;
+    let baseAccX = null;
+    let baseAccY = null;
     let isCalibrated = false;
-    let sensorsActive = false;
     let packetsSent = 0;
+    let activeSensorType = 'none';
 
     let pahoClient = null;
     let isConnected = false;
@@ -595,12 +611,23 @@
       }
     }
 
-    // --- Rock-solid Gyro IMU: Gamma (Roll left/right), Beta (Pitch up/down) ---
+    function updateRadarUI(normX, normY, dispX, dispY) {
+      const radarRadius = 82;
+      laserReticle.style.transform = `translate(${normX * radarRadius}px, ${-normY * radarRadius}px)`;
+
+      statX.textContent = `${Math.round(dispX)}°`;
+      statY.textContent = `${Math.round(dispY)}°`;
+    }
+
+    // --- SENSOR 1: DeviceOrientation (Gamma = Roll, Beta = Pitch) ---
     function handleOrientation(e) {
-      let gamma = e.gamma; // Left/Right tilt [-90..90]
-      let beta = e.beta;   // Front/Back tilt [-180..180]
+      let gamma = e.gamma; // [-90..90]
+      let beta = e.beta;   // [-180..180]
 
       if (gamma === null || beta === null) return;
+
+      activeSensorType = 'Гироскоп IMU';
+      sensorInfo.textContent = `🟢 Датчик: ${activeSensorType} (Активен)`;
 
       if (!isCalibrated || baseGamma === null) {
         baseGamma = gamma;
@@ -608,14 +635,13 @@
         isCalibrated = true;
       }
 
-      // Calculate deviation from calibrated center
       let deltaX = gamma - baseGamma;
-      let deltaY = baseBeta - beta; // Tilting phone up (beta decreases) makes deltaY positive (up)
+      let deltaY = baseBeta - beta;
 
-      const MAX_TILT_ANGLE = 25.0; // 25 degrees full deflection
+      const MAX_TILT = 25.0;
 
-      let normX = (deltaX / MAX_TILT_ANGLE) * sensitivity;
-      let normY = (deltaY / MAX_TILT_ANGLE) * sensitivity;
+      let normX = (deltaX / MAX_TILT) * sensitivity;
+      let normY = (deltaY / MAX_TILT) * sensitivity;
 
       if (invertX) normX = -normX;
       if (invertY) normY = -normY;
@@ -623,16 +649,48 @@
       normX = Math.max(-1.0, Math.min(1.0, normX));
       normY = Math.max(-1.0, Math.min(1.0, normY));
 
-      const radarRadius = 85;
-      laserReticle.style.transform = `translate(${normX * radarRadius}px, ${-normY * radarRadius}px)`;
-
-      statX.textContent = `${Math.round(deltaX)}°`;
-      statY.textContent = `${Math.round(deltaY)}°`;
-
+      updateRadarUI(normX, normY, deltaX, deltaY);
       sendMotion(normX, normY);
     }
 
-    // --- Touchpad Fallback: Dragging on radar ---
+    // --- SENSOR 2: DeviceMotion Accelerometer (Yandex Browser 100% Support) ---
+    function handleMotion(e) {
+      if (activeSensorType === 'Гироскоп IMU') return; // Prefer orientation if working
+
+      const acc = e.accelerationIncludingGravity || e.acceleration;
+      if (!acc || acc.x === null || acc.y === null) return;
+
+      activeSensorType = 'Акселерометр';
+      sensorInfo.textContent = `🟢 Датчик: ${activeSensorType} (Активен)`;
+
+      let gx = acc.x;
+      let gy = acc.y;
+
+      if (!isCalibrated || baseAccX === null) {
+        baseAccX = gx;
+        baseAccY = gy;
+        isCalibrated = true;
+      }
+
+      let deltaX = -(gx - baseAccX);
+      let deltaY = gy - baseAccY;
+
+      const MAX_ACCEL = 4.2;
+
+      let normX = (deltaX / MAX_ACCEL) * sensitivity;
+      let normY = (deltaY / MAX_ACCEL) * sensitivity;
+
+      if (invertX) normX = -normX;
+      if (invertY) normY = -normY;
+
+      normX = Math.max(-1.0, Math.min(1.0, normX));
+      normY = Math.max(-1.0, Math.min(1.0, normY));
+
+      updateRadarUI(normX, normY, deltaX * 6, deltaY * 6);
+      sendMotion(normX, normY);
+    }
+
+    // --- SENSOR 3: Touchpad Dragging on radar ---
     function handleTouchRadar(clientX, clientY) {
       const rect = radar.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
@@ -648,12 +706,7 @@
       if (invertX) dx = -dx;
       if (invertY) dy = -dy;
 
-      const radarRadius = 85;
-      laserReticle.style.transform = `translate(${dx * radarRadius}px, ${-dy * radarRadius}px)`;
-
-      statX.textContent = `${Math.round(dx * 100)}%`;
-      statY.textContent = `${Math.round(dy * 100)}%`;
-
+      updateRadarUI(dx, dy, dx * 100, dy * 100);
       sendMotion(dx, dy);
     }
 
@@ -662,12 +715,14 @@
       if (e.buttons > 0) handleTouchRadar(e.clientX, e.clientY);
     });
 
-    // --- Калибровка центра ---
+    // --- Калибровка и активация датчиков ---
     async function activateAndCalibrate() {
       vibratePhone(50);
       isCalibrated = false;
       baseGamma = null;
       baseBeta = null;
+      baseAccX = null;
+      baseAccY = null;
 
       startBtn.classList.add('calibrating');
       btnLabel.textContent = '🎯 ЦЕНТР ЗАДАН!';
@@ -676,25 +731,21 @@
         startBtn.classList.remove('calibrating');
       }, 700);
 
-      // Держим экран включенным
+      // Запрос Screen WakeLock
       if ('wakeLock' in navigator) {
         try { await navigator.wakeLock.request('screen'); } catch (err) {}
       }
 
-      // Запрос прав на iOS
-      if (!sensorsActive) {
-        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-          try {
-            const state = await DeviceOrientationEvent.requestPermission();
-            if (state === 'granted') {
-              window.addEventListener('deviceorientation', handleOrientation, true);
-              sensorsActive = true;
-            }
-          } catch (e) {}
-        } else {
-          window.addEventListener('deviceorientation', handleOrientation, true);
-          sensorsActive = true;
-        }
+      // iOS permission
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+          const state = await DeviceOrientationEvent.requestPermission();
+          if (state === 'granted') {
+            attachSensorListeners();
+          }
+        } catch (e) {}
+      } else {
+        attachSensorListeners();
       }
 
       if (pahoClient && pahoClient.isConnected()) {
@@ -702,6 +753,12 @@
         msg.destinationName = `flexy/events/${roomId}`;
         pahoClient.send(msg);
       }
+    }
+
+    function attachSensorListeners() {
+      window.addEventListener('deviceorientation', handleOrientation, true);
+      window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+      window.addEventListener('devicemotion', handleMotion, true);
     }
 
     function updateSensitivity(val) {
@@ -721,9 +778,7 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       initPahoMQTT();
-
-      window.addEventListener('deviceorientation', handleOrientation, true);
-      sensorsActive = true;
+      attachSensorListeners();
     });
   </script>
 </body>
