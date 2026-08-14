@@ -4,10 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Пульт Управления — Flexy Way</title>
-  <!-- MQTT for ultra-fast zero-NAT global cloud signaling -->
+  <!-- MQTT for cloud messaging -->
   <script src="https://unpkg.com/mqtt@5.5.2/dist/mqtt.min.js"></script>
-  <!-- PeerJS for WebRTC P2P -->
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     :root {
       --bg-dark: #070913;
@@ -39,7 +37,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: space-between;
-      padding: 1.25rem 1rem;
+      padding: 1rem;
       overflow-x: hidden;
       touch-action: manipulation;
     }
@@ -53,7 +51,6 @@
       justify-content: space-between;
       background: var(--card-bg);
       backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
       border: 1px solid var(--card-border);
       border-radius: 18px;
       padding: 0.75rem 1.1rem;
@@ -65,8 +62,7 @@
       align-items: center;
       gap: 0.6rem;
       font-weight: 800;
-      font-size: 1.05rem;
-      letter-spacing: -0.01em;
+      font-size: 1rem;
       background: linear-gradient(135deg, #38bdf8, #818cf8);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -111,20 +107,20 @@
       50% { transform: scale(1.3); opacity: 0.6; }
     }
 
-    /* Ввод PIN комнаты при ручном открытии */
+    /* Ввод PIN комнаты */
     .room-bar {
       width: 100%;
       max-width: 440px;
       background: rgba(15, 23, 42, 0.7);
       border: 1px dashed rgba(56, 189, 248, 0.3);
       border-radius: 14px;
-      padding: 0.6rem 0.9rem;
+      padding: 0.5rem 0.8rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 0.6rem;
+      gap: 0.5rem;
       font-size: 0.85rem;
-      margin-top: 0.5rem;
+      margin-top: 0.4rem;
     }
 
     .room-input {
@@ -133,10 +129,10 @@
       border-radius: 8px;
       color: #38bdf8;
       font-weight: 800;
-      font-size: 1rem;
+      font-size: 1.1rem;
       text-transform: uppercase;
-      padding: 0.3rem 0.6rem;
-      width: 100px;
+      padding: 0.25rem 0.5rem;
+      width: 90px;
       text-align: center;
       letter-spacing: 0.1em;
     }
@@ -147,20 +143,20 @@
       border: none;
       border-radius: 8px;
       font-weight: 800;
-      padding: 0.4rem 0.8rem;
+      padding: 0.4rem 0.75rem;
       cursor: pointer;
       font-size: 0.8rem;
     }
 
-    /* Радар / 3D Гироскоп */
+    /* Радар / 3D Гироскоп + Тачпад */
     .gyro-container {
       width: 100%;
       max-width: 440px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 1rem;
-      margin: 0.6rem 0;
+      gap: 0.75rem;
+      margin: 0.4rem 0;
     }
 
     .radar-card {
@@ -168,19 +164,22 @@
       height: 220px;
       position: relative;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(14, 165, 233, 0.12) 0%, rgba(15, 23, 42, 0.7) 70%);
-      border: 2px solid rgba(56, 189, 248, 0.35);
-      box-shadow: 0 0 40px rgba(14, 165, 233, 0.2), inset 0 0 30px rgba(14, 165, 233, 0.1);
+      background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, rgba(15, 23, 42, 0.8) 70%);
+      border: 2px solid rgba(56, 189, 248, 0.4);
+      box-shadow: 0 0 40px rgba(14, 165, 233, 0.25), inset 0 0 30px rgba(14, 165, 233, 0.15);
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
+      touch-action: none;
+      cursor: crosshair;
     }
 
     .radar-ring {
       position: absolute;
       border-radius: 50%;
       border: 1px dashed rgba(56, 189, 248, 0.25);
+      pointer-events: none;
     }
     .radar-ring.r1 { width: 70px; height: 70px; }
     .radar-ring.r2 { width: 140px; height: 140px; }
@@ -190,24 +189,25 @@
       width: 100%;
       height: 1px;
       background: rgba(56, 189, 248, 0.2);
+      pointer-events: none;
     }
     .radar-crosshair-y {
       position: absolute;
       height: 100%;
       width: 1px;
       background: rgba(56, 189, 248, 0.2);
+      pointer-events: none;
     }
 
     .laser-reticle {
       position: absolute;
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       background: radial-gradient(circle, #38bdf8 0%, rgba(56, 189, 248, 0.2) 70%);
       border: 2px solid #ffffff;
       box-shadow: 0 0 18px #38bdf8, 0 0 36px #0ea5e9;
       transform: translate(0px, 0px);
-      transition: transform 0.03s linear;
       pointer-events: none;
     }
 
@@ -250,7 +250,7 @@
       margin-top: 0.2rem;
     }
 
-    /* Главная кнопка старта */
+    /* Главная кнопка старта / активации */
     .start-btn {
       width: 100%;
       max-width: 440px;
@@ -287,13 +287,12 @@
       max-width: 440px;
       background: var(--card-bg);
       backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
       border: 1px solid var(--card-border);
       border-radius: 16px;
-      padding: 0.85rem 1rem;
+      padding: 0.75rem 1rem;
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      gap: 0.6rem;
     }
 
     .control-row {
@@ -327,7 +326,7 @@
     }
 
     .toggle-btn {
-      padding: 0.4rem 0.75rem;
+      padding: 0.35rem 0.75rem;
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.15);
@@ -348,7 +347,7 @@
       font-size: 0.75rem;
       color: var(--text-muted);
       text-align: center;
-      margin-top: 0.4rem;
+      margin-top: 0.3rem;
       line-height: 1.3;
     }
   </style>
@@ -371,14 +370,14 @@
     </div>
   </header>
 
-  <!-- Панель кода комнаты -->
+  <!-- Панель PIN комнаты -->
   <div class="room-bar">
-    <span>Код комнаты:</span>
+    <span>PIN комнаты:</span>
     <input type="text" class="room-input" id="roomInput" maxlength="8" placeholder="PIN">
-    <button class="room-btn" onclick="applyCustomRoom()">Сменить</button>
+    <button class="room-btn" onclick="applyCustomRoom()">Подключить</button>
   </div>
 
-  <!-- Интерактивный радар -->
+  <!-- Интерактивный радар + Тачпад -->
   <div class="gyro-container">
     <div class="radar-card" id="radar">
       <div class="radar-crosshair-x"></div>
@@ -388,24 +387,24 @@
       <div class="laser-reticle" id="laserReticle"></div>
     </div>
 
-    <!-- Показания датчиков -->
+    <!-- Показания -->
     <div class="gyro-stats">
       <div class="stat-pill">
-        X (Поворот)
+        X Поворот
         <span id="statX">0°</span>
       </div>
       <div class="stat-pill">
-        Y (Наклон)
+        Y Наклон
         <span id="statY">0°</span>
       </div>
       <div class="stat-pill">
-        Канал
-        <span id="statPing">MQTT ⚡</span>
+        Передано
+        <span id="statPackets">0</span>
       </div>
     </div>
   </div>
 
-  <!-- Главная кнопка старта / калибровки -->
+  <!-- Главная кнопка старта / активации гироскопа -->
   <button class="start-btn" id="startBtn" onclick="activateAndCalibrate()">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="10"></circle>
@@ -436,15 +435,15 @@
   </div>
 
   <div class="hint-footer">
-    Направьте телефон на экран как указку.<br>
-    Нажимайте кнопку для центрирования.
+    Поворачивайте телефон в воздухе как указку.<br>
+    Либо ведите пальцем по кругу радара.
   </div>
 
   <script>
-    // --- Извлечение Room ID ---
+    // --- Room ID ---
     const urlParams = new URLSearchParams(window.location.search);
     const hashRoom = window.location.hash ? window.location.hash.replace('#room=', '').replace('#', '') : null;
-    let roomId = (urlParams.get('room') || hashRoom || 'flexy1').toUpperCase();
+    let roomId = (urlParams.get('room') || hashRoom || 'FLEXY1').toUpperCase();
 
     const roomInput = document.getElementById('roomInput');
     roomInput.value = roomId;
@@ -454,19 +453,20 @@
       if (val && val !== roomId) {
         roomId = val;
         window.history.replaceState({}, '', `?room=${roomId}`);
-        connectChannels();
+        initMQTT();
       }
     }
 
-    // --- DOM Элементы ---
+    // --- DOM ---
     const statusBadge = document.getElementById('statusBadge');
     const statusText = document.getElementById('statusText');
     const startBtn = document.getElementById('startBtn');
     const btnLabel = document.getElementById('btnLabel');
     const laserReticle = document.getElementById('laserReticle');
+    const radar = document.getElementById('radar');
     const statX = document.getElementById('statX');
     const statY = document.getElementById('statY');
-    const statPing = document.getElementById('statPing');
+    const statPackets = document.getElementById('statPackets');
     const sensSlider = document.getElementById('sensSlider');
     const sensValue = document.getElementById('sensValue');
     const invXBtn = document.getElementById('invXBtn');
@@ -481,10 +481,9 @@
     let baseGamma = null;
     let isCalibrated = false;
     let sensorsActive = false;
+    let packetsSent = 0;
 
     let mqttClient = null;
-    let peer = null;
-    let peerConn = null;
     let isConnected = false;
 
     function vibratePhone(pattern = 35) {
@@ -498,19 +497,18 @@
       if (connected) {
         statusBadge.classList.add('connected');
         statusText.textContent = 'Подключено ⚡';
-        vibratePhone(50);
       } else {
         statusBadge.classList.remove('connected');
         statusText.textContent = 'Поиск экрана...';
       }
     }
 
-    // --- 1. Высокоскоростной MQTT WSS канал (100% пробивает любые мобильные сети) ---
+    // --- MQTT WSS Connection ---
     function initMQTT() {
       try {
         if (typeof mqtt === 'undefined') return;
         if (mqttClient) {
-          try { mqttClient.end(); } catch (e) {}
+          try { mqttClient.end(true); } catch (e) {}
         }
 
         const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
@@ -519,14 +517,18 @@
         mqttClient = mqtt.connect(brokerUrl, {
           clientId,
           clean: true,
-          connectTimeout: 5000,
-          reconnectPeriod: 2500
+          connectTimeout: 4000,
+          reconnectPeriod: 2000
         });
 
         mqttClient.on('connect', () => {
           setConnectedUI(true);
-          statPing.textContent = 'MQTT ⚡';
+          vibratePhone(40);
+          
+          // Слушаем события от экрана (вибрации, гамовер)
           mqttClient.subscribe(`flexy/events/${roomId}`);
+
+          // Шлем сигнал экрану что пульт подключился
           mqttClient.publish(`flexy/events/${roomId}`, JSON.stringify({ type: 'controller_joined' }));
         });
 
@@ -541,77 +543,43 @@
         });
 
         mqttClient.on('close', () => {
-          if (!peerConn || !peerConn.open) setConnectedUI(false);
+          setConnectedUI(false);
+        });
+
+        mqttClient.on('error', () => {
+          setConnectedUI(false);
         });
       } catch (e) {
         console.warn('MQTT error:', e);
       }
     }
 
-    // --- 2. PeerJS WebRTC P2P резерв ---
-    function initPeerJS() {
-      if (typeof Peer === 'undefined') return;
-      try {
-        if (peer) {
-          try { peer.destroy(); } catch (e) {}
-        }
-
-        peer = new Peer({
-          config: {
-            iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-          }
-        });
-
-        peer.on('open', () => {
-          const hostPeerId = `flexy-host-${roomId}`;
-          peerConn = peer.connect(hostPeerId, { reliable: false });
-
-          peerConn.on('open', () => {
-            setConnectedUI(true);
-            statPing.textContent = 'P2P ⚡';
-          });
-
-          peerConn.on('data', (data) => {
-            if (data.type === 'haptic') {
-              if (data.pattern === 'coin') vibratePhone([30, 40, 50]);
-              else if (data.pattern === 'gameover') vibratePhone([100, 50, 150]);
-            }
-          });
-        });
-      } catch (err) {}
-    }
-
-    function connectChannels() {
-      initMQTT();
-      initPeerJS();
-    }
+    // Периодический пинг экрана
+    setInterval(() => {
+      if (mqttClient && mqttClient.connected) {
+        mqttClient.publish(`flexy/events/${roomId}`, JSON.stringify({ type: 'ping' }));
+      }
+    }, 2000);
 
     // --- Отправка координат ---
     let lastSendTime = 0;
-    function sendMotion(normX, normY, rawAlpha, rawBeta) {
+    function sendMotion(normX, normY, rawAlpha = 0, rawBeta = 0) {
       const now = performance.now();
-      if (now - lastSendTime < 16) return; // ~60 FPS
+      if (now - lastSendTime < 16) return; // 60 FPS
       lastSendTime = now;
 
-      const payload = {
-        type: 'motion',
-        x: normX,
-        y: normY,
-        rawAlpha,
-        rawBeta
-      };
+      packetsSent++;
+      statPackets.textContent = packetsSent;
 
-      // Передаем через MQTT
       if (mqttClient && mqttClient.connected) {
-        mqttClient.publish(`flexy/motion/${roomId}`, JSON.stringify(payload));
-      }
-
-      // Дублируем через WebRTC P2P если открыт
-      if (peerConn && peerConn.open) {
-        peerConn.send(payload);
+        const payload = JSON.stringify({
+          type: 'motion',
+          x: normX,
+          y: normY,
+          rawAlpha,
+          rawBeta
+        });
+        mqttClient.publish(`flexy/motion/${roomId}`, payload);
       }
     }
 
@@ -622,6 +590,7 @@
       return diff;
     }
 
+    // --- Обработка Гироскопа ---
     function handleOrientation(e) {
       let alpha = e.alpha;
       let beta = e.beta;
@@ -659,6 +628,37 @@
       sendMotion(normX, normY, alpha, beta);
     }
 
+    // --- Дополнительное сенсорное управление пальцем по радару ---
+    function handleTouchRadar(clientX, clientY) {
+      const rect = radar.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const maxR = rect.width / 2;
+
+      let dx = (clientX - centerX) / maxR;
+      let dy = -(clientY - centerY) / maxR;
+
+      dx = Math.max(-1.0, Math.min(1.0, dx * sensitivity));
+      dy = Math.max(-1.0, Math.min(1.0, dy * sensitivity));
+
+      if (invertX) dx = -dx;
+      if (invertY) dy = -dy;
+
+      const radarRadius = 85;
+      laserReticle.style.transform = `translate(${dx * radarRadius}px, ${-dy * radarRadius}px)`;
+
+      statX.textContent = `${Math.round(dx * 100)}%`;
+      statY.textContent = `${Math.round(dy * 100)}%`;
+
+      sendMotion(dx, dy);
+    }
+
+    radar.addEventListener('pointerdown', (e) => handleTouchRadar(e.clientX, e.clientY));
+    radar.addEventListener('pointermove', (e) => {
+      if (e.buttons > 0) handleTouchRadar(e.clientX, e.clientY);
+    });
+
+    // --- Кнопка СТАРТ / КАЛИБРОВКА ---
     async function activateAndCalibrate() {
       vibratePhone(50);
       isCalibrated = false;
@@ -670,32 +670,35 @@
       btnLabel.textContent = '🎯 ЦЕНТР ЗАДАН!';
       setTimeout(() => {
         btnLabel.textContent = '🎯 КАЛИБРОВАТЬ ЦЕНТР';
+        startBtn.classList.remove('calibrating');
       }, 800);
 
+      // Держим экран включенным
       if ('wakeLock' in navigator) {
         try { await navigator.wakeLock.request('screen'); } catch (err) {}
       }
 
+      // Активируем датчики
       if (!sensorsActive) {
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
           try {
             const state = await DeviceOrientationEvent.requestPermission();
             if (state === 'granted') {
               window.addEventListener('deviceorientation', handleOrientation, true);
+              window.addEventListener('deviceorientationabsolute', handleOrientation, true);
               sensorsActive = true;
             }
           } catch (e) {}
         } else {
           window.addEventListener('deviceorientation', handleOrientation, true);
+          window.addEventListener('deviceorientationabsolute', handleOrientation, true);
           sensorsActive = true;
         }
       }
 
       if (mqttClient && mqttClient.connected) {
         mqttClient.publish(`flexy/events/${roomId}`, JSON.stringify({ type: 'recalibrate' }));
-      }
-      if (peerConn && peerConn.open) {
-        peerConn.send({ type: 'recalibrate' });
+        mqttClient.publish(`flexy/events/${roomId}`, JSON.stringify({ type: 'controller_joined' }));
       }
     }
 
@@ -715,12 +718,11 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      connectChannels();
+      initMQTT();
 
-      if (typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') {
-        window.addEventListener('deviceorientation', handleOrientation, true);
-        sensorsActive = true;
-      }
+      window.addEventListener('deviceorientation', handleOrientation, true);
+      window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+      sensorsActive = true;
     });
   </script>
 </body>

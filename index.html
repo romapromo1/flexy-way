@@ -943,8 +943,9 @@
             mqttClient.on('message', (topic, message) => {
               try {
                 const data = JSON.parse(message.toString());
+                setPhoneConnected(true);
+
                 if (data.type === 'motion') {
-                  setPhoneConnected(true);
                   const wx = data.x * (halfW * 0.95);
                   const wy = data.y * PLAYER_MOVE_Y;
                   setPlayerWorld(wx, wy);
@@ -952,8 +953,6 @@
                 } else if (data.type === 'recalibrate') {
                   targetWorldX = 0;
                   targetWorldY = 0;
-                } else if (data.type === 'controller_joined') {
-                  setPhoneConnected(true);
                 }
               } catch (e) {}
             });
