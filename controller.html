@@ -438,7 +438,7 @@
         <line x1="12" y1="6" x2="12" y2="2"></line>
         <line x1="12" y1="22" x2="12" y2="18"></line>
       </svg>
-      🎯 Указка (Z-Поворот)
+      🎯 Z-Поворот (Экраном вверх)
     </button>
     <button class="mode-switch-btn" id="modeManualBtn" onclick="setControlMode('manual')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -451,7 +451,7 @@
   </div>
 
   <div class="sensor-info-bar" id="sensorInfo">
-    🟢 Режим: Держите экраном вверх (Поворот Z влево/вправо + Наклон)
+    🟢 Режим: Поворот Z (руль/стрелка) + Наклон
   </div>
 
   <!-- Интерактивный радар + Тачпад -->
@@ -513,7 +513,7 @@
 
   <div class="hint-footer" id="hintFooter">
     Держите телефон <b>экраном вверх</b>.<br>
-    Поворачивайте нос телефона влево-вправо как стрелку (вокруг оси Z).
+    Поворачивайте телефон влево-вправо вокруг оси экрана Z (как руль).
   </div>
 
   <script>
@@ -557,11 +557,10 @@
     let controlMode = 'gyro'; // 'gyro' | 'manual'
     let sensitivity = 1.5;
     let invertX = false;
-    let invertY = true; // По умолчанию инвертирован Y
+    let invertY = true; // Инвертирован по дефолту
 
-    // Поворот вокруг оси Z (нормаль к экрану / Alpha) и наклон (Beta)
-    let baseAlpha = null;
-    let baseBeta = null;
+    // 3D Matrix relative orientation
+    let baseMatrix = null;
     let isCalibrated = false;
     let packetsSent = 0;
 
@@ -595,8 +594,8 @@
         modeManualBtn.classList.remove('active');
         radar.classList.remove('manual-mode');
         btnLabel.textContent = '🎯 КАЛИБРОВАТЬ ЦЕНТР';
-        sensorInfo.textContent = '🟢 Режим: Держите экраном вверх (Поворот Z влево/вправо + Наклон)';
-        hintFooter.innerHTML = 'Держите телефон <b>экраном вверх</b>.<br>Поворачивайте нос телефона влево-вправо как стрелку (вокруг оси Z).';
+        sensorInfo.textContent = '🟢 Режим: Поворот Z (руль/стрелка) + Наклон';
+        hintFooter.innerHTML = 'Держите телефон <b>экраном вверх</b>.<br>Поворачивайте телефон влево-вправо вокруг оси экрана Z (как руль).';
         activateAndCalibrate();
       } else {
         modeManualBtn.classList.add('active');
@@ -709,39 +708,68 @@
       statY.textContent = `${Math.round(dispY)}°`;
     }
 
-    // Разница углов по модулю 360° (без скачков при переходе 359° -> 0°)
-    function angleDifference(target, base) {
-      let diff = (target - base) % 360;
-      if (diff > 180) diff -= 360;
-      if (diff < -180) diff += 360;
-      return diff;
+    // --- 3D Rotation Matrix Construction (Euler Z-X'-Y'') ---
+    function getRotationMatrix(alpha, beta, gamma) {
+      const deg2rad = Math.PI / 180;
+      const _z = (alpha || 0) * deg2rad;
+      const _x = (beta || 0) * deg2rad;
+      const _y = (gamma || 0) * deg2rad;
+
+      const cX = Math.cos(_x);
+      const cY = Math.cos(_y);
+      const cZ = Math.cos(_z);
+      const sX = Math.sin(_x);
+      const sY = Math.sin(_y);
+      const sZ = Math.sin(_z);
+
+      return [
+        [ cZ * cY - sZ * sX * sY,  -cX * sZ,   cZ * sY + sZ * sX * cY ],
+        [ sZ * cY + cZ * sX * sY,   cX * cZ,   sZ * sY - cZ * sX * cY ],
+        [ -cX * sY,                 sX,        cX * cY ]
+      ];
     }
 
-    // --- ПОВОРОТ ВОКРУГ ОСИ Z (Перпендикулярной экрану) ---
+    // R = A^T * B (Relative rotation from base pose A to current pose B)
+    function matrixMultiplyTransposeA(A, B) {
+      const R = [[0,0,0],[0,0,0],[0,0,0]];
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          R[i][j] = A[0][i] * B[0][j] + A[1][i] * B[1][j] + A[2][i] * B[2][j];
+        }
+      }
+      return R;
+    }
+
+    // --- ЕДИНСТВЕННЫЙ ОБРАБОТЧИК ОРИЕНТАЦИИ (ЧИСТЫЙ 3D Z-ПОВОРОТ) ---
     function handleOrientation(e) {
       if (controlMode !== 'gyro') return;
 
-      let alpha = e.alpha; // Поворот вокруг оси Z (нормали к экрану) [0..360°]
-      let beta = e.beta;   // Наклон вперед/назад [-180..180°]
+      let alpha = e.alpha;
+      let beta = e.beta;
+      let gamma = e.gamma;
 
       if (alpha === null || beta === null) return;
 
-      if (!isCalibrated || baseAlpha === null || baseBeta === null) {
-        baseAlpha = alpha;
-        baseBeta = beta;
+      const curMatrix = getRotationMatrix(alpha, beta, gamma);
+
+      if (!isCalibrated || !baseMatrix) {
+        baseMatrix = curMatrix;
         isCalibrated = true;
       }
 
-      // Когда телефон лежит/держится экраном вверх:
-      // Поворот вокруг оси Z (как стрелка компаса / руль):
-      // Поворот вправо (по часовой) уменьшает alpha -> -diff дает > 0 (движение вправо)
-      // Поворот влево (против часовой) увеличивает alpha -> -diff дает < 0 (движение влево)
-      let deltaZ = -angleDifference(alpha, baseAlpha);
+      // Относительная матрица вращения от момента калибровки:
+      const R = matrixMultiplyTransposeA(baseMatrix, curMatrix);
 
-      // Наклон вперед/назад:
-      let deltaY = (baseBeta - beta);
+      // Истинный угол поворота вокруг оси Z смартфона (нормали к стеклу экрана):
+      // Вращение телефона по часовой (вправо) дает положительный угол deltaZ,
+      // вращение против часовой (влево) дает отрицательный угол deltaZ.
+      // Боковые наклоны (крен) на deltaZ НЕ ВЛИЯЮТ!
+      let deltaZ = Math.atan2(R[1][0], R[0][0]) * (180 / Math.PI);
 
-      const MAX_Z_ANGLE = 25.0; // 25 градусов поворота вокруг Z для полного хода
+      // Угол наклона вперед/назад (Pitch):
+      let deltaY = Math.atan2(R[1][2], R[2][2]) * (180 / Math.PI);
+
+      const MAX_Z_ANGLE = 25.0; // 25 градусов поворота вокруг Z для полного диапазона
       const MAX_Y_ANGLE = 25.0;
 
       let normX = (deltaZ / MAX_Z_ANGLE) * sensitivity;
@@ -804,8 +832,7 @@
       }
 
       isCalibrated = false;
-      baseAlpha = null;
-      baseBeta = null;
+      baseMatrix = null;
 
       startBtn.classList.add('calibrating');
       btnLabel.textContent = '🎯 ЦЕНТР ЗАФИКСИРОВАН!';
@@ -841,8 +868,8 @@
     let isListenerAttached = false;
     function attachSensorListener() {
       if (!isListenerAttached) {
+        // Подключаем ТОЛЬКО ОДИН слушатель без дубликатов
         window.addEventListener('deviceorientation', handleOrientation, true);
-        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
         isListenerAttached = true;
       }
     }
