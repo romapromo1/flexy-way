@@ -438,7 +438,7 @@
         <line x1="12" y1="6" x2="12" y2="2"></line>
         <line x1="12" y1="22" x2="12" y2="18"></line>
       </svg>
-      🎯 Лазерная указка
+      🎯 Указка (Z-Поворот)
     </button>
     <button class="mode-switch-btn" id="modeManualBtn" onclick="setControlMode('manual')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -451,7 +451,7 @@
   </div>
 
   <div class="sensor-info-bar" id="sensorInfo">
-    🟢 Режим: Лазерная указка (Наклоняйте телефон)
+    🟢 Режим: Указка (Поворот Z влево/вправо + Наклон Y)
   </div>
 
   <!-- Интерактивный радар + Тачпад -->
@@ -467,11 +467,11 @@
     <!-- Показания -->
     <div class="gyro-stats">
       <div class="stat-pill">
-        X Наклон
+        Z-Поворот
         <span id="statX">0°</span>
       </div>
       <div class="stat-pill">
-        Y Наклон
+        Y-Наклон
         <span id="statY">0°</span>
       </div>
       <div class="stat-pill">
@@ -490,7 +490,7 @@
       <line x1="12" y1="6" x2="12" y2="2"></line>
       <line x1="12" y1="22" x2="12" y2="18"></line>
     </svg>
-    <span id="btnLabel">🎯 КАЛИБРОВАТЬ ЦЕНТР</span>
+    <span id="btnLabel">🎯 КАЛИБРОВАТЬ УКАЗКУ</span>
   </button>
 
   <!-- Тонкие настройки -->
@@ -498,8 +498,8 @@
     <div class="control-row">
       <span>Чувствительность</span>
       <div class="slider-container">
-        <input type="range" id="sensSlider" min="0.5" max="3.0" step="0.1" value="1.4" oninput="updateSensitivity(this.value)">
-        <span id="sensValue" style="color: #38bdf8; min-width: 32px;">1.4x</span>
+        <input type="range" id="sensSlider" min="0.5" max="3.0" step="0.1" value="1.5" oninput="updateSensitivity(this.value)">
+        <span id="sensValue" style="color: #38bdf8; min-width: 32px;">1.5x</span>
       </div>
     </div>
     <div class="control-row">
@@ -512,8 +512,8 @@
   </div>
 
   <div class="hint-footer" id="hintFooter">
-    Поворачивайте / наклоняйте телефон как указку.<br>
-    Нажмите «Калибровать центр» в любом удобном положении.
+    Поворачивайте телефон влево-вправо как лазерную указку (ось Z).<br>
+    Наклоняйте вверх-вниз по вертикали (ось Y).
   </div>
 
   <script>
@@ -555,12 +555,12 @@
 
     // --- State & Options ---
     let controlMode = 'gyro'; // 'gyro' | 'manual'
-    let sensitivity = 1.4;
+    let sensitivity = 1.5;
     let invertX = false;
     let invertY = true; // Инвертирован по дефолту
 
-    // Rock-solid 6-axis IMU tracking (zero compass jitter, zero jumps)
-    let baseGamma = null;
+    // Z-axis Yaw (Alpha) & Y-axis Pitch (Beta)
+    let baseAlpha = null;
     let baseBeta = null;
     let isCalibrated = false;
     let packetsSent = 0;
@@ -594,9 +594,9 @@
         modeGyroBtn.classList.add('active');
         modeManualBtn.classList.remove('active');
         radar.classList.remove('manual-mode');
-        btnLabel.textContent = '🎯 КАЛИБРОВАТЬ ЦЕНТР';
-        sensorInfo.textContent = '🟢 Режим: Лазерная указка (Наклоняйте телефон)';
-        hintFooter.innerHTML = 'Поворачивайте / наклоняйте телефон как указку.<br>Нажмите «Калибровать центр» в любом удобном положении.';
+        btnLabel.textContent = '🎯 КАЛИБРОВАТЬ УКАЗКУ';
+        sensorInfo.textContent = '🟢 Режим: Указка (Поворот Z влево/вправо + Наклон Y)';
+        hintFooter.innerHTML = 'Поворачивайте телефон влево-вправо как лазерную указку (ось Z).<br>Наклоняйте вверх-вниз по вертикали.';
         activateAndCalibrate();
       } else {
         modeManualBtn.classList.add('active');
@@ -709,31 +709,41 @@
       statY.textContent = `${Math.round(dispY)}°`;
     }
 
-    // --- Единственный чистый обработчик ориентации (IMU: Gamma + Beta) ---
+    // Разница углов по модулю 360 градусов (устраняет скачки при переходе через 0°/360°)
+    function angleDifference(target, base) {
+      let diff = (target - base) % 360;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+      return diff;
+    }
+
+    // --- ПОВОРОТ ПО ОСИ Z (Alpha / Указка) + НАКЛОН ПО ОСИ Y (Beta) ---
     function handleOrientation(e) {
-      if (controlMode !== 'gyro') return; // В ручном режиме датчики не активны
+      if (controlMode !== 'gyro') return;
 
-      let gamma = e.gamma; // Наклон влево/вправо [-90..90]
-      let beta = e.beta;   // Наклон вверх/вниз [-180..180]
+      let alpha = e.alpha; // Поворот вокруг оси Z [0..360°]
+      let beta = e.beta;   // Наклон вверх/вниз [-180..180°]
 
-      if (gamma === null || beta === null) return;
+      if (alpha === null || beta === null) return;
 
-      // При первом получении или после нажатия калибровки
-      if (!isCalibrated || baseGamma === null || baseBeta === null) {
-        baseGamma = gamma;
+      if (!isCalibrated || baseAlpha === null || baseBeta === null) {
+        baseAlpha = alpha;
         baseBeta = beta;
         isCalibrated = true;
       }
 
-      // Отклонение от откалиброванного положения в градусах
-      let deltaX = gamma - baseGamma;
-      let deltaY = baseBeta - beta;
+      // 1. Горизонталь (X) = Поворот телефона вокруг Z как указки:
+      // При повороте телефона вправо alpha уменьшается -> -angleDifference дает положительное значение
+      let deltaZ = -angleDifference(alpha, baseAlpha);
 
-      const MAX_TILT_X = 24.0; // 24 градуса на полный размах
-      const MAX_TILT_Y = 24.0;
+      // 2. Вертикаль (Y) = Наклон телефона вверх/вниз:
+      let deltaY = (baseBeta - beta);
 
-      let normX = (deltaX / MAX_TILT_X) * sensitivity;
-      let normY = (deltaY / MAX_TILT_Y) * sensitivity;
+      const MAX_Z_ANGLE = 22.0; // 22 градуса поворота на полный ход
+      const MAX_Y_ANGLE = 22.0; // 22 градуса наклона на полный ход
+
+      let normX = (deltaZ / MAX_Z_ANGLE) * sensitivity;
+      let normY = (deltaY / MAX_Y_ANGLE) * sensitivity;
 
       if (invertX) normX = -normX;
       if (invertY) normY = -normY;
@@ -741,7 +751,7 @@
       normX = Math.max(-1.0, Math.min(1.0, normX));
       normY = Math.max(-1.0, Math.min(1.0, normY));
 
-      updateRadarUI(normX, normY, deltaX, deltaY);
+      updateRadarUI(normX, normY, deltaZ, deltaY);
       sendMotion(normX, normY);
     }
 
@@ -792,13 +802,13 @@
       }
 
       isCalibrated = false;
-      baseGamma = null;
+      baseAlpha = null;
       baseBeta = null;
 
       startBtn.classList.add('calibrating');
-      btnLabel.textContent = '🎯 ЦЕНТР ЗАФИКСИРОВАН!';
+      btnLabel.textContent = '🎯 УКАЗКА НАЦЕЛЕНА!';
       setTimeout(() => {
-        btnLabel.textContent = '🎯 КАЛИБРОВАТЬ ЦЕНТР';
+        btnLabel.textContent = '🎯 КАЛИБРОВАТЬ УКАЗКУ';
         startBtn.classList.remove('calibrating');
       }, 600);
 
@@ -830,6 +840,7 @@
     function attachSensorListener() {
       if (!isListenerAttached) {
         window.addEventListener('deviceorientation', handleOrientation, true);
+        window.addEventListener('deviceorientationabsolute', handleOrientation, true);
         isListenerAttached = true;
       }
     }
