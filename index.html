@@ -1,0 +1,1220 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>3D Игра — Flexy Way (Фестивальный Пульт)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <!-- QR Code Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- PeerJS for direct global WebRTC P2P (works over any mobile 4G/5G network) -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <!-- Three.js -->
+    <script src="https://unpkg.com/three@0.159.0/build/three.min.js"></script>
+
+    <style>
+      :root {
+        --primary: #38bdf8;
+        --gold: #f59e0b;
+        --danger: #ef4444;
+        --bg-glass: rgba(15, 23, 42, 0.85);
+        --border-glass: rgba(255, 255, 255, 0.15);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #070913;
+        color: #fff;
+        height: 100%;
+        overflow: hidden;
+        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Контейнер 9:16 под фестивальный вертикальный экран */
+      .game {
+        position: relative;
+        height: 100vh;
+        width: auto;
+        aspect-ratio: 9 / 16;
+        margin: 0 auto;
+        background: #ffffff;
+        touch-action: none;
+        user-select: none;
+        overflow: hidden;
+        box-shadow: 0 0 80px rgba(0, 0, 0, 0.9);
+      }
+
+      .game > canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .ui {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+      }
+
+      /* Game Over Overlay */
+      .gameover {
+        font-weight: 900;
+        letter-spacing: 0.05em;
+        color: #ef4444;
+        text-shadow: 0 4px 16px rgba(239, 68, 68, 0.6);
+        opacity: 0;
+        transform: scale(0.9);
+        transition: opacity 300ms cubic-bezier(0.16, 1, 0.3, 1), transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+        text-align: center;
+        background: rgba(15, 23, 42, 0.88);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 2rem 2.5rem;
+        border-radius: 28px;
+        border: 2px solid rgba(239, 68, 68, 0.35);
+      }
+
+      .gameover.visible {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      .gameover h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: clamp(36px, 8vmin, 100px);
+        line-height: 1;
+      }
+
+      .gameover .score-summary {
+        font-size: clamp(16px, 3vmin, 28px);
+        color: #cbd5e1;
+        font-weight: 600;
+      }
+
+      /* Верхняя панель HUD */
+      .top-bar {
+        position: absolute;
+        top: 1.25rem;
+        left: 1.25rem;
+        right: 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        pointer-events: none;
+        z-index: 20;
+      }
+
+      /* Индикатор подключения пульта */
+      .remote-pill {
+        background: var(--bg-glass);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--border-glass);
+        border-radius: 9999px;
+        padding: 0.5rem 1.1rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.65rem;
+        font-size: clamp(12px, 1.8vmin, 18px);
+        font-weight: 700;
+        color: #f8fafc;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        pointer-events: auto;
+        cursor: pointer;
+        transition: transform 0.2s, background 0.2s;
+      }
+
+      .remote-pill:hover {
+        transform: scale(1.04);
+        background: rgba(30, 41, 59, 0.95);
+      }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ef4444;
+        box-shadow: 0 0 8px #ef4444;
+      }
+
+      .remote-pill.connected .status-dot {
+        background: #10b981;
+        box-shadow: 0 0 12px #10b981;
+        animation: pulseDot 2s infinite;
+      }
+
+      @keyframes pulseDot {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.3); opacity: 0.7; }
+      }
+
+      /* Счетчик монет */
+      .coins-badge {
+        background: var(--bg-glass);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--border-glass);
+        border-radius: 9999px;
+        padding: 0.5rem 1.1rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: clamp(14px, 2vmin, 20px);
+        font-weight: 800;
+        color: #fbbf24;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      }
+
+      .coin-icon {
+        width: 1.2em;
+        height: 1.2em;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #fef08a, #f59e0b);
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+        display: inline-block;
+      }
+
+      /* Всплывающий счет монет */
+      .coin-flash {
+        position: absolute;
+        right: 1.5rem;
+        top: 45%;
+        transform: translateY(-50%);
+        font-weight: 900;
+        color: #f59e0b;
+        text-shadow: 0 4px 16px rgba(245,158,11,0.5);
+        opacity: 0;
+        transition: opacity 240ms ease, transform 240ms ease;
+        font-size: clamp(24px, 6vmin, 96px);
+        pointer-events: none;
+        z-index: 15;
+      }
+
+      .coin-flash.visible {
+        opacity: 1;
+        transform: translateY(-50%) scale(1.1);
+      }
+
+      /* Лазерный маркер-прицел смартфона */
+      .laser-dot {
+        position: absolute;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 2px solid #38bdf8;
+        background: radial-gradient(circle, #38bdf8 0%, rgba(56,189,248,0.2) 60%);
+        box-shadow: 0 0 24px #38bdf8, 0 0 48px #0284c7;
+        pointer-events: none;
+        transform: translate(-50%, -50%);
+        transition: opacity 0.3s;
+        opacity: 0;
+        z-index: 5;
+      }
+
+      .laser-dot.active {
+        opacity: 0.9;
+      }
+
+      .laser-dot::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 6px;
+        height: 6px;
+        background: #fff;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      /* QR Modal / Lobby Overlay */
+      .qr-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(7, 9, 19, 0.9);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        z-index: 100;
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.35s ease, visibility 0.35s ease;
+        text-align: center;
+      }
+
+      .qr-overlay.hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .qr-card {
+        background: rgba(20, 26, 45, 0.95);
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        border-radius: 28px;
+        padding: 1.6rem 1.35rem;
+        width: 88%;
+        max-width: 340px;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7), 0 0 48px rgba(56, 189, 248, 0.25);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.9rem;
+        position: relative;
+        animation: floatModal 4s ease-in-out infinite;
+      }
+
+      @keyframes floatModal {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+      }
+
+      .qr-badge {
+        background: linear-gradient(135deg, #0ea5e9, #6366f1);
+        color: white;
+        padding: 0.35rem 0.9rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .qr-title {
+        font-size: clamp(20px, 3vmin, 24px);
+        font-weight: 900;
+        color: #f8fafc;
+        margin: 0;
+        line-height: 1.2;
+      }
+
+      .qr-box {
+        background: #ffffff;
+        padding: 0.85rem;
+        border-radius: 20px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 175px;
+        height: 175px;
+      }
+
+      #qrcode {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 155px;
+        height: 155px;
+      }
+
+      #qrcode canvas, #qrcode img {
+        border-radius: 8px;
+        width: 155px !important;
+        height: 155px !important;
+        max-width: 155px !important;
+        max-height: 155px !important;
+      }
+
+      .qr-desc {
+        color: #cbd5e1;
+        font-size: clamp(12px, 1.8vmin, 14px);
+        line-height: 1.4;
+        margin: 0;
+        font-weight: 500;
+      }
+
+      .qr-btn-play {
+        width: 100%;
+        padding: 0.95rem;
+        background: linear-gradient(135deg, #10b981, #059669);
+        border: none;
+        border-radius: 16px;
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 800;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+        transition: transform 0.15s;
+      }
+
+      .qr-btn-play:active {
+        transform: scale(0.97);
+      }
+
+      .close-qr-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        color: #fff;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        font-size: 1.2rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .room-tag {
+        font-family: monospace;
+        font-size: 0.75rem;
+        color: #38bdf8;
+        background: rgba(56, 189, 248, 0.12);
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        letter-spacing: 0.05em;
+      }
+
+      /* Подсказка */
+      .hint {
+        position: absolute;
+        left: 50%;
+        bottom: 1.5rem;
+        transform: translateX(-50%);
+        color: #94a3b8;
+        font-size: clamp(12px, 2vmin, 20px);
+        font-weight: 500;
+        opacity: 0.9;
+        z-index: 10;
+        pointer-events: none;
+        text-align: center;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game" id="game">
+      
+      <!-- Верхний HUD -->
+      <div class="top-bar">
+        <div class="remote-pill" id="remotePill" onclick="toggleQrModal(true)" title="Нажмите для QR-кода подключения">
+          <span class="status-dot"></span>
+          <span id="remoteStatusText">📱 Наведите телефон на QR</span>
+        </div>
+        <div class="coins-badge">
+          <span class="coin-icon"></span>
+          <span id="coinTotal">0</span>
+        </div>
+      </div>
+
+      <!-- Игровой оверлей -->
+      <div class="ui">
+        <div class="gameover" id="gameover">
+          <h1>ГАМОВЕР</h1>
+          <div class="score-summary" id="scoreSummary">Собрано монет: 0</div>
+        </div>
+      </div>
+
+      <div class="hint" id="gameHint">Направьте смартфон на экран как лазерную указку</div>
+      <div class="coin-flash" id="coinFlash">+0</div>
+      <div class="laser-dot" id="laserDot"></div>
+
+      <!-- Модальное окно с QR-кодом для подключения смартфона -->
+      <div class="qr-overlay" id="qrOverlay">
+        <div class="qr-card">
+          <button class="close-qr-btn" onclick="toggleQrModal(false)">✕</button>
+          <div class="qr-badge">FESTIVAL AIR REMOTE</div>
+          <h2 class="qr-title">Сканируйте смартфоном</h2>
+          
+          <div class="qr-box">
+            <div id="qrcode"></div>
+          </div>
+          
+          <div class="room-tag" id="roomTagDisplay">Комната: ...</div>
+
+          <p class="qr-desc">
+            Наведите камеру любого телефона на QR-код.<br>
+            Смартфон превратится в лазерную указку!
+          </p>
+          
+          <button class="qr-btn-play" onclick="toggleQrModal(false)">
+            🎮 Закрыть QR / Играть
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      (() => {
+        // --- Звуковые эффекты (Web Audio API) ---
+        const AudioFX = {
+          ctx: null,
+          init() {
+            if (!this.ctx) {
+              const AudioCtx = window.AudioContext || window.webkitAudioContext;
+              if (AudioCtx) this.ctx = new AudioCtx();
+            }
+          },
+          playCoin() {
+            this.init();
+            if (!this.ctx) return;
+            try {
+              const now = this.ctx.currentTime;
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(987.77, now);
+              osc.frequency.exponentialRampToValueAtTime(1318.51, now + 0.08);
+              gain.gain.setValueAtTime(0.3, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+              osc.connect(gain);
+              gain.connect(this.ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.35);
+            } catch (e) {}
+          },
+          playExplosion() {
+            this.init();
+            if (!this.ctx) return;
+            try {
+              const now = this.ctx.currentTime;
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'sawtooth';
+              osc.frequency.setValueAtTime(160, now);
+              osc.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+              gain.gain.setValueAtTime(0.4, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+              osc.connect(gain);
+              gain.connect(this.ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.5);
+            } catch (e) {}
+          },
+          playConnect() {
+            this.init();
+            if (!this.ctx) return;
+            try {
+              const now = this.ctx.currentTime;
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(523.25, now);
+              osc.frequency.setValueAtTime(659.25, now + 0.1);
+              osc.frequency.setValueAtTime(783.99, now + 0.2);
+              gain.gain.setValueAtTime(0.25, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+              osc.connect(gain);
+              gain.connect(this.ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.45);
+            } catch (e) {}
+          }
+        };
+
+        // --- Уникальный ID комнаты фестиваля ---
+        const roomId = 'room-' + Math.random().toString(36).substring(2, 7);
+
+        // --- Целевое внутреннее разрешение рендера (9:16) ---
+        const RENDER_WIDTH = 2160;
+        const RENDER_HEIGHT = 3840;
+        const ASPECT = RENDER_WIDTH / RENDER_HEIGHT;
+
+        const halfW = 1080;
+        const halfH = 1920;
+
+        // Параметры игры
+        const OBJECT_SIZE = 160;
+        const MIN_DISTANCE = 1.5 * OBJECT_SIZE;
+        const BASE_FALL_SPEED = 320;
+        const MAX_VX = 200;
+        const FUNNEL_STRENGTH = 1.5;
+        const SPAWN_INTERVAL_BASE = 1.0;
+        const ROT_SPEED = 0.6;
+        const PLAYER_MOVE_Y = 660;
+        const PLAYER_SIZE = OBJECT_SIZE;
+        const COIN_INTERVAL = 5.0;
+
+        // Магнитное отталкивание
+        const REPULSION_RADIUS = OBJECT_SIZE * 8.2;
+        const REPULSION_STRENGTH = 9800;
+        const VX_CLAMP = 420;
+        const VY_CLAMP = 220;
+        const DAMPING = 0.992;
+        const BOUNCE_X = 0.85;
+
+        // Палитра
+        const OBJECT_COLOR_PALETTE = [
+          0xd81b60, 0xffe066, 0x10b981, 0xff8f1f, 0xef4444
+        ];
+        const OBJECT_MATERIALS = OBJECT_COLOR_PALETTE.map((color) =>
+          new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.15 })
+        );
+
+        const SHAPE_GEOMETRIES = [
+          new THREE.SphereGeometry(OBJECT_SIZE * 0.5, 24, 16),
+          new THREE.BoxGeometry(OBJECT_SIZE, OBJECT_SIZE, OBJECT_SIZE),
+          new THREE.TorusGeometry(OBJECT_SIZE * 0.42, OBJECT_SIZE * 0.20, 12, 24),
+          new THREE.IcosahedronGeometry(OBJECT_SIZE * 0.58),
+          new THREE.ConeGeometry(OBJECT_SIZE * 0.6, OBJECT_SIZE * 1.1, 4),
+          new THREE.ConeGeometry(OBJECT_SIZE * 0.6, OBJECT_SIZE * 1.1, 16)
+        ];
+
+        const COIN_SCALE = 1.5;
+        const COIN_GEOMETRY = new THREE.CylinderGeometry(
+          OBJECT_SIZE * 0.48 * COIN_SCALE,
+          OBJECT_SIZE * 0.48 * COIN_SCALE,
+          Math.max(6, OBJECT_SIZE * 0.18 * COIN_SCALE),
+          32
+        );
+        const COIN_MATERIAL = new THREE.MeshStandardMaterial({
+          color: 0xf5c542,
+          metalness: 0.8,
+          roughness: 0.2,
+          emissive: 0xffcc33,
+          emissiveIntensity: 1.2
+        });
+        const PARTICLE_GEOMETRY = new THREE.BoxGeometry(1, 1, 1);
+        const GOLD_PARTICLE_MATERIAL = new THREE.MeshStandardMaterial({
+          color: 0xffd166,
+          roughness: 0.35,
+          metalness: 0.3,
+          emissive: 0xffc34d,
+          emissiveIntensity: 0.8
+        });
+        const EXPLOSION_PARTICLE_MATERIAL = new THREE.MeshStandardMaterial({
+          color: 0xff5555,
+          roughness: 0.4,
+          metalness: 0.05
+        });
+
+        const TOP_Y = halfH - OBJECT_SIZE * 1.2;
+        const BOTTOM_Y = -halfH + OBJECT_SIZE * 1.2;
+        const VANISH_RADIUS_X = OBJECT_SIZE * 0.9;
+
+        // DOM
+        const container = document.getElementById('game');
+        const gameoverEl = document.getElementById('gameover');
+        const scoreSummaryEl = document.getElementById('scoreSummary');
+        const coinFlashEl = document.getElementById('coinFlash');
+        const coinTotalEl = document.getElementById('coinTotal');
+        const remotePillEl = document.getElementById('remotePill');
+        const remoteStatusTextEl = document.getElementById('remoteStatusText');
+        const qrOverlayEl = document.getElementById('qrOverlay');
+        const laserDotEl = document.getElementById('laserDot');
+        const gameHintEl = document.getElementById('gameHint');
+        const roomTagDisplayEl = document.getElementById('roomTagDisplay');
+
+        if (roomTagDisplayEl) roomTagDisplayEl.textContent = `ID: ${roomId}`;
+
+        // Сцена Three.js
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
+
+        const FOV = 50;
+        const camera = new THREE.PerspectiveCamera(FOV, ASPECT, 0.1, 8000);
+        const fovRad = THREE.MathUtils.degToRad(FOV * 0.5);
+        const dist = halfH / Math.tan(fovRad);
+        camera.position.set(0, 0, dist);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(1);
+        renderer.setSize(RENDER_WIDTH, RENDER_HEIGHT, false);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // Свет
+        const hemi = new THREE.HemisphereLight(0xffffff, 0xffffff, 1);
+        scene.add(hemi);
+        const dir = new THREE.DirectionalLight(0xffffff, 1.4);
+        dir.position.set(halfW * 0.35, halfH * 0.12, dist);
+        dir.target.position.set(0, 0, 0);
+        dir.castShadow = true;
+        dir.shadow.mapSize.set(2048, 2048);
+        dir.shadow.radius = 50.5;
+        dir.shadow.camera.left = -halfW * 2.4;
+        dir.shadow.camera.right = halfW * 2.4;
+        dir.shadow.camera.top = halfH * 2.4;
+        dir.shadow.camera.bottom = -halfH * 2.4;
+        dir.shadow.camera.near = 1;
+        dir.shadow.camera.far = 8000;
+        dir.shadow.bias = -0.0006;
+        dir.shadow.camera.updateProjectionMatrix();
+        scene.add(dir);
+        scene.add(dir.target);
+
+        const under = new THREE.DirectionalLight(0xffffff, 0.6);
+        under.position.set(0, -1200, 400);
+        under.target.position.set(0, 0, 0);
+        scene.add(under);
+        scene.add(under.target);
+
+        const backGeom = new THREE.PlaneGeometry(halfW * 8.4, halfH * 4.2);
+        const backMat = new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.22 });
+        const backWall = new THREE.Mesh(backGeom, backMat);
+        backWall.position.set(0, 0, -600);
+        backWall.receiveShadow = true;
+        scene.add(backWall);
+
+        // Игрок — управляемый куб
+        const playerMat = new THREE.MeshStandardMaterial({
+          color: 0x38bdf8,
+          roughness: 0.3,
+          metalness: 0.2,
+          emissive: 0x0284c7,
+          emissiveIntensity: 0.3
+        });
+        const playerGeo = new THREE.BoxGeometry(PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
+        const player = new THREE.Mesh(playerGeo, playerMat);
+        player.position.set(0, 0, 0);
+        player.castShadow = true;
+        scene.add(player);
+        const playerRadius = PLAYER_SIZE * 0.6;
+
+        // Хранилища
+        const objects = [];
+        const particles = [];
+
+        // Состояние
+        let running = true;
+        let spawnAccumulator = 0;
+        let spawnInterval = SPAWN_INTERVAL_BASE;
+        let spawnIntervalTimer = 0;
+        let coinAccumulator = 0;
+        let coinInterval = COIN_INTERVAL;
+        let lastTime = performance.now() / 1000;
+        let elapsed = 0;
+        let coinCount = 0;
+        let coinsSpawned = 0;
+        let coinFlashTimer = null;
+        let fallSpeed = BASE_FALL_SPEED;
+        let fallSpeedTimer = 0;
+
+        let targetWorldX = 0;
+        let targetWorldY = 0;
+        let isPhoneConnected = false;
+
+        const randRange = (a, b) => a + Math.random() * (b - a);
+
+        function makeRandomMesh() {
+          const geom = SHAPE_GEOMETRIES[Math.floor(Math.random() * SHAPE_GEOMETRIES.length)];
+          const material = OBJECT_MATERIALS[Math.floor(Math.random() * OBJECT_MATERIALS.length)];
+          const mesh = new THREE.Mesh(geom, material);
+          mesh.castShadow = true;
+          mesh.receiveShadow = false;
+          const radius = OBJECT_SIZE * 0.6;
+          return { mesh, radius };
+        }
+
+        function makeCoin() {
+          const coin = new THREE.Mesh(COIN_GEOMETRY, COIN_MATERIAL);
+          coin.rotation.z = Math.PI * 0.5;
+          coin.castShadow = true;
+          const radius = OBJECT_SIZE * 0.6 * COIN_SCALE;
+          return { mesh: coin, radius };
+        }
+
+        function canPlaceAt(x, y, radius) {
+          for (const o of objects) {
+            const dx = o.mesh.position.x - x;
+            const dy = o.mesh.position.y - y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < MIN_DISTANCE * MIN_DISTANCE) return false;
+          }
+          return true;
+        }
+
+        function spawnWave() {
+          const count = 1 + Math.floor(Math.random() * 3);
+          const originX = randRange(-OBJECT_SIZE * 0.6, OBJECT_SIZE * 0.6);
+          const originY = TOP_Y + OBJECT_SIZE * 1.6;
+
+          for (let i = 0; i < count; i++) {
+            const { mesh, radius } = makeRandomMesh();
+            mesh.position.set(originX, originY, 0);
+            const speed = randRange(MAX_VX * 0.8, MAX_VX * 1.6);
+            const vx = randRange(-1, 1) * speed;
+            const vy = randRange(40, 140);
+            const rot = new THREE.Vector3(
+              randRange(-ROT_SPEED, ROT_SPEED),
+              randRange(-ROT_SPEED, ROT_SPEED),
+              randRange(-ROT_SPEED, ROT_SPEED)
+            );
+            scene.add(mesh);
+            objects.push({ mesh, vx, vy, rot, radius });
+          }
+        }
+
+        function spawnCoin() {
+          let attempts = 0;
+          const spreadX = OBJECT_SIZE * 2.4;
+          while (attempts++ < 40) {
+            const x = randRange(-spreadX, spreadX);
+            const y = TOP_Y + randRange(-OBJECT_SIZE * 0.4, OBJECT_SIZE * 0.4);
+            if (!canPlaceAt(x, y, OBJECT_SIZE * 0.6)) continue;
+            const { mesh, radius } = makeCoin();
+            mesh.position.set(x, y, 0);
+            const vx = randRange(-MAX_VX, MAX_VX);
+            const vy = 0;
+            const rot = new THREE.Vector3(randRange(-ROT_SPEED, ROT_SPEED), randRange(-ROT_SPEED, ROT_SPEED), randRange(-ROT_SPEED, ROT_SPEED));
+            scene.add(mesh);
+            objects.push({ mesh, vx, vy, rot, radius, isCoin: true });
+            break;
+          }
+        }
+
+        function flashCoinCount() {
+          coinFlashEl.textContent = `+${coinCount}`;
+          coinTotalEl.textContent = coinCount;
+          coinFlashEl.classList.add('visible');
+          if (coinFlashTimer) clearTimeout(coinFlashTimer);
+          coinFlashTimer = setTimeout(() => {
+            coinFlashEl.classList.remove('visible');
+          }, 900);
+        }
+
+        function collectCoin(index) {
+          const o = objects[index];
+          if (!o) return;
+          const pos = o.mesh.position.clone();
+          for (let i = 0; i < 40; i++) {
+            const p = new THREE.Mesh(PARTICLE_GEOMETRY, GOLD_PARTICLE_MATERIAL);
+            const size = randRange(4, 10);
+            p.scale.set(size, size, size);
+            p.position.copy(pos);
+            scene.add(p);
+            const dir = new THREE.Vector3(randRange(-1, 1), randRange(-1, 1), randRange(-1, 1)).normalize();
+            const speed = randRange(180, 520);
+            particles.push({ mesh: p, vel: dir.multiplyScalar(speed), life: 0.8 });
+          }
+          scene.remove(o.mesh);
+          objects.splice(index, 1);
+          coinCount += 1;
+          flashCoinCount();
+          AudioFX.playCoin();
+          sendHapticToPhone('coin');
+        }
+
+        function explodeAt(position) {
+          const COUNT = 80;
+          for (let i = 0; i < COUNT; i++) {
+            const p = new THREE.Mesh(PARTICLE_GEOMETRY, EXPLOSION_PARTICLE_MATERIAL);
+            const size = randRange(6, 16);
+            p.scale.set(size, size, size);
+            p.position.copy(position);
+            scene.add(p);
+            const dir = new THREE.Vector3(randRange(-1, 1), randRange(-1, 1), randRange(-1, 1)).normalize();
+            const speed = randRange(200, 600);
+            particles.push({ mesh: p, vel: dir.multiplyScalar(speed), life: 1.2 });
+          }
+        }
+
+        function resetGame() {
+          for (const o of objects) scene.remove(o.mesh);
+          objects.length = 0;
+          for (const p of particles) scene.remove(p.mesh);
+          particles.length = 0;
+          player.visible = true;
+          player.position.set(0, 0, 0);
+          targetWorldX = 0;
+          targetWorldY = 0;
+          gameoverEl.classList.remove('visible');
+          spawnAccumulator = 0;
+          spawnInterval = SPAWN_INTERVAL_BASE;
+          spawnIntervalTimer = 0;
+          fallSpeed = BASE_FALL_SPEED;
+          fallSpeedTimer = 0;
+          coinAccumulator = 0;
+          coinInterval = COIN_INTERVAL;
+          coinCount = 0;
+          coinsSpawned = 0;
+          coinFlashEl.textContent = `+${coinCount}`;
+          coinTotalEl.textContent = '0';
+          elapsed = 0;
+          running = true;
+        }
+
+        function gameOver() {
+          if (!running) return;
+          running = false;
+          explodeAt(player.position);
+          player.visible = false;
+          AudioFX.playExplosion();
+          sendHapticToPhone('gameover');
+          scoreSummaryEl.textContent = `Собрано монет: ${coinCount}`;
+          gameoverEl.classList.add('visible');
+          setTimeout(resetGame, 3000);
+        }
+
+        function setPlayerWorld(worldX, worldY) {
+          const margin = OBJECT_SIZE * 0.8;
+          const clampedX = Math.max(-halfW - 1 + margin, Math.min(halfW + 1 - margin, worldX));
+          const clampedY = Math.max(-PLAYER_MOVE_Y, Math.min(PLAYER_MOVE_Y, worldY));
+          targetWorldX = clampedX;
+          targetWorldY = clampedY;
+        }
+
+        function updateLaserDot(worldX, worldY) {
+          const rect = container.getBoundingClientRect();
+          const screenX = ((worldX / halfW) * 0.5 + 0.5) * rect.width;
+          const screenY = (0.5 - (worldY / (halfH * 0.7))) * rect.height;
+          laserDotEl.style.left = `${screenX}px`;
+          laserDotEl.style.top = `${screenY}px`;
+        }
+
+        // Мышь / тач при отсутствии смартфона
+        function handlePointer(clientX, clientY) {
+          if (isPhoneConnected) return;
+          const rect = container.getBoundingClientRect();
+          const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+          const ndcY = -(((clientY - rect.top) / rect.height) * 2 - 1);
+          const origin = new THREE.Vector3();
+          const dir = new THREE.Vector3(ndcX, ndcY, 0.5).unproject(camera).sub(camera.position).normalize();
+          origin.copy(camera.position);
+          const t = -origin.z / dir.z;
+          const hitX = origin.x + dir.x * t;
+          const hitY = origin.y + dir.y * t;
+          setPlayerWorld(hitX, hitY);
+        }
+
+        container.addEventListener('mousemove', (e) => handlePointer(e.clientX, e.clientY));
+        container.addEventListener('touchmove', (e) => {
+          if (e.touches && e.touches.length) {
+            handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+          }
+        }, { passive: true });
+
+        // --- WebRTC P2P (PeerJS) & WebSocket Hybrid ---
+        let peer = null;
+        let peerConn = null;
+        let ws = null;
+
+        function setPhoneConnected(connected) {
+          isPhoneConnected = connected;
+          if (connected) {
+            remotePillEl.classList.add('connected');
+            remoteStatusTextEl.textContent = 'Пульт подключен ⚡';
+            laserDotEl.classList.add('active');
+            gameHintEl.textContent = 'Игрок подключен! Управляйте кубом';
+            AudioFX.playConnect();
+            toggleQrModal(false);
+          } else {
+            remotePillEl.classList.remove('connected');
+            remoteStatusTextEl.textContent = '📱 Наведите телефон на QR';
+            laserDotEl.classList.remove('active');
+            gameHintEl.textContent = 'Сканируйте QR-код со смартфона для игры';
+          }
+        }
+
+        function sendHapticToPhone(pattern) {
+          if (peerConn && peerConn.open) peerConn.send({ type: 'haptic', pattern });
+          if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'haptic', pattern }));
+        }
+
+        // WebRTC P2P Host
+        function initPeerJS() {
+          if (typeof Peer === 'undefined') return;
+          try {
+            peer = new Peer(`flexy-host-${roomId}`, {
+              config: {
+                iceServers: [
+                  { urls: 'stun:stun.l.google.com:19302' },
+                  { urls: 'stun:stun1.l.google.com:19302' },
+                  { urls: 'stun:stun2.l.google.com:19302' }
+                ]
+              }
+            });
+
+            peer.on('open', (id) => {
+              console.log('PeerJS Host Ready:', id);
+            });
+
+            peer.on('connection', (conn) => {
+              peerConn = conn;
+              setPhoneConnected(true);
+
+              conn.on('data', (data) => {
+                if (data.type === 'motion') {
+                  const wx = data.x * (halfW * 0.95);
+                  const wy = data.y * PLAYER_MOVE_Y;
+                  setPlayerWorld(wx, wy);
+                  updateLaserDot(wx, wy);
+                } else if (data.type === 'recalibrate') {
+                  targetWorldX = 0;
+                  targetWorldY = 0;
+                }
+              });
+
+              conn.on('close', () => {
+                setPhoneConnected(false);
+              });
+            });
+
+            peer.on('error', (err) => {
+              console.warn('PeerJS Host Error:', err);
+            });
+          } catch (e) {
+            console.warn('PeerJS init failed:', e);
+          }
+        }
+
+        // WebSocket Fallback
+        function initWebSocket() {
+          if (window.location.protocol === 'file:') return;
+          const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const wsUrl = `${protocol}//${window.location.host}`;
+
+          try {
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+              ws.send(JSON.stringify({ type: 'join', roomId, role: 'host' }));
+            };
+
+            ws.onmessage = (event) => {
+              try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'controller_connected') {
+                  setPhoneConnected(true);
+                } else if (data.type === 'controller_disconnected') {
+                  setPhoneConnected(false);
+                } else if (data.type === 'motion') {
+                  const wx = data.x * (halfW * 0.95);
+                  const wy = data.y * PLAYER_MOVE_Y;
+                  setPlayerWorld(wx, wy);
+                  updateLaserDot(wx, wy);
+                } else if (data.type === 'recalibrate') {
+                  targetWorldX = 0;
+                  targetWorldY = 0;
+                }
+              } catch (e) {}
+            };
+
+            ws.onclose = () => {
+              setTimeout(initWebSocket, 4000);
+            };
+          } catch (e) {}
+        }
+
+        // --- Генерация QR-кода ---
+        function renderQrCode() {
+          // Если открыто на публичном домене (Vercel/Netlify/GitHub Pages/Сервер):
+          let baseUrl = window.location.origin;
+          if (baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1') || window.location.protocol === 'file:') {
+            // Для локального тестирования
+            baseUrl = `${window.location.protocol}//${window.location.host}`;
+          }
+
+          let controllerUrl = `${baseUrl}/controller.html?room=${roomId}`;
+          if (!window.location.pathname.endsWith('.html') && !window.location.pathname.includes('.')) {
+            controllerUrl = `${baseUrl}/controller?room=${roomId}`;
+          }
+
+          const qrcodeEl = document.getElementById('qrcode');
+          qrcodeEl.innerHTML = '';
+          new QRCode(qrcodeEl, {
+            text: controllerUrl,
+            width: 155,
+            height: 155,
+            colorDark: "#070913",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        }
+
+        window.toggleQrModal = function(show) {
+          if (show) {
+            qrOverlayEl.classList.remove('hidden');
+          } else {
+            qrOverlayEl.classList.add('hidden');
+          }
+        };
+
+        // --- Анимация ---
+        function centerFactor(pos) {
+          const rx = Math.abs(pos.x) / halfW;
+          const ry = Math.abs(pos.y) / halfH;
+          const r = Math.hypot(rx, ry);
+          const f = 1 - Math.min(1, r);
+          return f * f;
+        }
+
+        function animate() {
+          const now = performance.now() / 1000;
+          const dt = Math.min(0.05, now - lastTime);
+          lastTime = now;
+
+          if (running) {
+            elapsed += dt;
+            spawnAccumulator += dt;
+            if (elapsed < 20) spawnIntervalTimer += dt;
+            if (spawnIntervalTimer >= 2 && elapsed < 20) {
+              spawnIntervalTimer -= 2;
+              spawnInterval /= 1.1;
+              if (spawnInterval < 0.15) spawnInterval = 0.15;
+            }
+            if (elapsed < 20) fallSpeedTimer += dt;
+            if (fallSpeedTimer >= 2 && elapsed < 20) {
+              fallSpeedTimer -= 2;
+              fallSpeed *= 1.2;
+            }
+            coinAccumulator += dt;
+            if (spawnAccumulator >= spawnInterval) {
+              spawnAccumulator -= spawnInterval;
+              spawnWave();
+            }
+            if (coinAccumulator >= coinInterval) {
+              coinAccumulator -= coinInterval;
+              spawnCoin();
+              coinsSpawned += 1;
+              if (coinsSpawned < 10) coinInterval /= 1.2;
+            }
+
+            // Магнитное отталкивание
+            if (objects.length > 1) {
+              for (let i = 0; i < objects.length - 1; i++) {
+                const A = objects[i];
+                const aPos = A.mesh.position;
+                for (let j = i + 1; j < objects.length; j++) {
+                  const B = objects[j];
+                  const bPos = B.mesh.position;
+                  const dx = aPos.x - bPos.x;
+                  const dy = aPos.y - bPos.y;
+                  const d2 = dx * dx + dy * dy;
+                  if (d2 <= 1e-6) continue;
+                  const R = REPULSION_RADIUS;
+                  if (d2 < R * R) {
+                    const d = Math.sqrt(d2);
+                    const nx = dx / d;
+                    const ny = dy / d;
+                    const proximity = 1 - (d / R);
+                    const cf = (centerFactor(aPos) + centerFactor(bPos)) * 0.5;
+                    const mag = REPULSION_STRENGTH * proximity * proximity * cf;
+                    const ax = nx * mag;
+                    const ay = ny * mag;
+                    A.vx += ax * dt;
+                    A.vy += ay * dt;
+                    B.vx -= ax * dt;
+                    B.vy -= ay * dt;
+                  }
+                }
+              }
+            }
+
+            // Затухание скоростей
+            for (const o of objects) {
+              o.vx *= DAMPING;
+              o.vy *= DAMPING;
+              if (o.vx > VX_CLAMP) o.vx = VX_CLAMP;
+              else if (o.vx < -VX_CLAMP) o.vx = -VX_CLAMP;
+              if (o.vy > VY_CLAMP) o.vy = VY_CLAMP;
+              else if (o.vy < -VY_CLAMP) o.vy = -VY_CLAMP;
+            }
+
+            // Движение падающих объектов
+            for (let i = objects.length - 1; i >= 0; i--) {
+              const o = objects[i];
+              const m = o.mesh;
+              const t = (m.position.y - BOTTOM_Y) / (TOP_Y - BOTTOM_Y);
+              const steer = -m.position.x * FUNNEL_STRENGTH * (1 - Math.max(0, Math.min(1, t)));
+              m.position.x += (o.vx + steer) * dt;
+              m.position.y += o.vy * dt;
+              m.position.y -= fallSpeed * dt;
+              m.rotation.x += o.rot.x * dt;
+              m.rotation.y += o.rot.y * dt;
+              m.rotation.z += o.rot.z * dt;
+
+              // Отскок
+              const left = -halfW + o.radius;
+              const right = halfW - o.radius;
+              if (m.position.x < left) {
+                m.position.x = left;
+                o.vx = Math.abs(o.vx) * BOUNCE_X;
+              } else if (m.position.x > right) {
+                m.position.x = right;
+                o.vx = -Math.abs(o.vx) * BOUNCE_X;
+              }
+
+              // Исчезновение
+              if (m.position.y <= BOTTOM_Y) {
+                const nearCenter = Math.abs(m.position.x) < VANISH_RADIUS_X;
+                if (nearCenter) {
+                  scene.remove(m);
+                  objects.splice(i, 1);
+                } else {
+                  m.position.x *= 0.96;
+                }
+              }
+            }
+
+            // Lerp следование куба
+            const SMOOTH_FACTOR = 0.22;
+            player.position.x = THREE.MathUtils.lerp(player.position.x, targetWorldX, SMOOTH_FACTOR);
+            player.position.y = THREE.MathUtils.lerp(player.position.y, targetWorldY, SMOOTH_FACTOR);
+
+            const targetRotZ = (targetWorldX - player.position.x) * -0.0015;
+            const targetRotX = (targetWorldY - player.position.y) * 0.0015;
+            player.rotation.z = THREE.MathUtils.lerp(player.rotation.z, targetRotZ, 0.15);
+            player.rotation.x = THREE.MathUtils.lerp(player.rotation.x, targetRotX, 0.15);
+
+            // Столкновения
+            for (let i = 0; i < objects.length; i++) {
+              const o = objects[i];
+              const dx = o.mesh.position.x - player.position.x;
+              const dy = o.mesh.position.y - player.position.y;
+              const r = o.radius + playerRadius;
+              if (dx * dx + dy * dy <= r * r) {
+                if (o.isCoin) {
+                  collectCoin(i);
+                } else {
+                  gameOver();
+                }
+                break;
+              }
+            }
+          }
+
+          // Частицы
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.life -= dt;
+            p.mesh.position.addScaledVector(p.vel, dt);
+            p.mesh.rotation.x += 2.0 * dt;
+            p.mesh.rotation.y -= 1.7 * dt;
+            const fade = Math.max(0, p.life);
+            p.mesh.material.opacity = fade;
+            p.mesh.material.transparent = true;
+            if (p.life <= 0) {
+              scene.remove(p.mesh);
+              particles.splice(i, 1);
+            }
+          }
+
+          renderer.render(scene, camera);
+          requestAnimationFrame(animate);
+        }
+
+        // Запуск
+        initPeerJS();
+        initWebSocket();
+        renderQrCode();
+        animate();
+      })();
+    </script>
+  </body>
+</html>
