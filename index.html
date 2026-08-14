@@ -203,36 +203,7 @@
         transform: translateY(-50%) scale(1.1);
       }
 
-      .laser-dot {
-        position: absolute;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        border: 2px solid #38bdf8;
-        background: radial-gradient(circle, #38bdf8 0%, rgba(56,189,248,0.2) 60%);
-        box-shadow: 0 0 24px #38bdf8, 0 0 48px #0284c7;
-        pointer-events: none;
-        transform: translate(-50%, -50%);
-        transition: opacity 0.3s;
-        opacity: 0;
-        z-index: 5;
-      }
 
-      .laser-dot.active {
-        opacity: 0.9;
-      }
-
-      .laser-dot::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 6px;
-        height: 6px;
-        background: #fff;
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
-      }
 
       .qr-overlay {
         position: absolute;
@@ -429,7 +400,6 @@
 
       <div class="hint" id="gameHint">Направьте смартфон на экран как лазерную указку</div>
       <div class="coin-flash" id="coinFlash">+0</div>
-      <div class="laser-dot" id="laserDot"></div>
 
       <!-- Модальное окно с QR-кодом -->
       <div class="qr-overlay" id="qrOverlay">
@@ -555,7 +525,6 @@
         const remotePillEl = document.getElementById('remotePill');
         const remoteStatusTextEl = document.getElementById('remoteStatusText');
         const qrOverlayEl = document.getElementById('qrOverlay');
-        const laserDotEl = document.getElementById('laserDot');
         const gameHintEl = document.getElementById('gameHint');
 
         // Сцена Three.js
@@ -805,28 +774,18 @@
           targetWorldY = clampedY;
         }
 
-        function updateLaserDot(worldX, worldY) {
-          const rect = container.getBoundingClientRect();
-          const screenX = ((worldX / halfW) * 0.5 + 0.5) * rect.width;
-          const screenY = (0.5 - (worldY / (halfH * 0.7))) * rect.height;
-          laserDotEl.style.left = `${screenX}px`;
-          laserDotEl.style.top = `${screenY}px`;
-        }
-
         function setPhoneConnected(connected) {
           if (isPhoneConnected === connected) return;
           isPhoneConnected = connected;
           if (connected) {
             remotePillEl.classList.add('connected');
             remoteStatusTextEl.textContent = 'Пульт подключен ⚡';
-            laserDotEl.classList.add('active');
             gameHintEl.textContent = 'Игрок подключен! Управляйте кубом';
             AudioFX.playConnect();
             toggleQrModal(false);
           } else {
             remotePillEl.classList.remove('connected');
             remoteStatusTextEl.textContent = '📱 Подключить телефон';
-            laserDotEl.classList.remove('active');
             gameHintEl.textContent = 'Сканируйте QR-код со смартфона для игры';
           }
         }
@@ -861,7 +820,6 @@
                   const wx = data.x * (halfW * 0.95);
                   const wy = data.y * PLAYER_MOVE_Y;
                   setPlayerWorld(wx, wy);
-                  updateLaserDot(wx, wy);
                 } else if (data.type === 'recalibrate') {
                   targetWorldX = 0;
                   targetWorldY = 0;
