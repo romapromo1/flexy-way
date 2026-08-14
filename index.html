@@ -245,7 +245,7 @@
         transition: opacity 0.4s ease;
       }
 
-      /* Кнопка "Начать" на стартовом экране (расположена прямо под центральным логотипом) */
+      /* Кнопка "Начать" и фраза на стартовом экране */
       .start-screen-overlay {
         position: absolute;
         inset: 0;
@@ -253,7 +253,6 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding-top: 70px;
         z-index: 25;
         pointer-events: none;
         transition: opacity 0.4s ease, transform 0.4s ease;
@@ -1039,11 +1038,15 @@
       container.appendChild(renderer.domElement);
 
       // Студийная HDRI карта отражений (Studio Environment Map)
-      const pmremGenerator = new THREE.PMREMGenerator(renderer);
-      pmremGenerator.compileEquirectangularShader();
-      const studioEnv = new RoomEnvironment();
-      const studioEnvTexture = pmremGenerator.fromScene(studioEnv, 0.04).texture;
-      scene.environment = studioEnvTexture;
+      try {
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        pmremGenerator.compileEquirectangularShader();
+        const studioEnv = new RoomEnvironment(renderer);
+        const studioEnvTexture = pmremGenerator.fromScene(studioEnv, 0.04).texture;
+        scene.environment = studioEnvTexture;
+      } catch (e) {
+        console.warn('RoomEnvironment fallback:', e);
+      }
 
       // Мягкий полусферический свет: делает темные предметы чистыми, читаемыми и контрастными
       const hemi = new THREE.HemisphereLight(0xffffff, 0xcfdceb, 1.6);
@@ -1151,13 +1154,13 @@
           id: 'startButton',
           name: '▶️ Кнопка «Начать» (Liquid Glass)',
           type: 'dom',
-          size: 0.65,
-          x: -180,
-          y: -800, // padding-top in px
+          size: 0.85,
+          x: 0,
+          y: 70,
           z: 0,
-          defaultSize: 0.65,
-          defaultX: -180,
-          defaultY: -800,
+          defaultSize: 0.85,
+          defaultX: 0,
+          defaultY: 70,
           defaultZ: 0,
           minSize: 0.4,
           maxSize: 2.5,
@@ -1435,11 +1438,9 @@
 
         if (item.type === 'dom') {
           if (id === 'startButton') {
-            if (startOverlayEl) {
-              startOverlayEl.style.paddingTop = `${item.y}px`;
-            }
-            if (startBtnEl) {
-              startBtnEl.style.transform = `translate(${item.x}px, 0) scale(${item.size})`;
+            const btn = document.getElementById('startBtn');
+            if (btn) {
+              btn.style.transform = `translate(${item.x}px, ${item.y}px) scale(${item.size})`;
             }
           } else if (id === 'tagline') {
             const el = document.getElementById('startTagline');
