@@ -146,7 +146,7 @@
       font-size: 0.8rem;
     }
 
-    /* Переключатель режимов Указка / Тачпад */
+    /* Переключатель режимов */
     .mode-switch-container {
       width: 100%;
       max-width: 440px;
@@ -395,11 +395,11 @@
     }
 
     .hint-footer {
-      font-size: 0.72rem;
+      font-size: 0.74rem;
       color: var(--text-muted);
       text-align: center;
       margin-top: 0.2rem;
-      line-height: 1.25;
+      line-height: 1.35;
     }
   </style>
 </head>
@@ -451,7 +451,7 @@
   </div>
 
   <div class="sensor-info-bar" id="sensorInfo">
-    🟢 Режим: Указка (Поворот Z влево/вправо + Наклон Y)
+    🟢 Режим: Держите экраном вверх (Поворот Z влево/вправо + Наклон)
   </div>
 
   <!-- Интерактивный радар + Тачпад -->
@@ -467,11 +467,11 @@
     <!-- Показания -->
     <div class="gyro-stats">
       <div class="stat-pill">
-        Z-Поворот
+        Z-Поворот (X)
         <span id="statX">0°</span>
       </div>
       <div class="stat-pill">
-        Y-Наклон
+        Наклон (Y)
         <span id="statY">0°</span>
       </div>
       <div class="stat-pill">
@@ -481,7 +481,7 @@
     </div>
   </div>
 
-  <!-- Главная кнопка старта / активации гироскопа -->
+  <!-- Главная кнопка старта / калибровки -->
   <button class="start-btn" id="startBtn" onclick="activateAndCalibrate()">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="10"></circle>
@@ -490,7 +490,7 @@
       <line x1="12" y1="6" x2="12" y2="2"></line>
       <line x1="12" y1="22" x2="12" y2="18"></line>
     </svg>
-    <span id="btnLabel">🎯 КАЛИБРОВАТЬ УКАЗКУ</span>
+    <span id="btnLabel">🎯 КАЛИБРОВАТЬ ЦЕНТР</span>
   </button>
 
   <!-- Тонкие настройки -->
@@ -512,8 +512,8 @@
   </div>
 
   <div class="hint-footer" id="hintFooter">
-    Поворачивайте телефон влево-вправо как лазерную указку (ось Z).<br>
-    Наклоняйте вверх-вниз по вертикали (ось Y).
+    Держите телефон <b>экраном вверх</b>.<br>
+    Поворачивайте нос телефона влево-вправо как стрелку (вокруг оси Z).
   </div>
 
   <script>
@@ -557,9 +557,9 @@
     let controlMode = 'gyro'; // 'gyro' | 'manual'
     let sensitivity = 1.5;
     let invertX = false;
-    let invertY = true; // Инвертирован по дефолту
+    let invertY = true; // По умолчанию инвертирован Y
 
-    // Z-axis Yaw (Alpha) & Y-axis Pitch (Beta)
+    // Поворот вокруг оси Z (нормаль к экрану / Alpha) и наклон (Beta)
     let baseAlpha = null;
     let baseBeta = null;
     let isCalibrated = false;
@@ -594,9 +594,9 @@
         modeGyroBtn.classList.add('active');
         modeManualBtn.classList.remove('active');
         radar.classList.remove('manual-mode');
-        btnLabel.textContent = '🎯 КАЛИБРОВАТЬ УКАЗКУ';
-        sensorInfo.textContent = '🟢 Режим: Указка (Поворот Z влево/вправо + Наклон Y)';
-        hintFooter.innerHTML = 'Поворачивайте телефон влево-вправо как лазерную указку (ось Z).<br>Наклоняйте вверх-вниз по вертикали.';
+        btnLabel.textContent = '🎯 КАЛИБРОВАТЬ ЦЕНТР';
+        sensorInfo.textContent = '🟢 Режим: Держите экраном вверх (Поворот Z влево/вправо + Наклон)';
+        hintFooter.innerHTML = 'Держите телефон <b>экраном вверх</b>.<br>Поворачивайте нос телефона влево-вправо как стрелку (вокруг оси Z).';
         activateAndCalibrate();
       } else {
         modeManualBtn.classList.add('active');
@@ -604,7 +604,7 @@
         radar.classList.add('manual-mode');
         btnLabel.textContent = '🕹 СБРОС В ЦЕНТР';
         sensorInfo.textContent = '🕹 Ручной режим: ведите пальцем по кругу радара';
-        hintFooter.innerHTML = 'Ведите пальцем по экрану как по тачпаду.<br>Гироскоп отключен — руки не будут влиять.';
+        hintFooter.innerHTML = 'Ведите пальцем по экрану как по тачпаду.<br>Гироскоп отключен — руки не влияют на куб.';
         updateRadarUI(0, 0, 0, 0);
         sendMotion(0, 0);
       }
@@ -709,7 +709,7 @@
       statY.textContent = `${Math.round(dispY)}°`;
     }
 
-    // Разница углов по модулю 360 градусов (устраняет скачки при переходе через 0°/360°)
+    // Разница углов по модулю 360° (без скачков при переходе 359° -> 0°)
     function angleDifference(target, base) {
       let diff = (target - base) % 360;
       if (diff > 180) diff -= 360;
@@ -717,12 +717,12 @@
       return diff;
     }
 
-    // --- ПОВОРОТ ПО ОСИ Z (Alpha / Указка) + НАКЛОН ПО ОСИ Y (Beta) ---
+    // --- ПОВОРОТ ВОКРУГ ОСИ Z (Перпендикулярной экрану) ---
     function handleOrientation(e) {
       if (controlMode !== 'gyro') return;
 
-      let alpha = e.alpha; // Поворот вокруг оси Z [0..360°]
-      let beta = e.beta;   // Наклон вверх/вниз [-180..180°]
+      let alpha = e.alpha; // Поворот вокруг оси Z (нормали к экрану) [0..360°]
+      let beta = e.beta;   // Наклон вперед/назад [-180..180°]
 
       if (alpha === null || beta === null) return;
 
@@ -732,15 +732,17 @@
         isCalibrated = true;
       }
 
-      // 1. Горизонталь (X) = Поворот телефона вокруг Z как указки:
-      // При повороте телефона вправо alpha уменьшается -> -angleDifference дает положительное значение
+      // Когда телефон лежит/держится экраном вверх:
+      // Поворот вокруг оси Z (как стрелка компаса / руль):
+      // Поворот вправо (по часовой) уменьшает alpha -> -diff дает > 0 (движение вправо)
+      // Поворот влево (против часовой) увеличивает alpha -> -diff дает < 0 (движение влево)
       let deltaZ = -angleDifference(alpha, baseAlpha);
 
-      // 2. Вертикаль (Y) = Наклон телефона вверх/вниз:
+      // Наклон вперед/назад:
       let deltaY = (baseBeta - beta);
 
-      const MAX_Z_ANGLE = 22.0; // 22 градуса поворота на полный ход
-      const MAX_Y_ANGLE = 22.0; // 22 градуса наклона на полный ход
+      const MAX_Z_ANGLE = 25.0; // 25 градусов поворота вокруг Z для полного хода
+      const MAX_Y_ANGLE = 25.0;
 
       let normX = (deltaZ / MAX_Z_ANGLE) * sensitivity;
       let normY = (deltaY / MAX_Y_ANGLE) * sensitivity;
@@ -806,13 +808,13 @@
       baseBeta = null;
 
       startBtn.classList.add('calibrating');
-      btnLabel.textContent = '🎯 УКАЗКА НАЦЕЛЕНА!';
+      btnLabel.textContent = '🎯 ЦЕНТР ЗАФИКСИРОВАН!';
       setTimeout(() => {
-        btnLabel.textContent = '🎯 КАЛИБРОВАТЬ УКАЗКУ';
+        btnLabel.textContent = '🎯 КАЛИБРОВАТЬ ЦЕНТР';
         startBtn.classList.remove('calibrating');
       }, 600);
 
-      // Запрос Screen WakeLock
+      // Screen WakeLock
       if ('wakeLock' in navigator) {
         try { await navigator.wakeLock.request('screen'); } catch (err) {}
       }
