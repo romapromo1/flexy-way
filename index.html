@@ -236,32 +236,343 @@
         visibility: hidden;
       }
 
+      /* Liquid Glass Button - Кнопка "Начать" из жидкого стекла */
       .start-game-btn {
         pointer-events: auto;
-        padding: 1.1rem 3.4rem;
-        background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
-        border: none;
+        position: relative;
+        padding: 1.2rem 3.6rem;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(224, 242, 254, 0.45) 50%, rgba(56, 189, 248, 0.35) 100%);
+        backdrop-filter: blur(24px) saturate(190%);
+        -webkit-backdrop-filter: blur(24px) saturate(190%);
+        border: 1.5px solid rgba(255, 255, 255, 0.9);
         border-radius: 9999px;
-        color: #ffffff;
-        font-size: clamp(18px, 3vmin, 25px);
+        color: #0369a1;
+        font-size: clamp(20px, 3.2vmin, 26px);
         font-weight: 900;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
         cursor: pointer;
-        box-shadow: 0 12px 35px rgba(2, 132, 199, 0.45), 0 4px 12px rgba(0,0,0,0.15);
-        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+        box-shadow: 
+          0 20px 45px rgba(2, 132, 199, 0.25),
+          0 4px 16px rgba(0, 0, 0, 0.05),
+          inset 0 1.5px 2px rgba(255, 255, 255, 1),
+          inset 0 -2px 6px rgba(2, 132, 199, 0.15);
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 0.85rem;
+        overflow: hidden;
+      }
+
+      .start-game-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -120%;
+        width: 80%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+        transform: skewX(-22deg);
+        transition: left 0.7s ease;
       }
 
       .start-game-btn:hover {
-        transform: scale(1.06);
-        box-shadow: 0 16px 45px rgba(2, 132, 199, 0.6);
+        transform: scale(1.06) translateY(-2px);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(224, 242, 254, 0.6) 50%, rgba(56, 189, 248, 0.45) 100%);
+        box-shadow: 
+          0 26px 55px rgba(2, 132, 199, 0.35),
+          0 8px 22px rgba(0, 0, 0, 0.08),
+          inset 0 2px 3px rgba(255, 255, 255, 1),
+          inset 0 -3px 8px rgba(2, 132, 199, 0.2);
+        color: #0284c7;
+      }
+
+      .start-game-btn:hover::before {
+        left: 140%;
       }
 
       .start-game-btn:active {
-        transform: scale(0.96);
+        transform: scale(0.98) translateY(1px);
+      }
+
+      /* Шестеренка настроек сцены (Liquid Glass Gear Button) */
+      .settings-gear-btn {
+        position: absolute;
+        top: 1.2rem;
+        right: 1.2rem;
+        z-index: 30;
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(241, 245, 249, 0.5) 100%);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.85);
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s, box-shadow 0.2s;
+      }
+
+      .settings-gear-btn:hover {
+        transform: scale(1.1) rotate(45deg);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(224, 242, 254, 0.8) 100%);
+        box-shadow: 0 12px 30px rgba(2, 132, 199, 0.25);
+        color: #0284c7;
+      }
+
+      /* Модальное окно настроек сцены (Liquid Glass Editor Panel) */
+      .settings-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        z-index: 200;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+      }
+
+      .settings-modal-overlay.visible {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .settings-modal-card {
+        background: linear-gradient(145deg, rgba(255, 255, 255, 0.88) 0%, rgba(248, 250, 252, 0.78) 100%);
+        backdrop-filter: blur(28px) saturate(180%);
+        -webkit-backdrop-filter: blur(28px) saturate(180%);
+        border: 1.5px solid rgba(255, 255, 255, 0.95);
+        border-radius: 28px;
+        max-width: 680px;
+        width: 100%;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25), inset 0 1.5px 2px rgba(255, 255, 255, 1);
+        color: #0f172a;
+        overflow: hidden;
+        animation: modalScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      @keyframes modalScaleIn {
+        from { transform: scale(0.92); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+
+      .settings-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.25rem 1.75rem;
+        border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+      }
+
+      .settings-modal-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        color: #0f172a;
+      }
+
+      .settings-close-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(241, 245, 249, 0.8);
+        cursor: pointer;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+        transition: all 0.2s;
+      }
+
+      .settings-close-btn:hover {
+        background: #fee2e2;
+        color: #ef4444;
+        transform: scale(1.08);
+      }
+
+      .settings-modal-body {
+        padding: 1.25rem 1.75rem;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+
+      .object-control-card {
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-radius: 18px;
+        padding: 1rem 1.25rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      }
+
+      .object-control-title {
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .param-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 0.75rem 1rem;
+      }
+
+      .param-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+      }
+
+      .param-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .param-inputs {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .param-inputs input[type="range"] {
+        flex: 1;
+        accent-color: #0284c7;
+        cursor: pointer;
+      }
+
+      .param-inputs input[type="number"] {
+        width: 65px;
+        padding: 0.3rem 0.4rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #0f172a;
+        background: #ffffff;
+        text-align: right;
+      }
+
+      .settings-modal-footer {
+        padding: 1.2rem 1.75rem;
+        border-top: 1px solid rgba(226, 232, 240, 0.8);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        background: rgba(248, 250, 252, 0.6);
+      }
+
+      .settings-btn-group {
+        display: flex;
+        gap: 0.6rem;
+      }
+
+      .btn-save-txt {
+        padding: 0.75rem 1.4rem;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        color: #ffffff;
+        border: none;
+        font-weight: 800;
+        font-size: 0.9rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 6px 18px rgba(2, 132, 199, 0.35);
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      .btn-save-txt:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(2, 132, 199, 0.45);
+      }
+
+      .btn-copy-config {
+        padding: 0.75rem 1.2rem;
+        border-radius: 12px;
+        background: #ffffff;
+        color: #0f172a;
+        border: 1px solid #cbd5e1;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+      }
+
+      .btn-copy-config:hover {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+      }
+
+      .btn-reset-defaults {
+        padding: 0.75rem 1.2rem;
+        border-radius: 12px;
+        background: #f1f5f9;
+        color: #64748b;
+        border: none;
+        font-weight: 700;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .btn-reset-defaults:hover {
+        background: #e2e8f0;
+        color: #334155;
+      }
+
+      /* Всплывающее уведомление (Toast) */
+      .toast-popup {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background: #0f172a;
+        color: #ffffff;
+        padding: 0.8rem 1.6rem;
+        border-radius: 9999px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+        z-index: 300;
+        opacity: 0;
+        pointer-events: none;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+      }
+
+      .toast-popup.visible {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
       }
 
       .qr-overlay {
@@ -457,6 +768,47 @@
           <span>Начать</span>
         </button>
       </div>
+
+      <!-- Шестеренка настроек сцены (Liquid Glass Gear Button) -->
+      <button class="settings-gear-btn" id="settingsBtn" onclick="toggleSettingsModal(true)" title="Настройки расположения и масштаба 3D объектов">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+
+      <!-- Модальное окно настроек объектов сцены -->
+      <div class="settings-modal-overlay" id="settingsModal">
+        <div class="settings-modal-card">
+          <div class="settings-modal-header">
+            <div class="settings-modal-title">
+              <span>⚙️ Настройки сцены и объектов</span>
+            </div>
+            <button class="settings-close-btn" onclick="toggleSettingsModal(false)">✕</button>
+          </div>
+          
+          <div class="settings-modal-body" id="settingsControlsList">
+            <!-- Динамически заполняется карточками настроек каждого объекта -->
+          </div>
+
+          <div class="settings-modal-footer">
+            <div class="settings-btn-group">
+              <button class="btn-save-txt" onclick="downloadConfigTxt()">
+                💾 Сохранить в TXT
+              </button>
+              <button class="btn-copy-config" onclick="copyConfigTxt()">
+                📋 Скопировать TXT
+              </button>
+            </div>
+            <button class="btn-reset-defaults" onclick="resetSceneDefaults()">
+              🔄 По умолчанию
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Всплывающее уведомление (Toast) -->
+      <div class="toast-popup" id="toastPopup">Настройки скопированы!</div>
 
       <!-- Игровой оверлей -->
       <div class="ui">
@@ -658,7 +1010,7 @@
       const playerRadius = PLAYER_SIZE * 0.6;
 
       // ----------------------------------------------------
-      // СТАРТОВЫЙ ЭКРАН: Загрузка 3D моделей (flexyway.glb + good/*.glb)
+      // КОНФИГУРАЦИЯ СЦЕНЫ И РЕДАКТОР НАСТРОЕК (Шестеренка)
       // ----------------------------------------------------
       let gameState = 'start'; // 'start' | 'transitioning' | 'playing' | 'gameover'
       const startScreenGroup = new THREE.Group();
@@ -668,6 +1020,201 @@
       const goodObjects = [];
 
       const gltfLoader = new GLTFLoader();
+
+      const sceneConfig = {
+        flexyway: {
+          id: 'flexyway',
+          name: '🌟 Логотип Flexy Way',
+          type: '3d',
+          size: 420,
+          x: 0,
+          y: 130,
+          z: 0,
+          defaultSize: 420,
+          defaultX: 0,
+          defaultY: 130,
+          defaultZ: 0,
+          minSize: 50,
+          maxSize: 800,
+          instance: null
+        },
+        startButton: {
+          id: 'startButton',
+          name: '▶️ Кнопка «Начать» (Liquid Glass)',
+          type: 'dom',
+          size: 1.0,
+          x: 0,
+          y: 70, // padding-top in px
+          z: 0,
+          defaultSize: 1.0,
+          defaultX: 0,
+          defaultY: 70,
+          defaultZ: 0,
+          minSize: 0.4,
+          maxSize: 2.5,
+          stepSize: 0.05
+        },
+        bottle: {
+          id: 'bottle',
+          name: '🧴 Бутылка 1 (bottle.glb)',
+          type: '3d',
+          file: 'good/bottle.glb',
+          size: 185,
+          x: -280,
+          y: 490,
+          z: 0,
+          delay: 0.12,
+          rotSpeed: 0.35,
+          phase: 0.5,
+          defaultSize: 185,
+          defaultX: -280,
+          defaultY: 490,
+          defaultZ: 0,
+          minSize: 40,
+          maxSize: 600,
+          instance: null
+        },
+        bottle_2: {
+          id: 'bottle_2',
+          name: '🧃 Термос (bottle_2.glb)',
+          type: '3d',
+          file: 'good/bottle_2.glb',
+          size: 190,
+          x: 280,
+          y: 470,
+          z: 0,
+          delay: 0.22,
+          rotSpeed: -0.35,
+          phase: 1.2,
+          defaultSize: 190,
+          defaultX: 280,
+          defaultY: 470,
+          defaultZ: 0,
+          minSize: 40,
+          maxSize: 600,
+          instance: null
+        },
+        diadem: {
+          id: 'diadem',
+          name: '👑 Диадема (diadem.glb)',
+          type: '3d',
+          file: 'good/diadem.glb',
+          size: 190,
+          x: -320,
+          y: 190,
+          z: 0,
+          delay: 0.32,
+          rotSpeed: 0.12,
+          phase: 2.1,
+          defaultSize: 190,
+          defaultX: -320,
+          defaultY: 190,
+          defaultZ: 0,
+          minSize: 40,
+          maxSize: 600,
+          instance: null
+        },
+        lipstick: {
+          id: 'lipstick',
+          name: '💄 Помада (lipstick.glb)',
+          type: '3d',
+          file: 'good/lipstick.glb',
+          size: 135,
+          x: 320,
+          y: 200,
+          z: 0,
+          delay: 0.42,
+          rotSpeed: -0.4,
+          phase: 2.8,
+          defaultSize: 135,
+          defaultX: 320,
+          defaultY: 200,
+          defaultZ: 0,
+          minSize: 40,
+          maxSize: 600,
+          instance: null
+        },
+        sun_glasses: {
+          id: 'sun_glasses',
+          name: '🕶 Очки (sun glasses.glb)',
+          type: '3d',
+          file: 'good/sun glasses.glb',
+          size: 175,
+          x: 320,
+          y: -50,
+          z: 0,
+          delay: 0.52,
+          rotSpeed: -0.12,
+          phase: 4.2,
+          defaultSize: 175,
+          defaultX: 320,
+          defaultY: -50,
+          defaultZ: 0,
+          minSize: 40,
+          maxSize: 600,
+          instance: null
+        },
+        bag: {
+          id: 'bag',
+          name: '👜 Сумка (bag.glb)',
+          type: '3d',
+          file: 'good/bag.glb',
+          size: 330,
+          x: 0,
+          y: -300,
+          z: 0,
+          delay: 0.62,
+          rotSpeed: 0.0,
+          phase: 0.0,
+          defaultSize: 330,
+          defaultX: 0,
+          defaultY: -300,
+          defaultZ: 0,
+          minSize: 50,
+          maxSize: 800,
+          instance: null
+        },
+        sport_wear: {
+          id: 'sport_wear',
+          name: '🎽 Спорт костюм (sport_wear.glb)',
+          type: '3d',
+          file: 'good/sport_wear.glb',
+          size: 210,
+          x: -240,
+          y: -540,
+          z: 0,
+          delay: 0.72,
+          rotSpeed: 0.25,
+          phase: 5.0,
+          defaultSize: 210,
+          defaultX: -240,
+          defaultY: -540,
+          defaultZ: 0,
+          minSize: 40,
+          maxSize: 600,
+          instance: null
+        },
+        shoe: {
+          id: 'shoe',
+          name: '👠 Туфля (shoe.glb)',
+          type: '3d',
+          file: 'good/shoe.glb',
+          size: 190,
+          x: 240,
+          y: -540,
+          z: 0,
+          delay: 0.82,
+          rotSpeed: 0.35,
+          phase: 3.5,
+          defaultSize: 190,
+          defaultX: 240,
+          defaultY: -540,
+          defaultZ: 0,
+          minSize: 40,
+          maxSize: 600,
+          instance: null
+        }
+      };
 
       function normalizeModel(object, targetSize) {
         const box = new THREE.Box3().setFromObject(object);
@@ -682,11 +1229,12 @@
         object.position.z -= center.z;
 
         const maxDim = Math.max(size.x, size.y, size.z);
-        const scale = maxDim > 0 ? (targetSize / maxDim) : 1;
+        const origUnitScale = maxDim > 0 ? (1 / maxDim) : 1;
 
         const container = new THREE.Group();
         container.add(object);
-        container.userData.targetScale = scale;
+        container.userData.origUnitScale = origUnitScale;
+        container.userData.targetScale = origUnitScale * targetSize;
         container.scale.set(0, 0, 0);
 
         object.traverse((child) => {
@@ -697,12 +1245,10 @@
             // Сохраняем исходные материалы и текстуры из GLB
             if (child.material) {
               const fixMat = (mat) => {
-                // Не форсируем DoubleSide на всех мешах, чтобы избежать ряби/Z-файтинга на внутренних поверхностях (туфля shoe)
                 if (mat.map) {
                   mat.map.colorSpace = THREE.SRGBColorSpace;
                   mat.map.needsUpdate = true;
                 }
-                // Для тонких элементов и ткани гарантируем отбрасывание теней
                 mat.shadowSide = THREE.DoubleSide;
                 mat.needsUpdate = true;
               };
@@ -719,17 +1265,20 @@
         return container;
       }
 
-      // Загрузка центрального логотипа flexyway.glb (по центру Y = 130)
+      // Загрузка центрального логотипа flexyway.glb
       gltfLoader.load(
         'flexyway.glb',
         (gltf) => {
-          const logo = normalizeModel(gltf.scene, 420);
-          logo.position.set(0, 130, 0);
-          logo.userData.baseY = 130;
+          const cfg = sceneConfig.flexyway;
+          const logo = normalizeModel(gltf.scene, cfg.size);
+          logo.position.set(cfg.x, cfg.y, cfg.z);
+          logo.userData.baseX = cfg.x;
+          logo.userData.baseY = cfg.y;
           logo.userData.spawnDelay = 0.05;
           logo.userData.spawnProgress = 0;
           startScreenGroup.add(logo);
           flexywayLogo = logo;
+          cfg.instance = logo;
         },
         undefined,
         (err) => {
@@ -737,42 +1286,231 @@
         }
       );
 
-      // Конфигурация всех 8 моделей GLB из папки good/
-      // Сумка (bag.glb) заметно больше остальных, ниже кнопки НАЧАТЬ (Y = -300, size = 330) и НЕ вращается (rotSpeed = 0)
-      // Диадема и очки вращаются медленно (rotSpeed = 0.12 и -0.12)
-      // Помада (lipstick.glb) чуть меньше остальных (size = 135)
-      const goodModelsConfig = [
-        { file: 'good/bottle.glb', x: -280, y: 490, size: 185, delay: 0.12, rotSpeed: 0.35, phase: 0.5 },
-        { file: 'good/bottle_2.glb', x: 280, y: 470, size: 190, delay: 0.22, rotSpeed: -0.35, phase: 1.2 },
-        { file: 'good/diadem.glb', x: -320, y: 190, size: 190, delay: 0.32, rotSpeed: 0.12, phase: 2.1 }, // Медленное вращение диадемы
-        { file: 'good/lipstick.glb', x: 320, y: 200, size: 135, delay: 0.42, rotSpeed: -0.4, phase: 2.8 },
-        { file: 'good/sun glasses.glb', x: 320, y: -50, size: 175, delay: 0.52, rotSpeed: -0.12, phase: 4.2 }, // Медленное вращение очков
-        { file: 'good/bag.glb', x: 0, y: -300, size: 330, delay: 0.62, rotSpeed: 0.0, phase: 0.0 }, // Сумка ниже и НЕ вращается
-        { file: 'good/sport_wear.glb', x: -240, y: -540, size: 210, delay: 0.72, rotSpeed: 0.25, phase: 5.0 }, // Четкая тень от ткани
-        { file: 'good/shoe.glb', x: 240, y: -540, size: 190, delay: 0.82, rotSpeed: 0.35, phase: 3.5 } // Чистая текстура без ряби
-      ];
-
-      goodModelsConfig.forEach((cfg) => {
-        gltfLoader.load(
-          cfg.file,
-          (gltf) => {
-            const model = normalizeModel(gltf.scene, cfg.size);
-            model.position.set(cfg.x, cfg.y, 0);
-            model.userData.baseX = cfg.x;
-            model.userData.baseY = cfg.y;
-            model.userData.spawnDelay = cfg.delay;
-            model.userData.spawnProgress = 0;
-            model.userData.rotSpeed = cfg.rotSpeed;
-            model.userData.phase = cfg.phase || 0;
-            startScreenGroup.add(model);
-            goodObjects.push(model);
-          },
-          undefined,
-          (err) => {
-            console.warn(`Error loading GLB ${cfg.file}:`, err);
-          }
-        );
+      // Загрузка всех 8 моделей GLB из папки good/
+      Object.keys(sceneConfig).forEach((key) => {
+        const cfg = sceneConfig[key];
+        if (cfg.type === '3d' && cfg.file) {
+          gltfLoader.load(
+            cfg.file,
+            (gltf) => {
+              const model = normalizeModel(gltf.scene, cfg.size);
+              model.position.set(cfg.x, cfg.y, cfg.z);
+              model.userData.baseX = cfg.x;
+              model.userData.baseY = cfg.y;
+              model.userData.spawnDelay = cfg.delay || 0.1;
+              model.userData.spawnProgress = 0;
+              model.userData.rotSpeed = cfg.rotSpeed || 0;
+              model.userData.phase = cfg.phase || 0;
+              startScreenGroup.add(model);
+              goodObjects.push(model);
+              cfg.instance = model;
+            },
+            undefined,
+            (err) => {
+              console.warn(`Error loading GLB ${cfg.file}:`, err);
+            }
+          );
+        }
       });
+
+      // Применение параметров объекта к 3D сцене / DOM
+      function applyObjectConfig(id) {
+        const item = sceneConfig[id];
+        if (!item) return;
+
+        if (item.type === 'dom') {
+          if (startOverlayEl) {
+            startOverlayEl.style.paddingTop = `${item.y}px`;
+          }
+          if (startBtnEl) {
+            startBtnEl.style.transform = `translate(${item.x}px, 0) scale(${item.size})`;
+          }
+        } else if (item.instance) {
+          const model = item.instance;
+          model.userData.baseX = item.x;
+          model.userData.baseY = item.y;
+          model.position.x = item.x;
+          model.position.y = item.y;
+          model.position.z = item.z;
+          if (model.userData.origUnitScale) {
+            model.userData.targetScale = model.userData.origUnitScale * item.size;
+            const progress = model.userData.spawnProgress !== undefined ? model.userData.spawnProgress : 1;
+            const s = model.userData.targetScale * easeOutBack(Math.min(1, progress));
+            model.scale.set(s, s, s);
+          }
+        }
+      }
+
+      window.updateObjectProp = function(id, prop, value) {
+        const numVal = parseFloat(value);
+        if (isNaN(numVal)) return;
+
+        if (!sceneConfig[id]) return;
+        sceneConfig[id][prop] = numVal;
+
+        // Синхронизируем парный input (range <-> number)
+        const rangeEl = document.getElementById(`ctrl_${id}_${prop}_range`);
+        const numEl = document.getElementById(`ctrl_${id}_${prop}_num`);
+        if (rangeEl && parseFloat(rangeEl.value) !== numVal) rangeEl.value = numVal;
+        if (numEl && parseFloat(numEl.value) !== numVal) numEl.value = numVal;
+
+        applyObjectConfig(id);
+      };
+
+      // Построение интерактивных контролов настроек
+      function buildSettingsUI() {
+        const listEl = document.getElementById('settingsControlsList');
+        if (!listEl) return;
+        listEl.innerHTML = '';
+
+        for (const [id, item] of Object.entries(sceneConfig)) {
+          const card = document.createElement('div');
+          card.className = 'object-control-card';
+
+          const minS = item.minSize !== undefined ? item.minSize : (item.type === 'dom' ? 0.4 : 40);
+          const maxS = item.maxSize !== undefined ? item.maxSize : (item.type === 'dom' ? 2.5 : 800);
+          const stepS = item.stepSize !== undefined ? item.stepSize : (item.type === 'dom' ? 0.05 : 1);
+
+          card.innerHTML = `
+            <div class="object-control-title">${item.name}</div>
+            <div class="param-grid">
+              <div class="param-field">
+                <div class="param-label"><span>Размер / Scale</span></div>
+                <div class="param-inputs">
+                  <input type="range" id="ctrl_${id}_size_range" min="${minS}" max="${maxS}" step="${stepS}" value="${item.size}" oninput="updateObjectProp('${id}', 'size', this.value)">
+                  <input type="number" id="ctrl_${id}_size_num" min="${minS}" max="${maxS}" step="${stepS}" value="${item.size}" oninput="updateObjectProp('${id}', 'size', this.value)">
+                </div>
+              </div>
+              <div class="param-field">
+                <div class="param-label"><span>Позиция X</span></div>
+                <div class="param-inputs">
+                  <input type="range" id="ctrl_${id}_x_range" min="-600" max="600" step="5" value="${item.x}" oninput="updateObjectProp('${id}', 'x', this.value)">
+                  <input type="number" id="ctrl_${id}_x_num" min="-600" max="600" step="1" value="${item.x}" oninput="updateObjectProp('${id}', 'x', this.value)">
+                </div>
+              </div>
+              <div class="param-field">
+                <div class="param-label"><span>Позиция Y</span></div>
+                <div class="param-inputs">
+                  <input type="range" id="ctrl_${id}_y_range" min="-800" max="800" step="5" value="${item.y}" oninput="updateObjectProp('${id}', 'y', this.value)">
+                  <input type="number" id="ctrl_${id}_y_num" min="-800" max="800" step="1" value="${item.y}" oninput="updateObjectProp('${id}', 'y', this.value)">
+                </div>
+              </div>
+              <div class="param-field">
+                <div class="param-label"><span>Позиция Z</span></div>
+                <div class="param-inputs">
+                  <input type="range" id="ctrl_${id}_z_range" min="-300" max="300" step="5" value="${item.z}" oninput="updateObjectProp('${id}', 'z', this.value)">
+                  <input type="number" id="ctrl_${id}_z_num" min="-300" max="300" step="1" value="${item.z}" oninput="updateObjectProp('${id}', 'z', this.value)">
+                </div>
+              </div>
+            </div>
+          `;
+          listEl.appendChild(card);
+        }
+      }
+
+      // Открытие / закрытие модального окна настроек
+      window.toggleSettingsModal = function(show) {
+        const modal = document.getElementById('settingsModal');
+        if (!modal) return;
+        if (show) {
+          buildSettingsUI();
+          modal.classList.add('visible');
+        } else {
+          modal.classList.remove('visible');
+        }
+      };
+
+      // Формирование текстового конфига для скачивания и отправки
+      function generateConfigTxt() {
+        let txt = `==================================================\n`;
+        txt += `🎮 FLEXY WAY — НАСТРОЙКИ СЦЕНЫ И ОБЪЕКТОВ\n`;
+        txt += `Дата сохранения: ${new Date().toLocaleString()}\n`;
+        txt += `==================================================\n\n`;
+
+        for (const [key, item] of Object.entries(sceneConfig)) {
+          txt += `--------------------------------------------------\n`;
+          txt += `[${item.name}]\n`;
+          txt += `ID: ${key}\n`;
+          txt += `Type: ${item.type}\n`;
+          txt += `Размер (Scale/Size): ${item.size}\n`;
+          txt += `Позиция X: ${item.x}\n`;
+          txt += `Позиция Y: ${item.y}\n`;
+          txt += `Позиция Z: ${item.z}\n`;
+          if (item.rotSpeed !== undefined) {
+            txt += `Скорость вращения: ${item.rotSpeed}\n`;
+          }
+          txt += `\n`;
+        }
+
+        txt += `==================================================\n`;
+        txt += `JSON ФОРМАТ (для быстрой вставки в код):\n`;
+        txt += `==================================================\n`;
+        const exportObj = {};
+        for (const [k, v] of Object.entries(sceneConfig)) {
+          exportObj[k] = {
+            size: v.size,
+            x: v.x,
+            y: v.y,
+            z: v.z,
+            rotSpeed: v.rotSpeed
+          };
+        }
+        txt += JSON.stringify(exportObj, null, 2);
+        return txt;
+      }
+
+      // Скачивание файла TXT
+      window.downloadConfigTxt = function() {
+        const content = generateConfigTxt();
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'flexyway_scene_config.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('💾 Файл flexyway_scene_config.txt успешно скачан!');
+      };
+
+      // Копирование конфига в буфер обмена
+      window.copyConfigTxt = function() {
+        const content = generateConfigTxt();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(content).then(() => {
+            showToast('📋 Настройки скопированы в буфер обмена!');
+          }).catch(() => {
+            showToast('Скопировано!');
+          });
+        } else {
+          showToast('Скопировано!');
+        }
+      };
+
+      // Сброс к значениям по умолчанию
+      window.resetSceneDefaults = function() {
+        for (const [id, item] of Object.entries(sceneConfig)) {
+          item.size = item.defaultSize;
+          item.x = item.defaultX;
+          item.y = item.defaultY;
+          item.z = item.defaultZ;
+          applyObjectConfig(id);
+        }
+        buildSettingsUI();
+        showToast('🔄 Настройки сброшены по умолчанию');
+      };
+
+      // Всплывающее уведомление (Toast)
+      window.showToast = function(msg) {
+        const toast = document.getElementById('toastPopup');
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.classList.add('visible');
+        setTimeout(() => {
+          toast.classList.remove('visible');
+        }, 2600);
+      };
 
       // Функция плавного отскока для появления (Ease Out Back)
       function easeOutBack(x) {
@@ -786,6 +1524,8 @@
         if (gameState !== 'start') return;
         gameState = 'transitioning';
         startOverlayEl.classList.add('hidden');
+        const settingsBtnEl = document.getElementById('settingsBtn');
+        if (settingsBtnEl) settingsBtnEl.style.display = 'none';
         topBarEl.classList.add('visible');
         gameHintEl.classList.add('visible');
 
@@ -1142,7 +1882,9 @@
               const s = flexywayLogo.userData.targetScale * easeOutBack(flexywayLogo.userData.spawnProgress);
               flexywayLogo.scale.set(s, s, s);
             }
-            flexywayLogo.position.y = flexywayLogo.userData.baseY + Math.sin(startElapsedTime * 1.5) * 12;
+            flexywayLogo.position.y = (flexywayLogo.userData.baseY !== undefined ? flexywayLogo.userData.baseY : sceneConfig.flexyway.y) + Math.sin(startElapsedTime * 1.5) * 12;
+            flexywayLogo.position.x = flexywayLogo.userData.baseX !== undefined ? flexywayLogo.userData.baseX : sceneConfig.flexyway.x;
+            flexywayLogo.position.z = sceneConfig.flexyway.z;
             flexywayLogo.rotation.y = Math.sin(startElapsedTime * 0.8) * 0.06;
             flexywayLogo.rotation.z = Math.cos(startElapsedTime * 1.1) * 0.03;
           }
@@ -1154,9 +1896,10 @@
               const s = obj.userData.targetScale * easeOutBack(obj.userData.spawnProgress);
               obj.scale.set(s, s, s);
             }
-            obj.position.y = obj.userData.baseY + Math.sin(startElapsedTime * 1.4 + obj.userData.baseX) * 10;
-            obj.rotation.y += dt * obj.userData.rotSpeed;
-            obj.rotation.x = Math.sin(startElapsedTime * 1.1 + obj.userData.baseY) * 0.08;
+            obj.position.y = (obj.userData.baseY !== undefined ? obj.userData.baseY : 0) + Math.sin(startElapsedTime * 1.4 + (obj.userData.phase || 0)) * 8;
+            obj.position.x = obj.userData.baseX !== undefined ? obj.userData.baseX : 0;
+            obj.rotation.y += dt * (obj.userData.rotSpeed || 0);
+            obj.rotation.x = Math.sin(startElapsedTime * 1.0 + (obj.userData.phase || 0)) * 0.05;
           });
         }
 
