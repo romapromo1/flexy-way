@@ -633,11 +633,11 @@
       bottomLight.position.set(0, -halfH * 0.8, 1000);
       scene.add(bottomLight);
 
-      // Задний Plane (в 2 раза больше экрана, полностью прозрачный, принимает легкую тень)
+      // Задний Plane (в 2 раза больше экрана, полностью прозрачный, принимает четкую мягкую тень)
       const shadowPlaneGeom = new THREE.PlaneGeometry(halfW * 4.0, halfH * 4.0);
-      const shadowPlaneMat = new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.14 });
+      const shadowPlaneMat = new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.18 });
       const shadowPlane = new THREE.Mesh(shadowPlaneGeom, shadowPlaneMat);
-      shadowPlane.position.set(0, 0, -100);
+      shadowPlane.position.set(0, 0, -40);
       shadowPlane.receiveShadow = true;
       scene.add(shadowPlane);
 
@@ -690,18 +690,20 @@
         container.scale.set(0, 0, 0);
 
         object.traverse((child) => {
-          if (child.isMesh) {
+          if (child.isMesh || child.isSkinnedMesh) {
             child.castShadow = true;
             child.receiveShadow = false;
 
             // Сохраняем исходные материалы и текстуры из GLB
             if (child.material) {
               const fixMat = (mat) => {
-                mat.side = THREE.DoubleSide;
+                // Не форсируем DoubleSide на всех мешах, чтобы избежать ряби/Z-файтинга на внутренних поверхностях (туфля shoe)
                 if (mat.map) {
                   mat.map.colorSpace = THREE.SRGBColorSpace;
                   mat.map.needsUpdate = true;
                 }
+                // Для тонких элементов и ткани гарантируем отбрасывание теней
+                mat.shadowSide = THREE.DoubleSide;
                 mat.needsUpdate = true;
               };
 
@@ -736,18 +738,18 @@
       );
 
       // Конфигурация всех 8 моделей GLB из папки good/
-      // Сумка (bag.glb) заметно больше остальных и под кнопкой НАЧАТЬ (Y = -230, size = 330)
+      // Сумка (bag.glb) заметно больше остальных, ниже кнопки НАЧАТЬ (Y = -300, size = 330) и НЕ вращается (rotSpeed = 0)
+      // Диадема и очки вращаются медленно (rotSpeed = 0.12 и -0.12)
       // Помада (lipstick.glb) чуть меньше остальных (size = 135)
-      // Все модели сбалансированы по композиции и парят в XY-пространстве
       const goodModelsConfig = [
         { file: 'good/bottle.glb', x: -280, y: 490, size: 185, delay: 0.12, rotSpeed: 0.35, phase: 0.5 },
         { file: 'good/bottle_2.glb', x: 280, y: 470, size: 190, delay: 0.22, rotSpeed: -0.35, phase: 1.2 },
-        { file: 'good/diadem.glb', x: -320, y: 180, size: 190, delay: 0.32, rotSpeed: 0.45, phase: 2.1 },
-        { file: 'good/lipstick.glb', x: 320, y: 200, size: 135, delay: 0.42, rotSpeed: -0.45, phase: 2.8 },
-        { file: 'good/sun glasses.glb', x: 320, y: -60, size: 175, delay: 0.52, rotSpeed: -0.4, phase: 4.2 },
-        { file: 'good/bag.glb', x: 0, y: -230, size: 330, delay: 0.62, rotSpeed: 0.25, phase: 0.0 }, // Крупная сумка под кнопкой
-        { file: 'good/sport_wear.glb', x: -240, y: -500, size: 200, delay: 0.72, rotSpeed: 0.3, phase: 5.0 },
-        { file: 'good/shoe.glb', x: 240, y: -500, size: 185, delay: 0.82, rotSpeed: 0.4, phase: 3.5 }
+        { file: 'good/diadem.glb', x: -320, y: 190, size: 190, delay: 0.32, rotSpeed: 0.12, phase: 2.1 }, // Медленное вращение диадемы
+        { file: 'good/lipstick.glb', x: 320, y: 200, size: 135, delay: 0.42, rotSpeed: -0.4, phase: 2.8 },
+        { file: 'good/sun glasses.glb', x: 320, y: -50, size: 175, delay: 0.52, rotSpeed: -0.12, phase: 4.2 }, // Медленное вращение очков
+        { file: 'good/bag.glb', x: 0, y: -300, size: 330, delay: 0.62, rotSpeed: 0.0, phase: 0.0 }, // Сумка ниже и НЕ вращается
+        { file: 'good/sport_wear.glb', x: -240, y: -540, size: 210, delay: 0.72, rotSpeed: 0.25, phase: 5.0 }, // Четкая тень от ткани
+        { file: 'good/shoe.glb', x: 240, y: -540, size: 190, delay: 0.82, rotSpeed: 0.35, phase: 3.5 } // Чистая текстура без ряби
       ];
 
       goodModelsConfig.forEach((cfg) => {
