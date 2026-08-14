@@ -540,10 +540,9 @@
           }
         };
 
-        // --- Уникальный 4-значный PIN комнаты ---
-        const generatePin = () => Math.random().toString(36).substring(2, 6).toUpperCase();
+        // --- ID комнаты (по умолчанию единый фестивальный PIN FLEXY) ---
         const urlParams = new URLSearchParams(window.location.search);
-        const roomId = (urlParams.get('room') || generatePin()).toUpperCase();
+        const roomId = (urlParams.get('room') || 'FLEXY').toUpperCase();
 
         const roomPinDisplayEl = document.getElementById('roomPinDisplay');
         if (roomPinDisplayEl) roomPinDisplayEl.textContent = roomId;

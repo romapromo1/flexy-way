@@ -443,7 +443,7 @@
     // --- Room ID ---
     const urlParams = new URLSearchParams(window.location.search);
     const hashRoom = window.location.hash ? window.location.hash.replace('#room=', '').replace('#', '') : null;
-    let roomId = (urlParams.get('room') || hashRoom || 'FLEXY1').toUpperCase();
+    let roomId = (urlParams.get('room') || hashRoom || 'FLEXY').toUpperCase();
 
     const roomInput = document.getElementById('roomInput');
     roomInput.value = roomId;
