@@ -2454,11 +2454,11 @@
         });
       });
 
-      // Все "плохие" предметы увеличены в 1.5 раза от 144 -> 216
+      // "Плохие" предметы: bolt уменьшен в 2 раза (108), donut_2.0 уменьшен на 55% (97), остальные 216
       const BAD_ITEM_SIZE = 216;
       const BAD_MODELS_DEF = [
-        { file: 'bad/bolt.glb', name: 'bolt', size: BAD_ITEM_SIZE, penalty: 5 },
-        { file: 'bad/donut_2.0 (1).glb', name: 'donut', size: BAD_ITEM_SIZE, penalty: 5 },
+        { file: 'bad/bolt.glb', name: 'bolt', size: 108, penalty: 5 },          // В 2 раза меньше (108)
+        { file: 'bad/donut_2.0 (1).glb', name: 'donut', size: 97, penalty: 5 }, // На 55% меньше (97)
         { file: 'bad/low_poly_wrench.glb', name: 'wrench', size: BAD_ITEM_SIZE, penalty: 5 },
         { file: 'bad/man_dumbbell.glb', name: 'man_dumbbell', size: BAD_ITEM_SIZE, penalty: 5 }
       ];
@@ -3283,12 +3283,12 @@
             endGame();
           }
 
-          // Постепенное увеличение скорости падения от 1.0x до 2.5x к концу 20 секунд
+          // Постепенное увеличение скорости падения к концу 20 секунд (макс. скорость в конце уменьшена на 25%: с 2.5x до 1.875x)
           const timeElapsedRatio = Math.min(1.0, Math.max(0.0, (20 - roundTimeRemaining) / 20));
-          const speedMultiplier = 1.0 + (1.5 * timeElapsedRatio);
+          const speedMultiplier = 1.0 + (0.875 * timeElapsedRatio);
 
-          // Частота выпадения предметов синхронно и пропорционально растет вместе со скоростью (от 0.38с до 0.15с)
-          const baseSpawnInterval = 0.38;
+          // Частота выпадения предметов: количество падающих предметов уменьшено на 30% (базовый интервал увеличен с 0.38с до 0.54с)
+          const baseSpawnInterval = 0.54;
           const currentSpawnInterval = baseSpawnInterval / speedMultiplier;
           if (spawnAccumulator >= currentSpawnInterval) {
             spawnAccumulator -= currentSpawnInterval;
