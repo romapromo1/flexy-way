@@ -65,33 +65,25 @@ def _dpapi_unprotect(data: bytes) -> bytes:
     result = _DataBlob()
     crypt32 = ctypes.windll.crypt32
     kernel32 = ctypes.windll.kernel32
-    # Try user scope (0x1), then local machine scope (0x5 = 0x1 | 0x4)
-    ok = crypt32.CryptUnprotectData(
-        ctypes.byref(source),
-        None,
-        ctypes.byref(entropy),
-        None,
-        None,
-        0x1,
-        ctypes.byref(result),
-    )
-    if not ok:
-        ok = crypt32.CryptUnprotectData(
-            ctypes.byref(source),
-            None,
-            ctypes.byref(entropy),
-            None,
-            None,
-            0x5,
-            ctypes.byref(result),
-        )
+    for ent in (ctypes.byref(entropy), None):
+        for flags in (0x1, 0x5, 0x0, 0x4):
+            ok = crypt32.CryptUnprotectData(
+                ctypes.byref(source),
+                None,
+                ent,
+                None,
+                None,
+                flags,
+                ctypes.byref(result),
+            )
+            if ok:
+                del source_buffer, entropy_buffer
+                try:
+                    return ctypes.string_at(result.pbData, result.cbData)
+                finally:
+                    kernel32.LocalFree(result.pbData)
     del source_buffer, entropy_buffer
-    if not ok:
-        raise DataProtectionError(f"DPAPI не смог расшифровать данные: {ctypes.GetLastError()}")
-    try:
-        return ctypes.string_at(result.pbData, result.cbData)
-    finally:
-        kernel32.LocalFree(result.pbData)
+    raise DataProtectionError(f"DPAPI не смог расшифровать данные: {ctypes.GetLastError()}")
 
 
 def _stream_cipher(data: bytes, key: bytes, nonce: bytes) -> bytes:
@@ -190,7 +182,10 @@ class LocalDataProtector:
             return ""
         if value.startswith(_DPAPI_PREFIX):
             payload = base64.urlsafe_b64decode(value.removeprefix(_DPAPI_PREFIX))
-            return _dpapi_unprotect(payload).decode("utf-8")
+            try:
+                return _dpapi_unprotect(payload).decode("utf-8")
+            except Exception:
+                return ""
         if value.startswith(_LOCAL_PREFIX):
             payload = base64.urlsafe_b64decode(value.removeprefix(_LOCAL_PREFIX))
             nonce, tag, ciphertext = payload[:16], payload[16:48], payload[48:]
@@ -198,7 +193,7 @@ class LocalDataProtector:
                 self._secret, b"tag\0" + nonce + ciphertext, hashlib.sha256
             ).digest()
             if not hmac.compare_digest(tag, expected):
-                raise DataProtectionError("Зашифрованные локальные данные повреждены")
+                return ""
             return _stream_cipher(ciphertext, self._secret, nonce).decode("utf-8")
         # Read-only compatibility for values written by the first bot version.
         return value

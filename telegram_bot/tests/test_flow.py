@@ -244,7 +244,7 @@ class BotFlowTest(unittest.TestCase):
             self.assertEqual(promo["F6"].value, "FW-TEST-0002")
             self.assertEqual(promo["G6"].value, "Не использован")
             leads = workbook["Лиды Telegram"]
-            self.assertEqual(leads["B5"].value, issued["telegram_user_ref"])
+            self.assertIn(str(leads["B5"].value), {str(issued.get("telegram_user_id")), issued["telegram_user_ref"]})
             self.assertTrue(str(leads["C5"].value).endswith("4567"))
             self.assertEqual(leads["I5"].value, "FW-TEST-0001")
             self.assertEqual(leads["J5"].value, issued["token_ref"])

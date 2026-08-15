@@ -20,6 +20,7 @@ def parser() -> argparse.ArgumentParser:
     subparsers.add_parser("init", help="создать БД и синхронизировать промокоды из Excel")
     subparsers.add_parser("prizes", help="показать доступные типы призов")
     subparsers.add_parser("set-description", help="обновить приветственное описание бота в Telegram")
+    subparsers.add_parser("sync-excel", help="записать все выданные лиды с полными контактами в Excel")
 
     token = subparsers.add_parser("token", help="создать персональную deep link-ссылку")
     token.add_argument("--prize", required=True, help="код приза из листа «Справочник призов»")
@@ -77,6 +78,11 @@ def main(argv: list[str] | None = None) -> int:
             api.set_my_short_description(BOT_SHORT_DESCRIPTION, language_code="ru")
             print("Готово: приветственное описание бота в Telegram успешно установлено!")
             print(f"Текст:\n{BOT_WELCOME_DESCRIPTION}")
+            return 0
+        if args.command == "sync-excel":
+            claims = database.list_claims(500)
+            count = workbook.sync_all_issued_leads(claims)
+            print(f"Готово: {count} выданных призов с полными контактами записаны в Excel-файл {config.workbook_path.name}")
             return 0
         if args.command == "token":
             config.validate_for_link()

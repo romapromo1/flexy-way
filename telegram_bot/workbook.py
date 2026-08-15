@@ -22,7 +22,7 @@ HEADER_ROW = 4
 LEADS_HEADERS = [
     "Дата и время",
     "Telegram ref",
-    "Телефон (маска)",
+    "Телефон",
     "Username",
     "Имя",
     "Фамилия",
@@ -36,7 +36,7 @@ LEADS_HEADERS = [
 ]
 LEADS_HEADER_ALIASES = {
     "Telegram ID": "Telegram ref",
-    "Телефон": "Телефон (маска)",
+    "Телефон (маска)": "Телефон",
     "Токен сессии": "Токен ref",
     "ID игровой сессии": "Сессия ref",
 }
@@ -225,24 +225,13 @@ class PromoWorkbook:
             full_name = " ".join(
                 part for part in [claim.get("first_name", ""), claim.get("last_name", "")] if part
             )
-            if self.pii_mode == "masked_strict":
-                recipient = ", ".join(
-                    part
-                    for part in [claim.get("telegram_user_ref", ""), mask_phone(claim.get("phone"))]
-                    if part
-                )
-                lead_phone = mask_phone(claim.get("phone"))
-                lead_username = ""
-                lead_first_name = ""
-                lead_last_name = ""
-            else:
-                recipient = ", ".join(
-                    part for part in [full_name, username, claim.get("phone", "")] if part
-                ) or claim.get("telegram_user_ref", "")
-                lead_phone = claim.get("phone", "")
-                lead_username = username
-                lead_first_name = claim.get("first_name", "")
-                lead_last_name = claim.get("last_name", "")
+            recipient = ", ".join(
+                part for part in [full_name, username, claim.get("phone", "")] if part
+            ) or str(claim.get("telegram_user_id") or claim.get("telegram_user_ref", ""))
+            lead_phone = claim.get("phone", "")
+            lead_username = username
+            lead_first_name = claim.get("first_name", "")
+            lead_last_name = claim.get("last_name", "")
 
             promo_sheet.cell(promo_row, promo_columns["Статус"], "Использован")
             promo_sheet.cell(promo_row, promo_columns["Дата использования"], local_time)
@@ -253,15 +242,15 @@ class PromoWorkbook:
             promo_sheet.cell(
                 promo_row,
                 promo_columns["Комментарий"],
-                f"Выдан Telegram-ботом; получатель: {claim['telegram_user_ref']}; "
+                f"Выдан Telegram-ботом; {recipient}; "
                 f"сессия: {claim['session_ref']}",
             )
 
             self._copy_row_style(leads_sheet, HEADER_ROW + 1, lead_row)
+            phone_col = leads_columns.get("Телефон") or leads_columns.get("Телефон (маска)")
             values = {
                 "Дата и время": local_time,
-                "Telegram ref": claim["telegram_user_ref"],
-                "Телефон (маска)": lead_phone,
+                "Telegram ref": claim.get("telegram_user_id") or claim.get("telegram_user_ref"),
                 "Username": lead_username,
                 "Имя": lead_first_name,
                 "Фамилия": lead_last_name,
@@ -271,13 +260,15 @@ class PromoWorkbook:
                 "Токен ref": claim["token_ref"],
                 "Сессия ref": claim["session_ref"],
                 "Статус": "Выдан",
-                "Примечание": "Подписка подтверждена одним запросом Telegram API",
+                "Примечание": "Подписка подтверждена в Telegram",
             }
             for title, value in values.items():
-                leads_sheet.cell(lead_row, leads_columns[title], _excel_safe(value))
+                if title in leads_columns:
+                    leads_sheet.cell(lead_row, leads_columns[title], _excel_safe(value))
+            if phone_col:
+                leads_sheet.cell(lead_row, phone_col, _excel_safe(lead_phone))
+                leads_sheet.cell(lead_row, phone_col).number_format = "@"
             leads_sheet.cell(lead_row, leads_columns["Дата и время"]).number_format = "dd.mm.yyyy hh:mm"
-            leads_sheet.cell(lead_row, leads_columns["Telegram ref"]).number_format = "@"
-            leads_sheet.cell(lead_row, leads_columns["Телефон (маска)"]).number_format = "@"
             status_cell = leads_sheet.cell(lead_row, leads_columns["Статус"])
             status_cell.fill = PatternFill("solid", fgColor="ECFDF5")
             status_cell.font = copy(status_cell.font)
@@ -319,6 +310,95 @@ class PromoWorkbook:
             raise WorkbookError(
                 "Excel-файл занят. Закройте его в Microsoft Excel и повторите проверку подписки."
             ) from error
+        finally:
+            if temp_path is not None and temp_path.exists():
+                try:
+                    temp_path.unlink()
+                except OSError:
+                    pass
+
+    def sync_all_issued_leads(self, claims: list[Mapping]) -> int:
+        workbook = self._load(read_only=False)
+        count = 0
+        try:
+            promo_sheet = workbook[PROMO_SHEET]
+            promo_columns = _headers(promo_sheet)
+            leads_sheet = self._ensure_leads_sheet(workbook)
+            leads_columns = _headers(leads_sheet)
+            phone_col = leads_columns.get("Телефон") or leads_columns.get("Телефон (маска)")
+
+            promo_map = {}
+            for row in range(HEADER_ROW + 1, promo_sheet.max_row + 1):
+                code = str(promo_sheet.cell(row, promo_columns["Промокод"]).value or "").strip()
+                if code:
+                    promo_map[code] = row
+
+            for claim in claims:
+                if claim.get("status") != "issued" or not claim.get("promo_code"):
+                    continue
+                promo_row = promo_map.get(claim["promo_code"])
+                lead_row, _ = self._lead_row(leads_sheet, claim["token_ref"])
+
+                issued_str = claim.get("issued_at") or claim.get("created_at")
+                try:
+                    issued_at = datetime.fromisoformat(issued_str.replace("Z", "+00:00"))
+                    local_time = issued_at.astimezone(self.timezone).replace(tzinfo=None)
+                except Exception:
+                    local_time = datetime.now()
+
+                username = f"@{claim['username']}" if claim.get("username") else ""
+                full_name = " ".join(
+                    part for part in [claim.get("first_name", ""), claim.get("last_name", "")] if part
+                )
+                recipient = ", ".join(
+                    part for part in [full_name, username, claim.get("phone", "")] if part
+                ) or str(claim.get("telegram_user_id") or "")
+                lead_phone = claim.get("phone", "")
+
+                if promo_row:
+                    promo_sheet.cell(promo_row, promo_columns["Статус"], "Использован")
+                    promo_sheet.cell(promo_row, promo_columns["Дата использования"], local_time)
+                    promo_sheet.cell(promo_row, promo_columns["Дата использования"]).number_format = "dd.mm.yyyy hh:mm"
+                    promo_sheet.cell(promo_row, promo_columns["Получатель / клиент"], _excel_safe(recipient))
+                    promo_sheet.cell(
+                        promo_row,
+                        promo_columns["Комментарий"],
+                        f"Выдан Telegram-ботом; {recipient}; сессия: {claim['session_ref']}",
+                    )
+
+                self._copy_row_style(leads_sheet, HEADER_ROW + 1, lead_row)
+                values = {
+                    "Дата и время": local_time,
+                    "Telegram ref": claim.get("telegram_user_id") or claim.get("telegram_user_ref"),
+                    "Username": username,
+                    "Имя": claim.get("first_name", ""),
+                    "Фамилия": claim.get("last_name", ""),
+                    "Код приза": claim["prize_code"],
+                    "Приз": claim["prize_name"],
+                    "Промокод": claim["promo_code"],
+                    "Токен ref": claim["token_ref"],
+                    "Сессия ref": claim["session_ref"],
+                    "Статус": "Выдан",
+                    "Примечание": "Подписка подтверждена в Telegram",
+                }
+                for title, value in values.items():
+                    if title in leads_columns:
+                        leads_sheet.cell(lead_row, leads_columns[title], _excel_safe(value))
+                if phone_col:
+                    leads_sheet.cell(lead_row, phone_col, _excel_safe(lead_phone))
+                    leads_sheet.cell(lead_row, phone_col).number_format = "@"
+                leads_sheet.cell(lead_row, leads_columns["Дата и время"]).number_format = "dd.mm.yyyy hh:mm"
+                count += 1
+
+            if workbook.calculation is None:
+                workbook.calculation = CalcProperties()
+            workbook.calculation.fullCalcOnLoad = True
+            workbook.calculation.forceFullCalc = True
+            workbook.save(self.path)
+            workbook.close()
+            return count
+        except PermissionError as error:
+            raise WorkbookError("Excel-файл занят. Закройте его в Excel и повторите.") from error
         except WorkbookError:
             raise
         except Exception as error:
@@ -328,8 +408,6 @@ class PromoWorkbook:
                 workbook.close()
             except Exception:
                 pass
-            if temp_path is not None and temp_path.exists():
-                temp_path.unlink()
 
     def anonymize_user(self, user_ref: str) -> int:
         return self.anonymize_users({user_ref})
