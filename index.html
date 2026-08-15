@@ -2225,7 +2225,7 @@
       // ----------------------------------------------------
       // Подготовка 3D моделей (Шаблоны для сумки игрока и падающих предметов)
       // ----------------------------------------------------
-      const UNIFORM_ITEM_SIZE = 120; // Все падающие объекты строго одного размера
+      const UNIFORM_ITEM_SIZE = 144; // Все падающие объекты увеличены на 20% (120 -> 144)
       const PLAYER_BASE_Y = -560;    // Сумка зафиксирована внизу экрана и только ловит предметы
 
       function prepare3DTemplate(object, targetSize = UNIFORM_ITEM_SIZE, modelKey = '') {
@@ -2314,25 +2314,25 @@
         return cloned;
       }
 
-      // Загружаем 3D сумку для игрока (размер корзины 235, зафиксирована внизу)
+      // Загружаем 3D сумку для игрока (размер корзины увеличен на 30%: 235 -> 305, зафиксирована внизу)
       gltfLoader.load('good/bag.glb', (gltf) => {
-        playerBagMesh = prepare3DTemplate(gltf.scene, 235, 'bag');
+        playerBagMesh = prepare3DTemplate(gltf.scene, 305, 'bag');
         player.add(playerBagMesh);
       });
 
-      // Каталоги шаблонов — все одного унифицированного размера (UNIFORM_ITEM_SIZE = 120)
+      // Каталоги шаблонов — все одного унифицированного размера (UNIFORM_ITEM_SIZE = 144)
       const goodTemplates = [];
       const badTemplates = [];
       let goldenShoeTemplate = null;
 
       const GOOD_MODELS_DEF = [
-        { file: 'good/shoe.glb', name: 'shoe', size: UNIFORM_ITEM_SIZE, points: 3 },       // Туфля 1 — суперприз (+3)
-        { file: 'good/SHOE 2.glb', name: 'shoe2', size: UNIFORM_ITEM_SIZE, points: 3 },   // Туфля 2 — суперприз (+3)
-        { file: 'good/SHOE 3.glb', name: 'shoe3', size: UNIFORM_ITEM_SIZE, points: 3 },   // Туфля 3 — суперприз (+3)
-        { file: 'good/dress.glb', name: 'dress', size: UNIFORM_ITEM_SIZE, points: 1 },     // Платье (+1)
-        { file: 'good/sport_wear.glb', name: 'sport_wear', size: UNIFORM_ITEM_SIZE, points: 1 }, // Костюм (+1)
-        { file: 'good/lipstick.glb', name: 'lipstick', size: UNIFORM_ITEM_SIZE, points: 1 },     // Помада (+1)
-        { file: 'good/dumbbell.glb', name: 'dumbbell', size: UNIFORM_ITEM_SIZE, points: 1 }     // Гантель (+1)
+        { file: 'good/shoe.glb', name: 'shoe', size: UNIFORM_ITEM_SIZE, points: 2 },       // Туфля 1 (+2 очка)
+        { file: 'good/dumbbell.glb', name: 'dumbbell', size: UNIFORM_ITEM_SIZE, points: 2 }, // Гантель (+2 очка)
+        { file: 'good/SHOE 2.glb', name: 'shoe2', size: UNIFORM_ITEM_SIZE, points: 2 },   // Туфля 2 (+2 очка)
+        { file: 'good/SHOE 3.glb', name: 'shoe3', size: UNIFORM_ITEM_SIZE, points: 2 },   // Туфля 3 (+2 очка)
+        { file: 'good/dress.glb', name: 'dress', size: UNIFORM_ITEM_SIZE, points: 1 },     // Платье (+1 очко)
+        { file: 'good/sport_wear.glb', name: 'sport_wear', size: UNIFORM_ITEM_SIZE, points: 1 }, // Костюм (+1 очко)
+        { file: 'good/lipstick.glb', name: 'lipstick', size: UNIFORM_ITEM_SIZE, points: 1 }     // Помада (+1 очко)
       ];
 
       GOOD_MODELS_DEF.forEach((item) => {
@@ -2822,9 +2822,9 @@
         const itemDef = catalog[Math.floor(Math.random() * catalog.length)];
         const mesh = cloneTemplate(itemDef.container);
 
-        // Безопасный диапазон спавна по X: никогда не выходит за рамки экрана
-        const margin = 90;
-        const originX = randRange(-halfW * 0.78 + margin, halfW * 0.78 - margin);
+        // Безопасный диапазон спавна по X для увеличенных на 20% предметов (144px)
+        const margin = 95;
+        const originX = randRange(-halfW * 0.76 + margin, halfW * 0.76 - margin);
         const originY = TOP_Y + 40;
 
         mesh.position.set(originX, originY, 0);
@@ -2847,7 +2847,7 @@
           vy,
           speedVariance,
           rot,
-          radius: 52,
+          radius: 64,
           isGood: itemDef.isGood,
           isGoldenShoe: false,
           points: itemDef.points || 1,
@@ -2897,7 +2897,7 @@
         spawnedGoldenShoeThisRound = false;
         caughtGoldenShoe = false;
 
-        spawnInterval = 0.65;
+        spawnInterval = 0.42;
         fallSpeed = BASE_FALL_SPEED;
         coinCount = 0;
         coinTotalEl.textContent = '0';
@@ -3182,8 +3182,8 @@
           const timeElapsedRatio = Math.min(1.0, Math.max(0.0, (20 - roundTimeRemaining) / 20));
           const speedMultiplier = 1.0 + (1.5 * timeElapsedRatio);
 
-          // Динамический интервал спавна
-          const currentSpawnInterval = Math.max(0.38, 0.65 - timeElapsedRatio * 0.22);
+          // Увеличенное количество летящих предметов (интервал спавна от 0.42 до 0.24 сек)
+          const currentSpawnInterval = Math.max(0.24, 0.42 - timeElapsedRatio * 0.16);
           if (spawnAccumulator >= currentSpawnInterval) {
             spawnAccumulator -= currentSpawnInterval;
             spawnFallingItem();
@@ -3240,9 +3240,9 @@
           playerBagPulse = THREE.MathUtils.lerp(playerBagPulse, 1.0, 0.12);
           player.scale.set(playerBagPulse, 1.0 / Math.sqrt(playerBagPulse), playerBagPulse);
 
-          // Проверка попадания предметов в сумку (увеличенный радиус для сумки 235)
+          // Проверка попадания предметов в сумку (увеличенный радиус для сумки 305px и предметов 144px)
           const bagMouthX = player.position.x;
-          const bagMouthY = player.position.y + 30;
+          const bagMouthY = player.position.y + 35;
 
           for (let i = objects.length - 1; i >= 0; i--) {
             const o = objects[i];
@@ -3250,7 +3250,7 @@
             const dx = m.position.x - bagMouthX;
             const dy = m.position.y - bagMouthY;
 
-            if (Math.abs(dx) < 90 && Math.abs(dy) < 75) {
+            if (Math.abs(dx) < 120 && Math.abs(dy) < 95) {
               if (o.isGood) {
                 // ПРАВИЛЬНЫЙ ЖЕНСКИЙ АТРИБУТ (папка good)
                 const earned = o.points || 1;
