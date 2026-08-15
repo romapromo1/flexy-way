@@ -54,7 +54,7 @@ class TelegramApi:
             except (ValueError, AttributeError):
                 description = "ошибка API"
             raise TelegramApiError(f"Telegram HTTP {error.code}: {description}") from error
-        except (urllib.error.URLError, TimeoutError) as error:
+        except (urllib.error.URLError, TimeoutError, OSError, Exception) as error:
             raise TelegramApiError(f"Telegram недоступен: {error}") from error
         if not result.get("ok"):
             raise TelegramApiError(result.get("description", "Неизвестная ошибка Telegram API"))
@@ -150,7 +150,7 @@ class TelegramApi:
             except (ValueError, AttributeError):
                 description = "ошибка API"
             raise TelegramApiError(f"Telegram HTTP {error.code}: {description}") from error
-        except (urllib.error.URLError, TimeoutError) as error:
+        except (urllib.error.URLError, TimeoutError, OSError, Exception) as error:
             raise TelegramApiError(f"Telegram недоступен: {error}") from error
         if not result.get("ok"):
             raise TelegramApiError(result.get("description", "Неизвестная ошибка Telegram API"))

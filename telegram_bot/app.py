@@ -491,7 +491,11 @@ def run_polling(config: Config, app: BotApp, api: TelegramApi) -> None:
                 except WorkbookError:
                     LOGGER.exception("Не удалось выполнить плановое обезличивание Excel")
                 last_cleanup = time.monotonic()
-        except TelegramApiError:
-            LOGGER.exception("Ошибка long polling; повтор через %s секунд", backoff)
+        except TelegramApiError as error:
+            LOGGER.warning("Telegram временно недоступен (%s); повтор через %s сек", error, backoff)
+            time.sleep(backoff)
+            backoff = min(backoff * 2, 30)
+        except Exception as error:
+            LOGGER.warning("Сетевая ошибка polling (%s); повтор через %s сек", error, backoff)
             time.sleep(backoff)
             backoff = min(backoff * 2, 30)
