@@ -1557,7 +1557,10 @@
         }
       };
 
-      function normalizeModel(object, targetSize, isLipstick = false) {
+      function normalizeModel(object, targetSize, modelKey = '') {
+        const isLipstick = modelKey === 'lipstick';
+        const isSportWear = modelKey === 'sport_wear';
+
         const box = new THREE.Box3().setFromObject(object);
         const size = new THREE.Vector3();
         box.getSize(size);
@@ -1595,10 +1598,19 @@
                 mat.depthWrite = true;
                 mat.depthTest = true;
 
+                if (isSportWear) {
+                  // Приглушенный серо-голубой цвет костюма (slate blue)
+                  mat.color.set(0x769eb8);
+                }
+
                 if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
                   if (isLipstick) {
                     // Для помады оставляем сочные контрастные параметры
                     mat.envMapIntensity = 1.25;
+                  } else if (isSportWear) {
+                    mat.envMapIntensity = 0.35;
+                    mat.roughness = 0.55;
+                    mat.metalness = 0.05;
                   } else {
                     // Для остальных моделей приглушаем пересвет и убираем ослепляющие блики
                     mat.envMapIntensity = 0.40;
@@ -1630,7 +1642,7 @@
         'flexyway.glb',
         (gltf) => {
           const cfg = sceneConfig.flexyway;
-          const logo = normalizeModel(gltf.scene, cfg.size, false);
+          const logo = normalizeModel(gltf.scene, cfg.size, 'flexyway');
           logo.position.set(cfg.x, cfg.y, cfg.z);
           logo.userData.baseX = cfg.x;
           logo.userData.baseY = cfg.y;
@@ -1654,7 +1666,7 @@
           gltfLoader.load(
             cfg.file,
             (gltf) => {
-              const model = normalizeModel(gltf.scene, cfg.size, key === 'lipstick');
+              const model = normalizeModel(gltf.scene, cfg.size, key);
               model.position.set(cfg.x, cfg.y, cfg.z);
               model.userData.configId = key;
               model.userData.baseX = cfg.x;
@@ -1962,7 +1974,10 @@
       const UNIFORM_ITEM_SIZE = 120; // Все падающие объекты строго одного размера
       const PLAYER_BASE_Y = -560;    // Сумка зафиксирована внизу экрана и только ловит предметы
 
-      function prepare3DTemplate(object, targetSize = UNIFORM_ITEM_SIZE, isLipstick = false) {
+      function prepare3DTemplate(object, targetSize = UNIFORM_ITEM_SIZE, modelKey = '') {
+        const isLipstick = modelKey === 'lipstick';
+        const isSportWear = modelKey === 'sport_wear';
+
         const box = new THREE.Box3().setFromObject(object);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
@@ -1989,9 +2004,18 @@
                 mat.depthWrite = true;
                 mat.depthTest = true;
 
+                if (isSportWear) {
+                  // Приглушенный серо-голубой цвет костюма (slate blue)
+                  mat.color.set(0x769eb8);
+                }
+
                 if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
                   if (isLipstick) {
                     mat.envMapIntensity = 1.25;
+                  } else if (isSportWear) {
+                    mat.envMapIntensity = 0.35;
+                    mat.roughness = 0.55;
+                    mat.metalness = 0.05;
                   } else {
                     mat.envMapIntensity = 0.40;
                     if (mat.roughness !== undefined && mat.roughness < 0.35) {
@@ -2038,7 +2062,7 @@
 
       // Загружаем 3D сумку для игрока (размер корзины 195, зафиксирована внизу)
       gltfLoader.load('good/bag.glb', (gltf) => {
-        playerBagMesh = prepare3DTemplate(gltf.scene, 195, false);
+        playerBagMesh = prepare3DTemplate(gltf.scene, 195, 'bag');
         player.add(playerBagMesh);
       });
 
@@ -2058,27 +2082,30 @@
 
       GOOD_MODELS_DEF.forEach((item) => {
         gltfLoader.load(item.file, (gltf) => {
-          const container = prepare3DTemplate(gltf.scene, item.size, item.name === 'lipstick');
+          const container = prepare3DTemplate(gltf.scene, item.size, item.name);
           goodTemplates.push({ container, name: item.name, points: item.points, isGood: true });
         });
       });
 
       const BAD_MODELS_DEF = [
-        { file: 'bad/bolt.fbx', name: 'bolt', size: UNIFORM_ITEM_SIZE, penalty: 5 },
+        { file: 'bad/bolt.glb', name: 'bolt', size: UNIFORM_ITEM_SIZE, penalty: 5 },
         { file: 'bad/donut.fbx', name: 'donut', size: UNIFORM_ITEM_SIZE, penalty: 5 },
-        { file: 'bad/nut bolt.fbx', name: 'nut_bolt', size: UNIFORM_ITEM_SIZE, penalty: 5 }
+        { file: 'bad/nut bolt.glb', name: 'nut_bolt', size: UNIFORM_ITEM_SIZE, penalty: 5 }
       ];
 
       BAD_MODELS_DEF.forEach((item) => {
-        fbxLoader.load(item.file, (fbx) => {
-          const container = prepare3DTemplate(fbx, item.size, false);
+        const isGlb = item.file.endsWith('.glb') || item.file.endsWith('.gltf');
+        const loader = isGlb ? gltfLoader : fbxLoader;
+        loader.load(item.file, (loaded) => {
+          const rootObj = loaded.scene || loaded;
+          const container = prepare3DTemplate(rootObj, item.size, item.name);
           badTemplates.push({ container, name: item.name, penalty: item.penalty, isGood: false });
         }, undefined, () => {
-          // Fallback геометрия при сбое FBX
+          // Fallback геометрия при сбое
           const geom = new THREE.DodecahedronGeometry(UNIFORM_ITEM_SIZE * 0.42);
           const mat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3, metalness: 0.85 });
           const mesh = new THREE.Mesh(geom, mat);
-          const container = prepare3DTemplate(mesh, item.size, false);
+          const container = prepare3DTemplate(mesh, item.size, item.name);
           badTemplates.push({ container, name: item.name, penalty: item.penalty, isGood: false });
         });
       });
