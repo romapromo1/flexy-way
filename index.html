@@ -1943,7 +1943,10 @@
       // ----------------------------------------------------
       // Подготовка 3D моделей (Шаблоны для сумки игрока и падающих предметов)
       // ----------------------------------------------------
-      function prepare3DTemplate(object, targetSize) {
+      const UNIFORM_ITEM_SIZE = 120; // Все падающие объекты строго одного размера
+      const PLAYER_BASE_Y = -560;    // Сумка зафиксирована внизу экрана и только ловит предметы
+
+      function prepare3DTemplate(object, targetSize = UNIFORM_ITEM_SIZE) {
         const box = new THREE.Box3().setFromObject(object);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
@@ -1951,6 +1954,7 @@
         const scale = targetSize / maxDim;
 
         const container = new THREE.Group();
+        // Центрируем геометрию точно в (0, 0, 0)
         object.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
         object.scale.set(scale, scale, scale);
 
@@ -1990,24 +1994,24 @@
         return cloned;
       }
 
-      // Загружаем 3D сумку для игрока
+      // Загружаем 3D сумку для игрока (размер корзины 195, зафиксирована внизу)
       gltfLoader.load('good/bag.glb', (gltf) => {
         playerBagMesh = prepare3DTemplate(gltf.scene, 195);
         player.add(playerBagMesh);
       });
 
-      // Каталоги шаблонов
+      // Каталоги шаблонов — все одного унифицированного размера (UNIFORM_ITEM_SIZE = 120)
       const goodTemplates = [];
       const badTemplates = [];
 
       const GOOD_MODELS_DEF = [
-        { file: 'good/shoe.glb', name: 'shoe', size: 125, points: 3 }, // Туфля — суперприз (+3)
-        { file: 'good/sport_wear.glb', name: 'sport_wear', size: 135, points: 1 },
-        { file: 'good/iphone.glb', name: 'iphone', size: 105, points: 1 },
-        { file: 'good/sun glasses.glb', name: 'sun_glasses', size: 115, points: 1 },
-        { file: 'good/lipstick.glb', name: 'lipstick', size: 95, points: 1 },
-        { file: 'good/diadem.glb', name: 'diadem', size: 115, points: 1 },
-        { file: 'good/bottle_2.glb', name: 'bottle_2', size: 120, points: 1 }
+        { file: 'good/shoe.glb', name: 'shoe', size: UNIFORM_ITEM_SIZE, points: 3 }, // Туфля — суперприз (+3)
+        { file: 'good/sport_wear.glb', name: 'sport_wear', size: UNIFORM_ITEM_SIZE, points: 1 },
+        { file: 'good/iphone.glb', name: 'iphone', size: UNIFORM_ITEM_SIZE, points: 1 },
+        { file: 'good/sun glasses.glb', name: 'sun_glasses', size: UNIFORM_ITEM_SIZE, points: 1 },
+        { file: 'good/lipstick.glb', name: 'lipstick', size: UNIFORM_ITEM_SIZE, points: 1 },
+        { file: 'good/diadem.glb', name: 'diadem', size: UNIFORM_ITEM_SIZE, points: 1 },
+        { file: 'good/bottle_2.glb', name: 'bottle_2', size: UNIFORM_ITEM_SIZE, points: 1 }
       ];
 
       GOOD_MODELS_DEF.forEach((item) => {
@@ -2018,9 +2022,9 @@
       });
 
       const BAD_MODELS_DEF = [
-        { file: 'bad/bolt.fbx', name: 'bolt', size: 110, penalty: 5 },
-        { file: 'bad/donut.fbx', name: 'donut', size: 110, penalty: 5 },
-        { file: 'bad/nut bolt.fbx', name: 'nut_bolt', size: 110, penalty: 5 }
+        { file: 'bad/bolt.fbx', name: 'bolt', size: UNIFORM_ITEM_SIZE, penalty: 5 },
+        { file: 'bad/donut.fbx', name: 'donut', size: UNIFORM_ITEM_SIZE, penalty: 5 },
+        { file: 'bad/nut bolt.fbx', name: 'nut_bolt', size: UNIFORM_ITEM_SIZE, penalty: 5 }
       ];
 
       BAD_MODELS_DEF.forEach((item) => {
@@ -2029,7 +2033,7 @@
           badTemplates.push({ container, name: item.name, penalty: item.penalty, isGood: false });
         }, undefined, () => {
           // Fallback геометрия при сбое FBX
-          const geom = new THREE.DodecahedronGeometry(item.size * 0.42);
+          const geom = new THREE.DodecahedronGeometry(UNIFORM_ITEM_SIZE * 0.42);
           const mat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3, metalness: 0.85 });
           const mesh = new THREE.Mesh(geom, mat);
           const container = prepare3DTemplate(mesh, item.size);
@@ -2080,9 +2084,9 @@
             startScreenGroup.visible = false;
             gameState = 'playing';
             player.visible = true;
-            player.position.set(0, -560, 0);
+            player.position.set(0, PLAYER_BASE_Y, 0);
             targetWorldX = 0;
-            targetWorldY = -560;
+            targetWorldY = PLAYER_BASE_Y;
             resetGame();
           }
         }
@@ -2106,7 +2110,7 @@
       let fallSpeed = BASE_FALL_SPEED;
 
       let targetWorldX = 0;
-      let targetWorldY = -560;
+      let targetWorldY = PLAYER_BASE_Y;
       let isPhoneConnected = false;
 
       let screenShakeTime = 0;
@@ -2210,7 +2214,7 @@
         if (templateObj && templateObj.container) {
           mesh = cloneTemplate(templateObj.container);
         } else {
-          const geom = isGood ? new THREE.TorusGeometry(30, 12, 16, 24) : new THREE.DodecahedronGeometry(34);
+          const geom = isGood ? new THREE.TorusGeometry(36, 14, 16, 24) : new THREE.DodecahedronGeometry(UNIFORM_ITEM_SIZE * 0.42);
           const mat = new THREE.MeshStandardMaterial({
             color: isGood ? 0xf59e0b : 0x475569,
             roughness: 0.3,
@@ -2223,6 +2227,7 @@
 
         const originX = randRange(-halfW * 0.78, halfW * 0.78);
         const originY = TOP_Y + 60;
+        // Все объекты падают строго в одной плоскости XY (Z = 0)
         mesh.position.set(originX, originY, 0);
 
         const vx = randRange(-30, 30);
@@ -2254,11 +2259,11 @@
         for (const p of particles) scene.remove(p.mesh);
         particles.length = 0;
 
-        player.position.set(0, -560, 0);
+        player.position.set(0, PLAYER_BASE_Y, 0);
         player.rotation.set(0, 0, 0);
         player.visible = true;
         targetWorldX = 0;
-        targetWorldY = -560;
+        targetWorldY = PLAYER_BASE_Y;
 
         spawnInterval = 0.65;
         fallSpeed = BASE_FALL_SPEED;
@@ -2301,23 +2306,20 @@
         gameState = 'playing';
       };
 
-      function setPlayerWorld(worldX, worldY) {
-        const margin = 80;
+      function setPlayerWorld(worldX) {
+        const margin = 70;
         const clampedX = Math.max(-halfW * 0.85 + margin, Math.min(halfW * 0.85 - margin, worldX));
-        const clampedY = Math.max(-680, Math.min(-420, worldY));
         targetWorldX = clampedX;
-        targetWorldY = clampedY;
+        targetWorldY = PLAYER_BASE_Y; // Сумка не падает, зафиксирована внизу
       }
 
-      // Управление мышкой/пальцем на ПК для мгновенного теста
+      // Управление мышкой/пальцем на ПК (перемещение сумки только влево-вправо)
       container.addEventListener('pointermove', (e) => {
         if (gameState !== 'playing') return;
         const rect = container.getBoundingClientRect();
         const normX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-        const normY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
         const wx = normX * (halfW * 0.85);
-        const wy = -560 + normY * 130;
-        setPlayerWorld(wx, wy);
+        setPlayerWorld(wx);
       });
 
       function setPhoneConnected(connected) {
@@ -2364,11 +2366,10 @@
 
               if (data.type === 'motion') {
                 const wx = data.x * (halfW * 0.90);
-                const wy = -560 + data.y * 130;
-                setPlayerWorld(wx, wy);
+                setPlayerWorld(wx);
               } else if (data.type === 'recalibrate') {
                 targetWorldX = 0;
-                targetWorldY = -560;
+                targetWorldY = PLAYER_BASE_Y;
               }
             } catch (e) {}
           };
@@ -2518,7 +2519,7 @@
             spawnFallingItem();
           }
 
-          // Физика и движение падающих предметов
+          // Физика и движение падающих предметов строго в плоскости XY (Z = 0)
           for (let i = objects.length - 1; i >= 0; i--) {
             const o = objects[i];
             const m = o.mesh;
@@ -2527,9 +2528,11 @@
             m.position.x += (o.vx + steer) * dt;
             m.position.y += o.vy * dt;
             m.position.y -= fallSpeed * dt;
-            m.rotation.x += o.rot.x * dt;
-            m.rotation.y += o.rot.y * dt;
+            m.position.z = 0; // Строго в одной плоскости XY
+
             m.rotation.z += o.rot.z * dt;
+            m.rotation.x += o.rot.x * 0.35 * dt;
+            m.rotation.y += o.rot.y * 0.35 * dt;
 
             const left = -halfW + o.radius;
             const right = halfW - o.radius;
@@ -2547,13 +2550,13 @@
             }
           }
 
-          // Движение и анимация сумки игрока
+          // Движение и анимация сумки игрока (зафиксирована на PLAYER_BASE_Y)
           const SMOOTH_FACTOR = 0.22;
           const clampedTargetX = THREE.MathUtils.clamp(targetWorldX, -halfW * 0.82, halfW * 0.82);
-          const clampedTargetY = THREE.MathUtils.clamp(targetWorldY, -680, -420);
 
           player.position.x = THREE.MathUtils.lerp(player.position.x, clampedTargetX, SMOOTH_FACTOR);
-          player.position.y = THREE.MathUtils.lerp(player.position.y, clampedTargetY + playerBagRecoil, SMOOTH_FACTOR);
+          player.position.y = PLAYER_BASE_Y + playerBagRecoil;
+          player.position.z = 0;
 
           playerBagRecoil = THREE.MathUtils.lerp(playerBagRecoil, 0, 0.15);
 
@@ -2561,6 +2564,7 @@
           const targetRotY = (clampedTargetX - player.position.x) * 0.001;
           player.rotation.z = THREE.MathUtils.lerp(player.rotation.z, targetRotZ, 0.18);
           player.rotation.y = THREE.MathUtils.lerp(player.rotation.y, targetRotY, 0.18);
+          player.rotation.x = 0;
 
           playerBagPulse = THREE.MathUtils.lerp(playerBagPulse, 1.0, 0.12);
           player.scale.set(playerBagPulse, 1.0 / Math.sqrt(playerBagPulse), playerBagPulse);
