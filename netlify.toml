@@ -1,0 +1,4 @@
+[[redirects]]
+  from = "/controller"
+  to = "/controller.html"
+  status = 200

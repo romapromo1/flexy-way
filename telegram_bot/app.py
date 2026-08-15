@@ -6,6 +6,7 @@ import re
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable, Mapping
 
 from .config import Config
@@ -24,6 +25,12 @@ COMMON_PRIZE_TERMS = (
     "• Приз можно использовать только один раз и только тому, кто его выиграл.\n"
     "• Скидки и бонусы не суммируются с другими акциями."
 )
+BOT_WELCOME_DESCRIPTION = (
+    "Привет! Тут Flexy Way раздает призы! Скидку 50% на пробное занятие получает каждый! "
+    "А еще тебя ждет персональный приз! Жми СТАРТ!"
+)
+BOT_SHORT_DESCRIPTION = "Раздача призов от Flexy Way! Скидка 50% на пробное занятие и персональный приз!"
+WELCOME_IMAGE_PATH = Path(__file__).resolve().parent / "welcome_logo.png"
 
 
 class BotApp:
@@ -181,14 +188,32 @@ class BotApp:
                 "Откройте персональную ссылку из игры и нажмите Start. Помощь: /help",
             )
 
+    def _send_greeting_message(self, chat_id: int, text: str, reply_markup: dict | None = None) -> None:
+        if WELCOME_IMAGE_PATH.is_file():
+            try:
+                photo_bytes = WELCOME_IMAGE_PATH.read_bytes()
+                self.api.send_photo(
+                    chat_id=chat_id,
+                    photo_bytes=photo_bytes,
+                    filename="welcome_logo.png",
+                    caption=text,
+                    parse_mode="HTML",
+                    reply_markup=reply_markup,
+                )
+                return
+            except Exception:
+                LOGGER.exception("Не удалось отправить приветственное фото, отправка обычным сообщением")
+        self.api.send_message(chat_id, text, parse_mode="HTML", reply_markup=reply_markup)
+
     def _handle_start(self, message: Mapping, text: str) -> None:
         chat_id = message["chat"]["id"]
         parts = text.split(maxsplit=1)
         if len(parts) != 2 or not START_PAYLOAD.fullmatch(parts[1]):
-            self.api.send_message(
+            self._send_greeting_message(
                 chat_id,
-                "Эта команда работает только с персональной ссылкой из игры. "
-                "Отсканируйте QR-код победителя ещё раз.",
+                "Привет! Тут Flexy Way раздает призы! 🎁\n\n"
+                "Скидку 50% на пробное занятие получает каждый! А еще тебя ждет персональный приз!\n\n"
+                "Чтобы забрать приз, отсканируйте персональный QR-код из игры на экране.",
             )
             return
         result, claim = self.database.bind_token(
@@ -227,20 +252,20 @@ class BotApp:
             return
 
         greeting = (
-            "Привет! Поздравляем с победой в VisionBox-розыгрыше от Flexy Way! 🎁\n\n"
-            f"Ваш приз — {claim['prize_name']}.\n\n"
-            "Для получения нужно подтвердить подписку на официальный канал и добровольно "
-            "передать номер телефона для связи по призу. Подписка проверяется только после "
-            "вашего нажатия; рассылок бот не делает. Подробности: /privacy\n\n"
-            f"Условия получения:\n{COMMON_PRIZE_TERMS}"
+            "Привет! Тут Flexy Way раздает призы! 🎁\n\n"
+            "Скидку 50% на пробное занятие получает каждый!\n"
+            f"А еще тебя ждет персональный приз: <b>{html.escape(str(claim['prize_name']))}</b>!\n\n"
+            "Для получения подтвердите согласие и подписку на официальный канал, "
+            "а затем поделитесь номером телефона для связи по призу. Подробности: /privacy\n\n"
+            f"<b>Условия получения:</b>\n{html.escape(COMMON_PRIZE_TERMS)}"
         )
         if not claim.get("consent_at"):
-            self.api.send_message(chat_id, greeting, reply_markup=self._consent_keyboard())
+            self._send_greeting_message(chat_id, greeting, reply_markup=self._consent_keyboard())
         elif claim.get("phone"):
-            self.api.send_message(chat_id, greeting, reply_markup={"remove_keyboard": True})
+            self._send_greeting_message(chat_id, greeting, reply_markup={"remove_keyboard": True})
             self._send_subscription_step(chat_id)
         else:
-            self.api.send_message(chat_id, greeting, reply_markup=self._contact_keyboard())
+            self._send_greeting_message(chat_id, greeting, reply_markup=self._contact_keyboard())
 
     @staticmethod
     def _normalize_phone(value: str) -> str:
@@ -424,6 +449,14 @@ def run_polling(config: Config, app: BotApp, api: TelegramApi) -> None:
             me = api.get_me()
             api.delete_webhook()
             LOGGER.info("Бот @%s подключён к Telegram", me.get("username"))
+            try:
+                api.set_my_description(BOT_WELCOME_DESCRIPTION)
+                api.set_my_description(BOT_WELCOME_DESCRIPTION, language_code="ru")
+                api.set_my_short_description(BOT_SHORT_DESCRIPTION)
+                api.set_my_short_description(BOT_SHORT_DESCRIPTION, language_code="ru")
+                LOGGER.info("Приветственное описание бота до нажатия СТАРТ обновлено.")
+            except Exception:
+                LOGGER.warning("Не удалось автоматически обновить описание через setMyDescription")
             break
         except TelegramApiError:
             LOGGER.exception(
