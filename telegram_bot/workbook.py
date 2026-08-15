@@ -151,8 +151,8 @@ class PromoWorkbook:
         sheet["A1"] = "Лиды и выдачи через Telegram-бота"
         sheet.merge_cells("A2:M2")
         sheet["A2"] = (
-            "По умолчанию бот сохраняет только псевдонимы и маску телефона. "
-            "Полные контактные данные зашифрованы в локальной базе."
+            "Контакты победителей (имя, фамилия, username, телефон) записываются "
+            "для прямой связи менеджера и выдачи призов."
         )
         for column, title in enumerate(LEADS_HEADERS, 1):
             cell = sheet.cell(HEADER_ROW, column, title)
