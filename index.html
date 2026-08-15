@@ -78,81 +78,294 @@
         z-index: 10;
       }
 
-      .gameover {
+      .quick-restart-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(224, 242, 254, 0.2) 100%);
+        backdrop-filter: blur(16px) saturate(180%);
+        -webkit-backdrop-filter: blur(16px) saturate(180%);
+        border: 1.5px solid rgba(255, 255, 255, 0.85);
+        color: #0f172a;
+        font-size: 1.35rem;
         font-weight: 900;
-        letter-spacing: 0.05em;
-        color: #38bdf8;
-        text-shadow: 0 4px 16px rgba(56, 189, 248, 0.4);
-        opacity: 0;
-        transform: scale(0.9);
-        transition: opacity 300ms cubic-bezier(0.16, 1, 0.3, 1), transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
-        text-align: center;
-        background: rgba(15, 23, 42, 0.92);
-        backdrop-filter: blur(20px);
-        padding: 2.2rem 2.8rem;
-        border-radius: 28px;
-        border: 2px solid rgba(56, 189, 248, 0.35);
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        max-width: 90%;
-      }
-
-      .gameover.visible {
-        opacity: 1;
-        transform: scale(1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s, color 0.2s;
         pointer-events: auto;
       }
 
-      .gameover h1 {
-        margin: 0 0 0.5rem 0;
-        font-size: clamp(28px, 6vmin, 44px);
-        line-height: 1.1;
-        font-family: 'Aeroport', 'Outfit', sans-serif;
-        background: linear-gradient(135deg, #ffffff 0%, #38bdf8 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+      .quick-restart-btn:hover {
+        transform: scale(1.12) rotate(-60deg);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(224, 242, 254, 0.6) 100%);
+        color: #0284c7;
       }
 
-      .gameover .score-summary {
-        font-size: clamp(18px, 3.2vmin, 26px);
-        color: #fbbf24;
+      .quick-restart-btn:active {
+        transform: scale(0.95);
+      }
+
+      /* Liquid Glass End Game Card */
+      .gameover-liquid-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 150;
+        background: rgba(15, 23, 42, 0.35);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        visibility: hidden;
+        transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s;
+        padding: 1.2rem;
+      }
+
+      .gameover-liquid-overlay.visible {
+        opacity: 1;
+        pointer-events: auto;
+        visibility: visible;
+      }
+
+      .gameover-liquid-card {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.82) 50%, rgba(241, 245, 249, 0.88) 100%);
+        backdrop-filter: blur(36px) saturate(200%);
+        -webkit-backdrop-filter: blur(36px) saturate(200%);
+        border: 1.5px solid rgba(255, 255, 255, 0.95);
+        border-radius: 36px;
+        padding: clamp(1.4rem, 3.5vmin, 2.2rem);
+        max-width: 440px;
+        width: 92%;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.85rem;
+        box-shadow: 
+          0 32px 80px rgba(0, 0, 0, 0.22),
+          0 8px 24px rgba(0, 0, 0, 0.06),
+          inset 0 1.5px 2px rgba(255, 255, 255, 1);
+        transform: scale(0.92) translateY(18px);
+        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .gameover-liquid-overlay.visible .gameover-liquid-card {
+        transform: scale(1) translateY(0);
+      }
+
+      .gameover-badge {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.75rem;
         font-weight: 800;
-        margin: 0.5rem 0;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #0284c7;
+        background: rgba(2, 132, 199, 0.08);
+        border: 1px solid rgba(2, 132, 199, 0.2);
+        padding: 0.35rem 1.1rem;
+        border-radius: 9999px;
       }
 
-      .gameover .prize-summary {
-        margin-top: 0.8rem;
-        font-size: clamp(14px, 2.4vmin, 18px);
-        font-weight: 700;
-        color: #e2e8f0;
-        background: rgba(2, 132, 199, 0.18);
-        border: 1px solid rgba(56, 189, 248, 0.35);
-        padding: 0.8rem 1.4rem;
-        border-radius: 16px;
-        line-height: 1.4;
+      .gameover-headline {
+        margin: 0;
+        font-size: clamp(24px, 4.2vmin, 32px);
+        line-height: 1.15;
+        font-family: 'Aeroport', 'Outfit', sans-serif;
+        font-weight: 900;
+        color: #0f172a;
       }
 
-      .restart-game-btn {
-        margin-top: 1.4rem;
+      .gameover-score-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        background: rgba(2, 132, 199, 0.08);
+        border: 1px solid rgba(2, 132, 199, 0.2);
+        padding: 0.35rem 1rem;
+        border-radius: 9999px;
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #0369a1;
+      }
+
+      .gameover-score-pill strong {
+        font-size: 1.15rem;
+        color: #0284c7;
+      }
+
+      .prize-liquid-card {
+        width: 100%;
+        background: linear-gradient(135deg, rgba(254, 243, 199, 0.5) 0%, rgba(253, 230, 138, 0.35) 100%);
+        border: 1.5px solid rgba(245, 158, 11, 0.45);
+        border-radius: 20px;
+        padding: 0.9rem 1.1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+        box-shadow: 0 8px 24px rgba(245, 158, 11, 0.12);
+      }
+
+      .prize-level-tag {
+        font-size: 0.7rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #b45309;
+        background: rgba(245, 158, 11, 0.18);
+        padding: 0.2rem 0.75rem;
+        border-radius: 9999px;
+      }
+
+      .prize-title-text {
+        margin: 0;
+        font-family: 'Aeroport', 'Outfit', sans-serif;
+        font-size: clamp(16px, 2.6vmin, 19px);
+        font-weight: 900;
+        color: #0f172a;
+        line-height: 1.3;
+      }
+
+      .prize-desc-text {
+        margin: 0;
+        font-size: clamp(12px, 1.8vmin, 13.5px);
+        font-weight: 600;
+        color: #475569;
+        line-height: 1.35;
+      }
+
+      .tg-bot-section {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background: rgba(255, 255, 255, 0.65);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        border-radius: 20px;
+        padding: 0.75rem 1rem;
+        width: 100%;
+        text-align: left;
+      }
+
+      .tg-qr-box {
         position: relative;
-        padding: 0.85rem 2.5rem;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(56, 189, 248, 0.35) 100%);
-        backdrop-filter: blur(16px);
-        border: 1.5px solid rgba(255, 255, 255, 0.8);
+        width: 110px;
+        height: 110px;
+        min-width: 110px;
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 6px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #prizeQrcode {
+        width: 98px;
+        height: 98px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #prizeQrcode canvas, #prizeQrcode img {
+        width: 98px !important;
+        height: 98px !important;
+        border-radius: 6px;
+      }
+
+      .tg-qr-loading {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.92);
+        border-radius: 14px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.3rem;
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: #0284c7;
+      }
+
+      .spinner {
+        width: 22px;
+        height: 22px;
+        border: 2.5px solid rgba(2, 132, 199, 0.2);
+        border-top-color: #0284c7;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .tg-instruction {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+      }
+
+      .tg-instruction p {
+        margin: 0;
+        font-size: clamp(12px, 1.8vmin, 13.5px);
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.35;
+      }
+
+      .gameover-btn-group {
+        display: flex;
+        gap: 0.6rem;
+        width: 100%;
+        margin-top: 0.2rem;
+      }
+
+      .btn-play-again {
+        flex: 1.2;
+        padding: 0.85rem;
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        border: none;
         border-radius: 9999px;
         color: #ffffff;
         font-family: 'Aeroport', 'Outfit', sans-serif;
-        font-size: clamp(15px, 2.2vmin, 18px);
+        font-size: clamp(14px, 2.2vmin, 16px);
         font-weight: 800;
         cursor: pointer;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-        transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
-        pointer-events: auto;
+        box-shadow: 0 8px 20px rgba(2, 132, 199, 0.35);
+        transition: transform 0.2s, box-shadow 0.2s;
       }
 
-      .restart-game-btn:hover {
-        transform: scale(1.05);
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(56, 189, 248, 0.55) 100%);
-        box-shadow: 0 12px 30px rgba(56, 189, 248, 0.4);
+      .btn-play-again:hover {
+        transform: scale(1.03);
+        box-shadow: 0 10px 24px rgba(2, 132, 199, 0.45);
+      }
+
+      .btn-back-home {
+        flex: 1;
+        padding: 0.85rem;
+        background: #ffffff;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 9999px;
+        color: #0f172a;
+        font-family: 'Aeroport', 'Outfit', sans-serif;
+        font-size: clamp(13px, 2vmin, 15px);
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .btn-back-home:hover {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+        transform: scale(1.03);
       }
 
       .top-bar {
@@ -196,6 +409,12 @@
         opacity: 0;
         z-index: 40;
         transition: opacity 0.1s ease;
+      }
+
+      .floating-score.score-gold {
+        color: #f59e0b;
+        text-shadow: 0 0 20px rgba(245, 158, 11, 0.9), 0 2px 10px rgba(0, 0, 0, 0.7);
+        font-size: clamp(26px, 5vmin, 42px);
       }
 
       .screen-hit-flash.visible {
@@ -1060,6 +1279,7 @@
       
       <!-- Верхний HUD -->
       <div class="top-bar" id="topBar">
+        <button class="quick-restart-btn" id="quickRestartBtn" onclick="returnToStartScreen()" title="Вернуться на стартовый экран">↺</button>
         <div class="remote-pill" id="remotePill" onclick="toggleQrModal(true)" title="Нажмите для QR-кода подключения">
           <span class="status-dot"></span>
           <span id="remoteStatusText">📱 Подключить телефон</span>
@@ -1144,17 +1364,51 @@
       <!-- Всплывающее уведомление (Toast) -->
       <div class="toast-popup" id="toastPopup">Настройки скопированы!</div>
 
-      <!-- Игровой оверлей -->
-      <div class="ui">
-        <div class="gameover" id="gameover">
-          <h1 id="gameoverTitle">ВРЕМЯ ВЫШЛО!</h1>
-          <div class="score-summary" id="scoreSummary">Собрано очков: 0</div>
-          <div class="prize-summary" id="prizeSummary">🎉 Отличный результат!</div>
-          <button class="restart-game-btn" onclick="restartGame()">Сыграть еще раз</button>
+      <!-- Игровой оверлей окончания игры (Liquid Glass) -->
+      <div class="gameover-liquid-overlay" id="gameover">
+        <div class="gameover-liquid-card">
+          <div class="gameover-badge">🏆 РЕЗУЛЬТАТ ИГРЫ</div>
+          <h1 class="gameover-headline" id="gameoverHeadline">ПОЗДРАВЛЯЕМ! 🎉</h1>
+          
+          <div class="gameover-score-pill">
+            <span>🎯 Набрано очков:</span>
+            <strong id="finalScoreVal">0</strong>
+          </div>
+
+          <!-- Карточка выигранного приза -->
+          <div class="prize-liquid-card" id="prizeLiquidCard">
+            <div class="prize-level-tag" id="prizeLevelTag">УРОВЕНЬ 1</div>
+            <h2 class="prize-title-text" id="prizeTitleText">Скидка 10% на абонемент 4 занятия</h2>
+            <p class="prize-desc-text" id="prizeDescText">Закрытые условия на покупку абонемента 4 занятия</p>
+          </div>
+
+          <!-- Секция QR-кода для Telegram-бота -->
+          <div class="tg-bot-section">
+            <div class="tg-qr-box">
+              <div id="prizeQrcode"></div>
+              <div class="tg-qr-loading" id="tgQrLoading">
+                <div class="spinner"></div>
+                <span>Генерация промокода...</span>
+              </div>
+            </div>
+            <div class="tg-instruction">
+              <p>📱 Отсканируйте QR-код смартфоном, чтобы перейти в Telegram и забрать промокод</p>
+            </div>
+          </div>
+
+          <!-- Кнопки действий -->
+          <div class="gameover-btn-group">
+            <button class="btn-play-again" onclick="restartGame()">
+              <span>🎮 Сыграть ещё раз</span>
+            </button>
+            <button class="btn-back-home" onclick="returnToStartScreen()">
+              <span>🏠 На главный экран</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <div class="hint" id="gameHint">Направьте смартфон на экран как лазерную указку</div>
+      <div class="hint" id="gameHint">Ловите правильные предметы в сумку</div>
 
       <!-- Модальное окно с QR-кодом -->
       <div class="qr-overlay" id="qrOverlay">
@@ -2060,15 +2314,16 @@
         return cloned;
       }
 
-      // Загружаем 3D сумку для игрока (размер корзины 195, зафиксирована внизу)
+      // Загружаем 3D сумку для игрока (размер корзины 235, зафиксирована внизу)
       gltfLoader.load('good/bag.glb', (gltf) => {
-        playerBagMesh = prepare3DTemplate(gltf.scene, 195, 'bag');
+        playerBagMesh = prepare3DTemplate(gltf.scene, 235, 'bag');
         player.add(playerBagMesh);
       });
 
       // Каталоги шаблонов — все одного унифицированного размера (UNIFORM_ITEM_SIZE = 120)
       const goodTemplates = [];
       const badTemplates = [];
+      let goldenShoeTemplate = null;
 
       const GOOD_MODELS_DEF = [
         { file: 'good/shoe.glb', name: 'shoe', size: UNIFORM_ITEM_SIZE, points: 3 },       // Туфля 1 — суперприз (+3)
@@ -2084,6 +2339,27 @@
         gltfLoader.load(item.file, (gltf) => {
           const container = prepare3DTemplate(gltf.scene, item.size, item.name);
           goodTemplates.push({ container, name: item.name, points: item.points, isGood: true });
+
+          // Создаем шаблон Золотой Туфли из shoe.glb
+          if (item.name === 'shoe') {
+            const goldScene = gltf.scene.clone(true);
+            const goldContainer = prepare3DTemplate(goldScene, item.size * 1.05, 'golden_shoe');
+            goldContainer.traverse((child) => {
+              if (child.isMesh) {
+                child.material = new THREE.MeshPhysicalMaterial({
+                  color: 0xffd700,
+                  emissive: 0x4a3700,
+                  emissiveIntensity: 0.35,
+                  roughness: 0.12,
+                  metalness: 0.98,
+                  clearcoat: 1.0,
+                  clearcoatRoughness: 0.1,
+                  envMapIntensity: 2.2
+                });
+              }
+            });
+            goldenShoeTemplate = goldContainer;
+          }
         });
       });
 
@@ -2107,6 +2383,178 @@
           badTemplates.push({ container, name: item.name, penalty: item.penalty, isGood: false });
         });
       });
+
+      // ----------------------------------------------------
+      // ТАБЛИЦА ПРИЗОВ (из Flexy_Way_промокоды.xlsx)
+      // ----------------------------------------------------
+      const PRIZES_TABLE = {
+        // УРОВЕНЬ 1 (0 - 30 очков)
+        'SUB-L1-04-10': {
+          code: 'SUB-L1-04-10',
+          levelTag: 'УРОВЕНЬ 1',
+          name: 'Скидка 10% на абонемент 4 занятия',
+          description: 'Закрытые условия на покупку абонемента 4 занятия'
+        },
+        'SUB-L1-08-10': {
+          code: 'SUB-L1-08-10',
+          levelTag: 'УРОВЕНЬ 1',
+          name: 'Скидка 10% на абонемент 8 занятий',
+          description: 'Закрытые условия на покупку абонемента 8 занятий'
+        },
+        'BONUS-L1-TRIAL-3FOR2': {
+          code: 'BONUS-L1-TRIAL-3FOR2',
+          levelTag: 'УРОВЕНЬ 1',
+          name: 'Апгрейд: 3 пробных занятия по цене 2',
+          description: 'Попробуйте 3 разных направления студии по цене двух'
+        },
+        'BONUS-L1-PLUS7': {
+          code: 'BONUS-L1-PLUS7',
+          levelTag: 'УРОВЕНЬ 1',
+          name: '+7 дней к сроку действия абонемента',
+          description: 'При покупке абонемента на 8 или 12 занятий'
+        },
+        'BONUS-L1-FREEZE': {
+          code: 'BONUS-L1-FREEZE',
+          levelTag: 'УРОВЕНЬ 1',
+          name: 'Дополнительная заморозка абонемента',
+          description: 'Бесплатная дополнительная заморозка при покупке абонемента'
+        },
+        'BONUS-L1-FRIEND-15': {
+          code: 'BONUS-L1-FRIEND-15',
+          levelTag: 'УРОВЕНЬ 1',
+          name: '15% скидка на второй абонемент для подруги',
+          description: 'Занимайтесь вместе выгоднее'
+        },
+
+        // УРОВЕНЬ 2 (31 - 50 очков)
+        'SUB-L2-08-12-15': {
+          code: 'SUB-L2-08-12-15',
+          levelTag: 'УРОВЕНЬ 2',
+          name: 'Скидка 15% на абонемент 8 или 12 занятий',
+          description: 'Специальная закрытая скидка 2 уровня'
+        },
+        'SUB-L2-12-20': {
+          code: 'SUB-L2-12-20',
+          levelTag: 'УРОВЕНЬ 2',
+          name: 'Скидка 20% на абонемент 12 занятий',
+          description: 'Специальная закрытая скидка 2 уровня'
+        },
+        'BONUS-L2-PAIR': {
+          code: 'BONUS-L2-PAIR',
+          levelTag: 'УРОВЕНЬ 2',
+          name: 'Парный старт: закрытая цена на 2 абонемента',
+          description: 'Специальная закрытая цена, если приходишь вместе с подругой'
+        },
+
+        // УРОВЕНЬ 3 (51 - 65 очков)
+        'SUB-L3-12-25': {
+          code: 'SUB-L3-12-25',
+          levelTag: 'УРОВЕНЬ 3',
+          name: 'Скидка 25% на абонемент 12 занятий',
+          description: 'Премиальная скидка 3 уровня на 12 занятий'
+        },
+        'SUB-L3-12-30': {
+          code: 'SUB-L3-12-30',
+          levelTag: 'УРОВЕНЬ 3',
+          name: 'Скидка 30% на абонемент 12 занятий',
+          description: 'Премиальная скидка 3 уровня на 12 занятий'
+        },
+        'SUB-L3-12-40': {
+          code: 'SUB-L3-12-40',
+          levelTag: 'УРОВЕНЬ 3',
+          name: 'Скидка 40% на абонемент 12 занятий',
+          description: 'Максимальная скидка 3 уровня на 12 занятий'
+        },
+
+        // ГЛАВНЫЙ СУПЕРПРИЗ (65+ очков и поимка золотой туфли)
+        'SUPER-08-FREE': {
+          code: 'SUPER-08-FREE',
+          levelTag: '👑 ГЛАВНЫЙ СУПЕРПРИЗ',
+          name: 'Бесплатный абонемент на 8 занятий!',
+          description: 'Грандиозный выигрыш! Полностью бесплатный абонемент на 8 занятий'
+        }
+      };
+
+      function determinePrize(score, caughtGolden) {
+        // Условие суперприза: 65+ очков и поймана золотая туфля
+        if (score >= 65 && caughtGolden) {
+          return PRIZES_TABLE['SUPER-08-FREE'];
+        }
+
+        if (score <= 30) {
+          // Уровень 1 (0-30 очков) — ранжирование по очкам
+          if (score <= 10) {
+            const pool = ['BONUS-L1-TRIAL-3FOR2', 'BONUS-L1-FREEZE', 'BONUS-L1-PLUS7'];
+            return PRIZES_TABLE[pool[Math.floor(Math.random() * pool.length)]];
+          } else if (score <= 20) {
+            const pool = ['SUB-L1-04-10', 'BONUS-L1-FRIEND-15', 'BONUS-L1-PLUS7'];
+            return PRIZES_TABLE[pool[Math.floor(Math.random() * pool.length)]];
+          } else {
+            const pool = ['SUB-L1-08-10', 'SUB-L1-04-10', 'BONUS-L1-FRIEND-15'];
+            return PRIZES_TABLE[pool[Math.floor(Math.random() * pool.length)]];
+          }
+        } else if (score <= 50) {
+          // Уровень 2 (31-50 очков)
+          if (score <= 40) {
+            const pool = ['SUB-L2-08-12-15', 'BONUS-L2-PAIR'];
+            return PRIZES_TABLE[pool[Math.floor(Math.random() * pool.length)]];
+          } else {
+            const pool = ['SUB-L2-12-20', 'BONUS-L2-PAIR'];
+            return PRIZES_TABLE[pool[Math.floor(Math.random() * pool.length)]];
+          }
+        } else {
+          // Уровень 3 (51-65+ очков)
+          if (score <= 55) {
+            return PRIZES_TABLE['SUB-L3-12-25'];
+          } else if (score <= 60) {
+            return PRIZES_TABLE['SUB-L3-12-30'];
+          } else {
+            return PRIZES_TABLE['SUB-L3-12-40'];
+          }
+        }
+      }
+
+      // Генерация QR-кода приза для перехода в Telegram-бот
+      async function fetchAndRenderPrizeQR(prizeCode) {
+        const qrcodeContainer = document.getElementById('prizeQrcode');
+        const loadingEl = document.getElementById('tgQrLoading');
+        if (!qrcodeContainer) return;
+
+        qrcodeContainer.innerHTML = '';
+        if (loadingEl) loadingEl.style.display = 'flex';
+
+        const sessionId = `fw-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+        let deepLink = `https://t.me/flexy_way_prize_bot?start=fw_${prizeCode.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+
+        try {
+          const res = await fetch('/api/claim-prize', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prizeCode, sessionId })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.deep_link) {
+              deepLink = data.deep_link;
+            }
+          }
+        } catch (e) {
+          console.warn('Using direct bot deep link fallback:', e);
+        }
+
+        if (loadingEl) loadingEl.style.display = 'none';
+
+        if (typeof QRCode !== 'undefined') {
+          new QRCode(qrcodeContainer, {
+            text: deepLink,
+            width: 98,
+            height: 98,
+            colorDark: '#0f172a',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        }
+      }
 
       // Нажатие на кнопку "Начать" со стартового экрана -> показываем подсказку/правила
       window.startGame = function() {
@@ -2168,6 +2616,58 @@
         requestAnimationFrame(transitionStep);
       };
 
+      // Возврат на стартовый экран (Мгновенно, без перезагрузки 3D моделей)
+      window.returnToStartScreen = function() {
+        running = false;
+        gameState = 'start';
+        startElapsedTime = 0;
+
+        for (const o of objects) scene.remove(o.mesh);
+        objects.length = 0;
+        for (const p of particles) scene.remove(p.mesh);
+        particles.length = 0;
+
+        player.visible = false;
+
+        const gameoverModal = document.getElementById('gameover');
+        if (gameoverModal) gameoverModal.classList.remove('visible');
+        const rulesModal = document.getElementById('rulesModal');
+        if (rulesModal) rulesModal.classList.remove('visible');
+        const qrOverlay = document.getElementById('qrOverlay');
+        if (qrOverlay) qrOverlay.classList.remove('visible');
+
+        startScreenGroup.visible = true;
+        startScreenGroup.scale.set(1, 1, 1);
+        startOverlayEl.classList.remove('hidden');
+        const settingsBtnEl = document.getElementById('settingsBtn');
+        if (settingsBtnEl) settingsBtnEl.style.display = 'flex';
+        topBarEl.classList.remove('visible');
+        gameHintEl.classList.remove('visible');
+
+        // Моментальное восстановление стартовых масштабов
+        if (flexywayLogo) {
+          flexywayLogo.userData.spawnProgress = 1;
+          const s = flexywayLogo.userData.targetScale;
+          flexywayLogo.scale.set(s, s, s);
+          flexywayLogo.position.set(sceneConfig.flexyway.x, sceneConfig.flexyway.y, sceneConfig.flexyway.z);
+        }
+        goodObjects.forEach((obj) => {
+          obj.userData.spawnProgress = 1;
+          const s = obj.userData.targetScale;
+          obj.scale.set(s, s, s);
+          const cfg = sceneConfig[obj.userData.configId];
+          if (cfg) {
+            obj.position.set(cfg.x, cfg.y, cfg.z);
+          }
+        });
+
+        coinCount = 0;
+        coinTotalEl.textContent = '0';
+        roundTimeRemaining = 20.0;
+        if (gameTimerEl) gameTimerEl.textContent = '20';
+        broadcastGameStateToPhone();
+      };
+
       // ----------------------------------------------------
       // Игровой процесс (Логика ловли предметов в сумку)
       // ----------------------------------------------------
@@ -2190,6 +2690,12 @@
       let screenShakeTime = 0;
       let screenShakeIntensity = 0;
       let hitFlashTimeout = null;
+
+      // Трекинг раундов для появления Золотой Туфли (~ 1 раз в 10-12 игр)
+      let roundGameCounter = parseInt(localStorage.getItem('flexy_round_counter') || '0', 10);
+      let isGoldenShoeRound = false;
+      let spawnedGoldenShoeThisRound = false;
+      let caughtGoldenShoe = false;
 
       const randRange = (a, b) => a + Math.random() * (b - a);
 
@@ -2238,7 +2744,27 @@
           const vel = new THREE.Vector3(Math.cos(angle) * speed, Math.sin(angle) * speed + 60, 0);
 
           scene.add(mesh);
-          particles.push({ mesh, vel, life: 0.55, gravity: -380 });
+          particles.push({ mesh, vel, life: 0.55, maxLife: 0.55, gravity: -380 });
+        }
+      }
+
+      // Праздничный фейерверк при поимке Золотой Туфли
+      function spawnFireworks(originX, originY) {
+        const count = 48;
+        const colors = [0xffd700, 0xff9900, 0x38bdf8, 0xec4899, 0xa855f7, 0x10b981, 0xffffff];
+        for (let i = 0; i < count; i++) {
+          const geom = new THREE.DodecahedronGeometry(randRange(5, 12));
+          const color = colors[Math.floor(Math.random() * colors.length)];
+          const mat = new THREE.MeshBasicMaterial({ color });
+          const mesh = new THREE.Mesh(geom, mat);
+          mesh.position.set(originX, originY, 0);
+
+          const angle = Math.random() * Math.PI * 2;
+          const speed = randRange(220, 580);
+          const vel = new THREE.Vector3(Math.cos(angle) * speed, Math.sin(angle) * speed + 140, 0);
+
+          scene.add(mesh);
+          particles.push({ mesh, vel, life: 1.25, maxLife: 1.25, gravity: -420 });
         }
       }
 
@@ -2256,12 +2782,38 @@
           const vel = new THREE.Vector3(Math.cos(angle) * speed, Math.sin(angle) * speed, 0);
 
           scene.add(mesh);
-          particles.push({ mesh, vel, life: 0.85, gravity: -620 });
+          particles.push({ mesh, vel, life: 0.85, maxLife: 0.85, gravity: -620 });
         }
       }
 
       function spawnFallingItem() {
         if (!running) return;
+
+        // Появление Золотой Туфли примерно на 8-12 секунде игры
+        const timePassed = 20 - roundTimeRemaining;
+        if (isGoldenShoeRound && !spawnedGoldenShoeThisRound && timePassed >= 7.5 && goldenShoeTemplate) {
+          spawnedGoldenShoeThisRound = true;
+          const mesh = cloneTemplate(goldenShoeTemplate);
+          const margin = 85;
+          const originX = randRange(-halfW * 0.75 + margin, halfW * 0.75 - margin);
+          const originY = TOP_Y + 40;
+          mesh.position.set(originX, originY, 0);
+
+          scene.add(mesh);
+          objects.push({
+            mesh,
+            vx: randRange(-25, 25),
+            vy: randRange(-10, 10),
+            rot: new THREE.Vector3(0, 2.2, 0),
+            radius: 56,
+            isGood: true,
+            isGoldenShoe: true,
+            points: 5,
+            name: 'golden_shoe',
+            speedVariance: 0.95
+          });
+          return;
+        }
 
         const isGood = Math.random() < 0.68;
         const catalog = isGood ? goodTemplates : badTemplates;
@@ -2270,14 +2822,18 @@
         const itemDef = catalog[Math.floor(Math.random() * catalog.length)];
         const mesh = cloneTemplate(itemDef.container);
 
-        const margin = 80;
-        const originX = randRange(-halfW * 0.80 + margin, halfW * 0.80 - margin);
+        // Безопасный диапазон спавна по X: никогда не выходит за рамки экрана
+        const margin = 90;
+        const originX = randRange(-halfW * 0.78 + margin, halfW * 0.78 - margin);
         const originY = TOP_Y + 40;
 
         mesh.position.set(originX, originY, 0);
 
-        const vx = randRange(-30, 30);
+        // Рандомная горизонтальная скорость и вариация скорости падения (не более ±1.3x)
+        const vx = randRange(-40, 40);
         const vy = randRange(-15, 15);
+        const speedVariance = randRange(0.85, 1.25);
+
         const rot = new THREE.Vector3(
           randRange(-ROT_SPEED, ROT_SPEED),
           randRange(-ROT_SPEED, ROT_SPEED),
@@ -2289,9 +2845,11 @@
           mesh,
           vx,
           vy,
+          speedVariance,
           rot,
           radius: 52,
           isGood: itemDef.isGood,
+          isGoldenShoe: false,
           points: itemDef.points || 1,
           penalty: itemDef.penalty || 5,
           name: itemDef.name
@@ -2318,7 +2876,9 @@
       }
 
       function resetGame() {
-        gameoverEl.classList.remove('visible');
+        const gameoverEl = document.getElementById('gameover');
+        if (gameoverEl) gameoverEl.classList.remove('visible');
+
         for (const o of objects) scene.remove(o.mesh);
         objects.length = 0;
         for (const p of particles) scene.remove(p.mesh);
@@ -2329,6 +2889,13 @@
         player.visible = true;
         targetWorldX = 0;
         targetWorldY = PLAYER_BASE_Y;
+
+        // Инкремент счетчика раундов и определение золотой туфли
+        roundGameCounter++;
+        localStorage.setItem('flexy_round_counter', roundGameCounter.toString());
+        isGoldenShoeRound = (roundGameCounter % 11 === 0) || (Math.random() < 0.09);
+        spawnedGoldenShoeThisRound = false;
+        caughtGoldenShoe = false;
 
         spawnInterval = 0.65;
         fallSpeed = BASE_FALL_SPEED;
@@ -2350,25 +2917,31 @@
         for (const o of objects) scene.remove(o.mesh);
         objects.length = 0;
 
-        gameoverEl.classList.add('visible');
-        scoreSummaryEl.textContent = `Собрано очков: ${coinCount}`;
+        const gameoverEl = document.getElementById('gameover');
+        const finalScoreVal = document.getElementById('finalScoreVal');
+        const prizeLevelTag = document.getElementById('prizeLevelTag');
+        const prizeTitleText = document.getElementById('prizeTitleText');
+        const prizeDescText = document.getElementById('prizeDescText');
 
-        let prizeText = '';
-        if (coinCount >= 25) {
-          prizeText = '👑 СУПЕРПРИЗ! Ты собрала все туфли и женские атрибуты!';
-        } else if (coinCount >= 15) {
-          prizeText = '🎁 ЗОЛОТОЙ ПРИЗ! Скидка 50% и подарок от Flexy Way!';
-        } else if (coinCount >= 5) {
-          prizeText = '✨ СЕРЕБРЯНЫЙ ПРИЗ! Промокод на скидку в магазине!';
-        } else {
-          prizeText = 'Попробуй еще раз, чтобы выиграть суперприз и не ловить лишнее!';
-        }
-        if (prizeSummaryEl) prizeSummaryEl.textContent = prizeText;
+        if (finalScoreVal) finalScoreVal.textContent = coinCount;
+
+        // Определение приза по точным условиям из таблицы
+        const wonPrize = determinePrize(coinCount, caughtGoldenShoe);
+
+        if (prizeLevelTag) prizeLevelTag.textContent = wonPrize.levelTag;
+        if (prizeTitleText) prizeTitleText.textContent = wonPrize.name;
+        if (prizeDescText) prizeDescText.textContent = wonPrize.description;
+
+        // Генерация QR-кода Telegram-бота для выигранного приза
+        fetchAndRenderPrizeQR(wonPrize.code);
+
+        if (gameoverEl) gameoverEl.classList.add('visible');
         broadcastGameStateToPhone();
       }
 
       window.restartGame = function() {
-        gameoverEl.classList.remove('visible');
+        const gameoverEl = document.getElementById('gameover');
+        if (gameoverEl) gameoverEl.classList.remove('visible');
         resetGame();
         gameState = 'playing';
       };
@@ -2394,14 +2967,12 @@
         isPhoneConnected = connected;
         if (connected) {
           remotePillEl.classList.add('connected');
-          remoteStatusTextEl.textContent = 'Пульт подключен ⚡';
-          gameHintEl.textContent = 'Игрок подключен! Ловите предметы в сумку';
+          remoteStatusTextEl.textContent = '📱 Пульт подключен';
           AudioFX.playConnect();
           toggleQrModal(false);
         } else {
           remotePillEl.classList.remove('connected');
           remoteStatusTextEl.textContent = '📱 Подключить телефон';
-          gameHintEl.textContent = 'Сканируйте QR-код со смартфона для игры';
         }
       }
 
@@ -2411,6 +2982,19 @@
       function sendHapticToPhone(pattern) {
         if (pahoClient && pahoClient.isConnected()) {
           const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'haptic', pattern }));
+          msg.destinationName = `flexy/events/${roomId}`;
+          pahoClient.send(msg);
+        }
+      }
+
+      function broadcastGameStateToPhone() {
+        if (pahoClient && pahoClient.isConnected()) {
+          const msg = new Paho.MQTT.Message(JSON.stringify({
+            type: 'game_state',
+            state: gameState,
+            score: coinCount,
+            time: Math.ceil(roundTimeRemaining)
+          }));
           msg.destinationName = `flexy/events/${roomId}`;
           pahoClient.send(msg);
         }
@@ -2489,15 +3073,17 @@
       function renderQrCode() {
         const permanentControllerUrl = `https://romapromo1.github.io/flexy-way/controller.html?room=${roomId}`;
         const qrcodeEl = document.getElementById('qrcode');
-        qrcodeEl.innerHTML = '';
-        new QRCode(qrcodeEl, {
-          text: permanentControllerUrl,
-          width: 155,
-          height: 155,
-          colorDark: "#070913",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.M
-        });
+        if (qrcodeEl) {
+          qrcodeEl.innerHTML = '';
+          new QRCode(qrcodeEl, {
+            text: permanentControllerUrl,
+            width: 155,
+            height: 155,
+            colorDark: "#070913",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        }
       }
 
       window.toggleQrModal = function(show) {
@@ -2592,35 +3178,42 @@
             endGame();
           }
 
-          if (spawnAccumulator >= spawnInterval) {
-            spawnAccumulator -= spawnInterval;
+          // Постепенное увеличение скорости падения от 1.0x до 2.5x к концу 20 секунд
+          const timeElapsedRatio = Math.min(1.0, Math.max(0.0, (20 - roundTimeRemaining) / 20));
+          const speedMultiplier = 1.0 + (1.5 * timeElapsedRatio);
+
+          // Динамический интервал спавна
+          const currentSpawnInterval = Math.max(0.38, 0.65 - timeElapsedRatio * 0.22);
+          if (spawnAccumulator >= currentSpawnInterval) {
+            spawnAccumulator -= currentSpawnInterval;
             spawnFallingItem();
           }
 
           // Физика и движение падающих предметов строго в плоскости XY (Z = 0)
+          const safeBoundX = halfW * 0.78;
           for (let i = objects.length - 1; i >= 0; i--) {
             const o = objects[i];
             const m = o.mesh;
-            const t = (m.position.y - BOTTOM_Y) / (TOP_Y - BOTTOM_Y);
-            const steer = -m.position.x * FUNNEL_STRENGTH * (1 - Math.max(0, Math.min(1, t)));
-            m.position.x += (o.vx + steer) * dt;
+            
+            // Движение вниз с учетом ускорения раунда и разницы скорости (не более 1.3x)
+            const curItemFallSpeed = fallSpeed * (o.speedVariance || 1.0) * speedMultiplier;
             m.position.y += o.vy * dt;
-            m.position.y -= fallSpeed * dt;
-            m.position.z = 0; // Строго в одной плоскости XY
+            m.position.y -= curItemFallSpeed * dt;
+            m.position.x += o.vx * dt;
+            m.position.z = 0; // Строго в плоскости XY
+
+            // Мягкое удержание внутри экрана
+            if (m.position.x < -safeBoundX) {
+              m.position.x = -safeBoundX;
+              o.vx = Math.abs(o.vx) * BOUNCE_X;
+            } else if (m.position.x > safeBoundX) {
+              m.position.x = safeBoundX;
+              o.vx = -Math.abs(o.vx) * BOUNCE_X;
+            }
 
             m.rotation.z += o.rot.z * dt;
             m.rotation.x += o.rot.x * 0.35 * dt;
             m.rotation.y += o.rot.y * 0.35 * dt;
-
-            const left = -halfW + o.radius;
-            const right = halfW - o.radius;
-            if (m.position.x < left) {
-              m.position.x = left;
-              o.vx = Math.abs(o.vx) * BOUNCE_X;
-            } else if (m.position.x > right) {
-              m.position.x = right;
-              o.vx = -Math.abs(o.vx) * BOUNCE_X;
-            }
 
             if (m.position.y <= BOTTOM_Y) {
               scene.remove(m);
@@ -2647,9 +3240,9 @@
           playerBagPulse = THREE.MathUtils.lerp(playerBagPulse, 1.0, 0.12);
           player.scale.set(playerBagPulse, 1.0 / Math.sqrt(playerBagPulse), playerBagPulse);
 
-          // Проверка попадания предметов в сумку
+          // Проверка попадания предметов в сумку (увеличенный радиус для сумки 235)
           const bagMouthX = player.position.x;
-          const bagMouthY = player.position.y + 25;
+          const bagMouthY = player.position.y + 30;
 
           for (let i = objects.length - 1; i >= 0; i--) {
             const o = objects[i];
@@ -2657,18 +3250,25 @@
             const dx = m.position.x - bagMouthX;
             const dy = m.position.y - bagMouthY;
 
-            if (Math.abs(dx) < 75 && Math.abs(dy) < 65) {
+            if (Math.abs(dx) < 90 && Math.abs(dy) < 75) {
               if (o.isGood) {
                 // ПРАВИЛЬНЫЙ ЖЕНСКИЙ АТРИБУТ (папка good)
                 const earned = o.points || 1;
                 coinCount += earned;
                 coinTotalEl.textContent = coinCount;
 
-                spawnFloatingScore(`+${earned}`, bagMouthX, bagMouthY, 'good');
-                spawnGoodCollectParticles(bagMouthX, bagMouthY);
-                playerBagPulse = 1.22;
-                sendHapticToPhone('coin');
+                if (o.isGoldenShoe) {
+                  caughtGoldenShoe = true;
+                  spawnFloatingScore('👑 ЗОЛОТАЯ ТУФЛЯ! +5', bagMouthX, bagMouthY, 'gold');
+                  spawnFireworks(bagMouthX, bagMouthY);
+                  playerBagPulse = 1.35;
+                } else {
+                  spawnFloatingScore(`+${earned}`, bagMouthX, bagMouthY, 'good');
+                  spawnGoodCollectParticles(bagMouthX, bagMouthY);
+                  playerBagPulse = 1.22;
+                }
 
+                sendHapticToPhone('coin');
                 scene.remove(m);
                 objects.splice(i, 1);
               } else {
@@ -2700,7 +3300,7 @@
           p.mesh.position.addScaledVector(p.vel, dt);
           p.mesh.rotation.x += 2.2 * dt;
           p.mesh.rotation.y -= 1.8 * dt;
-          const fade = Math.max(0, p.life);
+          const fade = Math.max(0, p.life / (p.maxLife || 0.8));
           p.mesh.material.opacity = fade;
           p.mesh.material.transparent = true;
           if (p.life <= 0) {
