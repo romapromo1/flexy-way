@@ -1634,13 +1634,13 @@
           id: 'flexyway',
           name: '🌟 Логотип Flexy Way',
           type: '3d',
-          size: 299,
+          size: 305,
           x: 0,
-          y: 300,
+          y: 170,
           z: 140,
-          defaultSize: 299,
+          defaultSize: 305,
           defaultX: 0,
-          defaultY: 300,
+          defaultY: 170,
           defaultZ: 140,
           minSize: 50,
           maxSize: 800,
@@ -1652,11 +1652,11 @@
           type: 'dom',
           size: 1.0,
           x: 0,
-          y: 0,
+          y: -180,
           z: 0,
           defaultSize: 1.0,
           defaultX: 0,
-          defaultY: 0,
+          defaultY: -180,
           defaultZ: 0,
           minSize: 0.4,
           maxSize: 3.0,
@@ -1668,11 +1668,11 @@
           type: 'dom',
           size: 0.85,
           x: 0,
-          y: 70,
+          y: 25,
           z: 0,
           defaultSize: 0.85,
           defaultX: 0,
-          defaultY: 70,
+          defaultY: 25,
           defaultZ: 0,
           minSize: 0.4,
           maxSize: 2.5,
@@ -1684,14 +1684,14 @@
           type: '3d',
           file: 'good/dress.glb',
           size: 235,
-          x: -330,
+          x: -310,
           y: -235,
           z: 140,
           delay: 0.12,
           rotSpeed: 0.25,
           phase: 1.2,
           defaultSize: 235,
-          defaultX: -330,
+          defaultX: -310,
           defaultY: -235,
           defaultZ: 140,
           minSize: 40,
@@ -1703,14 +1703,14 @@
           name: '👠 Туфля 2 (SHOE 2.glb)',
           type: '3d',
           file: 'good/SHOE 2.glb',
-          size: 175,
+          size: 151,
           x: -115,
           y: -230,
           z: 70,
           delay: 0.22,
           rotSpeed: 0.35,
           phase: 4.2,
-          defaultSize: 175,
+          defaultSize: 151,
           defaultX: -115,
           defaultY: -230,
           defaultZ: 70,
@@ -1723,14 +1723,14 @@
           name: '👠 Туфля 3 (SHOE 3.glb)',
           type: '3d',
           file: 'good/SHOE 3.glb',
-          size: 175,
+          size: 136,
           x: -300,
           y: -555,
           z: 140,
           delay: 0.32,
           rotSpeed: 0.30,
           phase: 1.8,
-          defaultSize: 175,
+          defaultSize: 136,
           defaultX: -300,
           defaultY: -555,
           defaultZ: 140,
@@ -1743,16 +1743,16 @@
           name: '👜 Сумка (bag.glb)',
           type: '3d',
           file: 'good/bag.glb',
-          size: 177,
+          size: 252,
           x: -60,
-          y: -450,
+          y: -435,
           z: 140,
           delay: 0.42,
           rotSpeed: 0.0,
           phase: 0.0,
-          defaultSize: 177,
+          defaultSize: 252,
           defaultX: -60,
-          defaultY: -450,
+          defaultY: -435,
           defaultZ: 140,
           minSize: 50,
           maxSize: 800,
@@ -1763,14 +1763,14 @@
           name: '🏋️‍♀️ Гантель (dumbbell.glb)',
           type: '3d',
           file: 'good/dumbbell.glb',
-          size: 165,
+          size: 128,
           x: 15,
           y: -655,
           z: 140,
           delay: 0.52,
           rotSpeed: 0.25,
           phase: 2.1,
-          defaultSize: 165,
+          defaultSize: 128,
           defaultX: 15,
           defaultY: -655,
           defaultZ: 140,
@@ -1823,14 +1823,14 @@
           name: '👠 Туфля 1 (shoe.glb)',
           type: '3d',
           file: 'good/shoe.glb',
-          size: 179,
+          size: 136,
           x: 240,
           y: -540,
           z: 140,
           delay: 0.82,
           rotSpeed: 0.35,
           phase: 3.5,
-          defaultSize: 179,
+          defaultSize: 136,
           defaultX: 240,
           defaultY: -540,
           defaultZ: 140,
@@ -2355,13 +2355,13 @@
       let goldenShoeTemplate = null;
 
       const GOOD_MODELS_DEF = [
-        { file: 'good/shoe.glb', name: 'shoe', size: UNIFORM_ITEM_SIZE, points: 2 },       // Туфля 1 (+2 очка)
-        { file: 'good/dumbbell.glb', name: 'dumbbell', size: UNIFORM_ITEM_SIZE, points: 2 }, // Гантель (+2 очка)
-        { file: 'good/SHOE 2.glb', name: 'shoe2', size: UNIFORM_ITEM_SIZE, points: 2 },   // Туфля 2 (+2 очка)
-        { file: 'good/SHOE 3.glb', name: 'shoe3', size: UNIFORM_ITEM_SIZE, points: 2 },   // Туфля 3 (+2 очка)
-        { file: 'good/dress.glb', name: 'dress', size: UNIFORM_ITEM_SIZE, points: 1 },     // Платье (+1 очко)
-        { file: 'good/sport_wear.glb', name: 'sport_wear', size: UNIFORM_ITEM_SIZE, points: 1 }, // Костюм (+1 очко)
-        { file: 'good/lipstick.glb', name: 'lipstick', size: UNIFORM_ITEM_SIZE, points: 1 }     // Помада (+1 очко)
+        { file: 'good/shoe.glb', name: 'shoe', size: 136, points: 2 },       // Туфля 1 (+2 очка, размер как на стартовом)
+        { file: 'good/dumbbell.glb', name: 'dumbbell', size: 128, points: 2 }, // Гантель (+2 очка, размер как на стартовом)
+        { file: 'good/SHOE 2.glb', name: 'shoe2', size: 151, points: 2 },   // Туфля 2 (+2 очка, размер как на стартовом)
+        { file: 'good/SHOE 3.glb', name: 'shoe3', size: 136, points: 2 },   // Туфля 3 (+2 очка, размер как на стартовом)
+        { file: 'good/dress.glb', name: 'dress', size: 235, points: 1 },     // Платье (+1 очко, размер как на стартовом)
+        { file: 'good/sport_wear.glb', name: 'sport_wear', size: 283, points: 1 }, // Костюм (+1 очко, размер как на стартовом)
+        { file: 'good/lipstick.glb', name: 'lipstick', size: 125, points: 1 }     // Помада (+1 очко, размер как на стартовом)
       ];
 
       GOOD_MODELS_DEF.forEach((item) => {
@@ -2392,11 +2392,13 @@
         });
       });
 
+      // Все "плохие" предметы увеличены в 1.5 раза от 144 -> 216
+      const BAD_ITEM_SIZE = 216;
       const BAD_MODELS_DEF = [
-        { file: 'bad/bolt.glb', name: 'bolt', size: UNIFORM_ITEM_SIZE, penalty: 5 },
-        { file: 'bad/donut_2.0 (1).glb', name: 'donut', size: UNIFORM_ITEM_SIZE, penalty: 5 },
-        { file: 'bad/low_poly_wrench.glb', name: 'wrench', size: UNIFORM_ITEM_SIZE, penalty: 5 },
-        { file: 'bad/man_dumbbell.glb', name: 'man_dumbbell', size: UNIFORM_ITEM_SIZE, penalty: 5 }
+        { file: 'bad/bolt.glb', name: 'bolt', size: BAD_ITEM_SIZE, penalty: 5 },
+        { file: 'bad/donut_2.0 (1).glb', name: 'donut', size: BAD_ITEM_SIZE, penalty: 5 },
+        { file: 'bad/low_poly_wrench.glb', name: 'wrench', size: BAD_ITEM_SIZE, penalty: 5 },
+        { file: 'bad/man_dumbbell.glb', name: 'man_dumbbell', size: BAD_ITEM_SIZE, penalty: 5 }
       ];
 
       BAD_MODELS_DEF.forEach((item) => {
@@ -2405,7 +2407,7 @@
           badTemplates.push({ container, name: item.name, penalty: item.penalty, isGood: false });
         }, undefined, () => {
           // Fallback геометрия при сбое
-          const geom = new THREE.DodecahedronGeometry(UNIFORM_ITEM_SIZE * 0.42);
+          const geom = new THREE.DodecahedronGeometry(BAD_ITEM_SIZE * 0.42);
           const mat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3, metalness: 0.85 });
           const mesh = new THREE.Mesh(geom, mat);
           const container = prepare3DTemplate(mesh, item.size, item.name);
@@ -3174,17 +3176,18 @@
             if (startElapsedTime > flexywayLogo.userData.spawnDelay) {
               flexywayLogo.userData.spawnProgress = Math.min(1, flexywayLogo.userData.spawnProgress + dt * 1.8);
             }
-            const breatheScale = 1.0 + (flexywayLogo.userData.spawnProgress >= 1 ? Math.sin(startElapsedTime * 0.75) * 0.05 : 0);
+            // Амплитуда дыхания и покачивания логотипа уменьшена ровно в 2 раза
+            const breatheScale = 1.0 + (flexywayLogo.userData.spawnProgress >= 1 ? Math.sin(startElapsedTime * 0.75) * 0.025 : 0);
             const s = flexywayLogo.userData.targetScale * easeOutBack(flexywayLogo.userData.spawnProgress) * breatheScale;
             flexywayLogo.scale.set(s, s, s);
 
             const baseZ = flexywayLogo.userData.baseZ !== undefined ? flexywayLogo.userData.baseZ : sceneConfig.flexyway.z;
-            const breatheZ = flexywayLogo.userData.spawnProgress >= 1 ? Math.sin(startElapsedTime * 0.75) * 35 : 0;
+            const breatheZ = flexywayLogo.userData.spawnProgress >= 1 ? Math.sin(startElapsedTime * 0.75) * 17.5 : 0;
             flexywayLogo.position.z = baseZ + breatheZ;
 
             flexywayLogo.position.x = flexywayLogo.userData.baseX !== undefined ? flexywayLogo.userData.baseX : sceneConfig.flexyway.x;
             flexywayLogo.position.y = flexywayLogo.userData.baseY !== undefined ? flexywayLogo.userData.baseY : sceneConfig.flexyway.y;
-            flexywayLogo.rotation.y = Math.sin(startElapsedTime * 0.5) * 0.035;
+            flexywayLogo.rotation.y = Math.sin(startElapsedTime * 0.5) * 0.018;
             flexywayLogo.rotation.z = 0;
           }
 
