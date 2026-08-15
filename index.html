@@ -2786,6 +2786,20 @@
         }
       }
 
+      let lastSpawnLane = -1;
+      function getDistributedSpawnX() {
+        const span = halfW * 0.84;
+        // 5 зон по всей ширине: крайняя левая, лево-центр, центр, право-центр, крайняя правая
+        let lane = Math.floor(Math.random() * 5);
+        if (lane === lastSpawnLane) {
+          lane = (lane + 1 + Math.floor(Math.random() * 3)) % 5;
+        }
+        lastSpawnLane = lane;
+        const laneMin = -span + (lane * (2 * span / 5));
+        const laneMax = laneMin + (2 * span / 5);
+        return randRange(laneMin + 15, laneMax - 15);
+      }
+
       function spawnFallingItem() {
         if (!running) return;
 
@@ -2794,8 +2808,7 @@
         if (isGoldenShoeRound && !spawnedGoldenShoeThisRound && timePassed >= 7.5 && goldenShoeTemplate) {
           spawnedGoldenShoeThisRound = true;
           const mesh = cloneTemplate(goldenShoeTemplate);
-          const margin = 85;
-          const originX = randRange(-halfW * 0.75 + margin, halfW * 0.75 - margin);
+          const originX = getDistributedSpawnX();
           const originY = TOP_Y + 40;
           mesh.position.set(originX, originY, 0);
 
@@ -2805,7 +2818,7 @@
             vx: randRange(-25, 25),
             vy: randRange(-10, 10),
             rot: new THREE.Vector3(0, 2.2, 0),
-            radius: 56,
+            radius: 64,
             isGood: true,
             isGoldenShoe: true,
             points: 5,
@@ -2822,15 +2835,14 @@
         const itemDef = catalog[Math.floor(Math.random() * catalog.length)];
         const mesh = cloneTemplate(itemDef.container);
 
-        // Безопасный диапазон спавна по X для увеличенных на 20% предметов (144px)
-        const margin = 95;
-        const originX = randRange(-halfW * 0.76 + margin, halfW * 0.76 - margin);
+        // Спавн по всей верхней части экрана (от левого до правого края)
+        const originX = getDistributedSpawnX();
         const originY = TOP_Y + 40;
 
         mesh.position.set(originX, originY, 0);
 
         // Рандомная горизонтальная скорость и вариация скорости падения (не более ±1.3x)
-        const vx = randRange(-40, 40);
+        const vx = randRange(-35, 35);
         const vy = randRange(-15, 15);
         const speedVariance = randRange(0.85, 1.25);
 
@@ -2947,8 +2959,7 @@
       };
 
       function setPlayerWorld(worldX) {
-        const margin = 70;
-        const clampedX = Math.max(-halfW * 0.85 + margin, Math.min(halfW * 0.85 - margin, worldX));
+        const clampedX = Math.max(-halfW * 0.86, Math.min(halfW * 0.86, worldX));
         targetWorldX = clampedX;
         targetWorldY = PLAYER_BASE_Y; // Сумка не падает, зафиксирована внизу
       }
@@ -2958,7 +2969,7 @@
         if (gameState !== 'playing') return;
         const rect = container.getBoundingClientRect();
         const normX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-        const wx = normX * (halfW * 0.85);
+        const wx = normX * (halfW * 0.86);
         setPlayerWorld(wx);
       });
 
@@ -3182,15 +3193,16 @@
           const timeElapsedRatio = Math.min(1.0, Math.max(0.0, (20 - roundTimeRemaining) / 20));
           const speedMultiplier = 1.0 + (1.5 * timeElapsedRatio);
 
-          // Увеличенное количество летящих предметов (интервал спавна от 0.42 до 0.24 сек)
-          const currentSpawnInterval = Math.max(0.24, 0.42 - timeElapsedRatio * 0.16);
+          // Частота выпадения предметов синхронно и пропорционально растет вместе со скоростью (от 0.38с до 0.15с)
+          const baseSpawnInterval = 0.38;
+          const currentSpawnInterval = baseSpawnInterval / speedMultiplier;
           if (spawnAccumulator >= currentSpawnInterval) {
             spawnAccumulator -= currentSpawnInterval;
             spawnFallingItem();
           }
 
           // Физика и движение падающих предметов строго в плоскости XY (Z = 0)
-          const safeBoundX = halfW * 0.78;
+          const safeBoundX = halfW * 0.88;
           for (let i = objects.length - 1; i >= 0; i--) {
             const o = objects[i];
             const m = o.mesh;
@@ -3223,7 +3235,7 @@
 
           // Движение и анимация сумки игрока (зафиксирована на PLAYER_BASE_Y)
           const SMOOTH_FACTOR = 0.22;
-          const clampedTargetX = THREE.MathUtils.clamp(targetWorldX, -halfW * 0.82, halfW * 0.82);
+          const clampedTargetX = THREE.MathUtils.clamp(targetWorldX, -halfW * 0.86, halfW * 0.86);
 
           player.position.x = THREE.MathUtils.lerp(player.position.x, clampedTargetX, SMOOTH_FACTOR);
           player.position.y = PLAYER_BASE_Y + playerBagRecoil;
