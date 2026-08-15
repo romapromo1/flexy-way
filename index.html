@@ -2924,8 +2924,8 @@
           return;
         }
 
-        // Плохие предметы возвращены: частота появления снижена в 1.5 раза (с 32% до 21%)
-        const isGood = Math.random() < 0.79;
+        // Частота плохих предметов увеличена на 50% (шанс препятствия увеличен с 21% до 32%)
+        const isGood = Math.random() < 0.68;
         const catalog = (isGood || badTemplates.length === 0) ? goodTemplates : badTemplates;
         if (catalog.length === 0) return;
 
