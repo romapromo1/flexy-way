@@ -2924,8 +2924,9 @@
           return;
         }
 
-        // Препятствия временно отключены (падают только полезные предметы из каталога good)
-        const catalog = goodTemplates;
+        // Плохие предметы возвращены: частота появления снижена в 1.5 раза (с 32% до 21%)
+        const isGood = Math.random() < 0.79;
+        const catalog = (isGood || badTemplates.length === 0) ? goodTemplates : badTemplates;
         if (catalog.length === 0) return;
 
         const itemDef = catalog[Math.floor(Math.random() * catalog.length)];
