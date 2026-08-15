@@ -1395,19 +1395,19 @@
           maxSize: 2.5,
           stepSize: 0.05
         },
-        bottle_2: {
-          id: 'bottle_2',
-          name: '🧃 Термос (bottle_2.glb)',
+        dress: {
+          id: 'dress',
+          name: '👗 Платье (dress.glb)',
           type: '3d',
-          file: 'good/bottle_2.glb',
-          size: 195,
+          file: 'good/dress.glb',
+          size: 235,
           x: -330,
           y: -235,
           z: 140,
           delay: 0.12,
-          rotSpeed: 0.35,
+          rotSpeed: 0.25,
           phase: 1.2,
-          defaultSize: 195,
+          defaultSize: 235,
           defaultX: -330,
           defaultY: -235,
           defaultZ: 140,
@@ -1415,59 +1415,19 @@
           maxSize: 600,
           instance: null
         },
-        diadem: {
-          id: 'diadem',
-          name: '👑 Диадема (diadem.glb)',
+        shoe2: {
+          id: 'shoe2',
+          name: '👠 Туфля 2 (SHOE 2.glb)',
           type: '3d',
-          file: 'good/diadem.glb',
-          size: 157,
-          x: 15,
-          y: -655,
-          z: 140,
-          delay: 0.22,
-          rotSpeed: 0.12,
-          phase: 2.1,
-          defaultSize: 157,
-          defaultX: 15,
-          defaultY: -655,
-          defaultZ: 140,
-          minSize: 40,
-          maxSize: 600,
-          instance: null
-        },
-        lipstick: {
-          id: 'lipstick',
-          name: '💄 Помада (lipstick.glb)',
-          type: '3d',
-          file: 'good/lipstick.glb',
-          size: 125,
-          x: 320,
-          y: -315,
-          z: 140,
-          delay: 0.32,
-          rotSpeed: 0.35,
-          phase: 2.8,
-          defaultSize: 125,
-          defaultX: 320,
-          defaultY: -315,
-          defaultZ: 140,
-          minSize: 40,
-          maxSize: 600,
-          instance: null
-        },
-        sun_glasses: {
-          id: 'sun_glasses',
-          name: '🕶 Очки (sun glasses.glb)',
-          type: '3d',
-          file: 'good/sun glasses.glb',
-          size: 176,
+          file: 'good/SHOE 2.glb',
+          size: 175,
           x: -115,
           y: -230,
           z: 70,
-          delay: 0.42,
-          rotSpeed: 0.12,
+          delay: 0.22,
+          rotSpeed: 0.35,
           phase: 4.2,
-          defaultSize: 176,
+          defaultSize: 175,
           defaultX: -115,
           defaultY: -230,
           defaultZ: 70,
@@ -1475,19 +1435,19 @@
           maxSize: 600,
           instance: null
         },
-        iphone: {
-          id: 'iphone',
-          name: '📱 Смартфон (iphone.glb)',
+        shoe3: {
+          id: 'shoe3',
+          name: '👠 Туфля 3 (SHOE 3.glb)',
           type: '3d',
-          file: 'good/iphone.glb',
-          size: 163,
+          file: 'good/SHOE 3.glb',
+          size: 175,
           x: -300,
           y: -555,
           z: 140,
-          delay: 0.52,
-          rotSpeed: 0.25,
+          delay: 0.32,
+          rotSpeed: 0.30,
           phase: 1.8,
-          defaultSize: 163,
+          defaultSize: 175,
           defaultX: -300,
           defaultY: -555,
           defaultZ: 140,
@@ -1504,7 +1464,7 @@
           x: -60,
           y: -450,
           z: 140,
-          delay: 0.62,
+          delay: 0.42,
           rotSpeed: 0.0,
           phase: 0.0,
           defaultSize: 177,
@@ -1513,6 +1473,26 @@
           defaultZ: 140,
           minSize: 50,
           maxSize: 800,
+          instance: null
+        },
+        dumbbell: {
+          id: 'dumbbell',
+          name: '🏋️‍♀️ Гантель (dumbbell.glb)',
+          type: '3d',
+          file: 'good/dumbbell.glb',
+          size: 165,
+          x: 15,
+          y: -655,
+          z: 140,
+          delay: 0.52,
+          rotSpeed: 0.25,
+          phase: 2.1,
+          defaultSize: 165,
+          defaultX: 15,
+          defaultY: -655,
+          defaultZ: 140,
+          minSize: 40,
+          maxSize: 600,
           instance: null
         },
         sport_wear: {
@@ -1524,7 +1504,7 @@
           x: 175,
           y: -270,
           z: 140,
-          delay: 0.72,
+          delay: 0.62,
           rotSpeed: 0.25,
           phase: 5.0,
           defaultSize: 283,
@@ -1535,9 +1515,29 @@
           maxSize: 600,
           instance: null
         },
+        lipstick: {
+          id: 'lipstick',
+          name: '💄 Помада (lipstick.glb)',
+          type: '3d',
+          file: 'good/lipstick.glb',
+          size: 125,
+          x: 320,
+          y: -315,
+          z: 140,
+          delay: 0.72,
+          rotSpeed: 0.35,
+          phase: 2.8,
+          defaultSize: 125,
+          defaultX: 320,
+          defaultY: -315,
+          defaultZ: 140,
+          minSize: 40,
+          maxSize: 600,
+          instance: null
+        },
         shoe: {
           id: 'shoe',
-          name: '👠 Туфля (shoe.glb)',
+          name: '👠 Туфля 1 (shoe.glb)',
           type: '3d',
           file: 'good/shoe.glb',
           size: 179,
@@ -2071,13 +2071,13 @@
       const badTemplates = [];
 
       const GOOD_MODELS_DEF = [
-        { file: 'good/shoe.glb', name: 'shoe', size: UNIFORM_ITEM_SIZE, points: 3 }, // Туфля — суперприз (+3)
-        { file: 'good/sport_wear.glb', name: 'sport_wear', size: UNIFORM_ITEM_SIZE, points: 1 },
-        { file: 'good/iphone.glb', name: 'iphone', size: UNIFORM_ITEM_SIZE, points: 1 },
-        { file: 'good/sun glasses.glb', name: 'sun_glasses', size: UNIFORM_ITEM_SIZE, points: 1 },
-        { file: 'good/lipstick.glb', name: 'lipstick', size: UNIFORM_ITEM_SIZE, points: 1 },
-        { file: 'good/diadem.glb', name: 'diadem', size: UNIFORM_ITEM_SIZE, points: 1 },
-        { file: 'good/bottle_2.glb', name: 'bottle_2', size: UNIFORM_ITEM_SIZE, points: 1 }
+        { file: 'good/shoe.glb', name: 'shoe', size: UNIFORM_ITEM_SIZE, points: 3 },       // Туфля 1 — суперприз (+3)
+        { file: 'good/SHOE 2.glb', name: 'shoe2', size: UNIFORM_ITEM_SIZE, points: 3 },   // Туфля 2 — суперприз (+3)
+        { file: 'good/SHOE 3.glb', name: 'shoe3', size: UNIFORM_ITEM_SIZE, points: 3 },   // Туфля 3 — суперприз (+3)
+        { file: 'good/dress.glb', name: 'dress', size: UNIFORM_ITEM_SIZE, points: 1 },     // Платье (+1)
+        { file: 'good/sport_wear.glb', name: 'sport_wear', size: UNIFORM_ITEM_SIZE, points: 1 }, // Костюм (+1)
+        { file: 'good/lipstick.glb', name: 'lipstick', size: UNIFORM_ITEM_SIZE, points: 1 },     // Помада (+1)
+        { file: 'good/dumbbell.glb', name: 'dumbbell', size: UNIFORM_ITEM_SIZE, points: 1 }     // Гантель (+1)
       ];
 
       GOOD_MODELS_DEF.forEach((item) => {
@@ -2088,7 +2088,10 @@
       });
 
       const BAD_MODELS_DEF = [
-        { file: 'bad/bolt.glb', name: 'bolt', size: UNIFORM_ITEM_SIZE, penalty: 5 }
+        { file: 'bad/bolt.glb', name: 'bolt', size: UNIFORM_ITEM_SIZE, penalty: 5 },
+        { file: 'bad/donut_2.0 (1).glb', name: 'donut', size: UNIFORM_ITEM_SIZE, penalty: 5 },
+        { file: 'bad/low_poly_wrench.glb', name: 'wrench', size: UNIFORM_ITEM_SIZE, penalty: 5 },
+        { file: 'bad/man_dumbbell.glb', name: 'man_dumbbell', size: UNIFORM_ITEM_SIZE, penalty: 5 }
       ];
 
       BAD_MODELS_DEF.forEach((item) => {

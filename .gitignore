@@ -1,6 +1,7 @@
 .vercel
 .env
 telegram_bot/data/
+telegram_bot/logs/
 telegram_bot/__pycache__/
 telegram_bot/tests/__pycache__/
 telegram_bot/.venv/
