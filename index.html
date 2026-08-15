@@ -2420,6 +2420,7 @@
 
       // "Плохие" предметы: bolt увеличен в 1.5 раза (162), остальные увеличены в 2 раза (donut: 194, wrench: 432, man_dumbbell: 432)
       const BAD_ITEM_SIZE = 432;
+      let giantDonutTemplate = null;
       const BAD_MODELS_DEF = [
         { file: 'bad/bolt.glb', name: 'bolt', size: 162, penalty: 5 },          // Увеличен в 1.5 раза (108 -> 162)
         { file: 'bad/donut_2.0 (1).glb', name: 'donut', size: 194, penalty: 5 }, // Увеличен в 2 раза (97 -> 194)
@@ -2431,6 +2432,11 @@
         gltfLoader.load(item.file, (gltf) => {
           const container = prepare3DTemplate(gltf.scene, item.size, item.name);
           badTemplates.push({ container, name: item.name, penalty: item.penalty, isGood: false });
+
+          // Шаблон Огромного Пончика (х1.8 от нынешнего размера: 194 * 1.80 = 349)
+          if (item.name === 'donut') {
+            giantDonutTemplate = prepare3DTemplate(gltf.scene, item.size * 1.80, 'giant_donut');
+          }
         }, undefined, () => {
           // Fallback геометрия при сбое
           const geom = new THREE.DodecahedronGeometry(item.size * 0.42);
@@ -2753,6 +2759,8 @@
       let isGoldenShoeRound = false;
       let spawnedGoldenShoeThisRound = false;
       let caughtGoldenShoe = false;
+      let isGiantDonutRound = false;
+      let spawnedGiantDonutThisRound = false;
       let timeSinceLastBadSpawn = 0;
 
       const randRange = (a, b) => a + Math.random() * (b - a);
@@ -2861,9 +2869,10 @@
       function spawnFallingItem() {
         if (!running) return;
 
-        // Появление Золотой Туфли гарантированно на 7-8 секунде каждого раунда
         const timePassed = 20 - roundTimeRemaining;
-        if (!spawnedGoldenShoeThisRound && timePassed >= 7.0 && goldenShoeTemplate) {
+
+        // Появление Золотой Туфли (раз в 2-3 игры на 7-8 секунде)
+        if (isGoldenShoeRound && !spawnedGoldenShoeThisRound && timePassed >= 7.0 && goldenShoeTemplate) {
           spawnedGoldenShoeThisRound = true;
           const mesh = cloneTemplate(goldenShoeTemplate);
           const originX = getDistributedSpawnX();
@@ -2886,6 +2895,33 @@
           return;
         }
 
+        // Появление Огромного Пончика (раз в 2-3 игры в последние 5 секунд на 15.2 секунде, размер х1.8)
+        if (isGiantDonutRound && !spawnedGiantDonutThisRound && timePassed >= 15.2 && giantDonutTemplate) {
+          spawnedGiantDonutThisRound = true;
+          timeSinceLastBadSpawn = 0;
+          const mesh = cloneTemplate(giantDonutTemplate);
+          const originX = getDistributedSpawnX();
+          const originY = TOP_Y + 50;
+          mesh.position.set(originX, originY, 0);
+
+          scene.add(mesh);
+          objects.push({
+            mesh,
+            vx: randRange(-25, 25),
+            vy: randRange(-10, 10),
+            rot: new THREE.Vector3(randRange(-0.8, 0.8), randRange(-0.8, 0.8), randRange(1.0, 2.0)),
+            radius: 120,
+            isGood: false,
+            isGoldenShoe: false,
+            isGiantDonut: true,
+            points: 0,
+            penalty: 5,
+            name: 'donut',
+            speedVariance: 0.95
+          });
+          return;
+        }
+
         // Плохие предметы: шанс снижен на 30% (базовый шанс 22.4%), но не реже 1 шт раз в 3 секунды
         let isGood = Math.random() < 0.776;
         if (timeSinceLastBadSpawn >= 3.0 && badTemplates.length > 0) {
@@ -2895,11 +2931,24 @@
         const catalog = (isGood || badTemplates.length === 0) ? goodTemplates : badTemplates;
         if (catalog.length === 0) return;
 
+        let itemDef;
         if (catalog === badTemplates) {
           timeSinceLastBadSpawn = 0;
+          // В последние 5 секунд (timePassed >= 15.0) количество гаечных ключей увеличено на 50%
+          if (timePassed >= 15.0) {
+            const badPool = [];
+            for (const b of badTemplates) {
+              const weight = (b.name === 'wrench') ? 3 : 2;
+              for (let w = 0; w < weight; w++) badPool.push(b);
+            }
+            itemDef = badPool[Math.floor(Math.random() * badPool.length)];
+          } else {
+            itemDef = catalog[Math.floor(Math.random() * catalog.length)];
+          }
+        } else {
+          itemDef = catalog[Math.floor(Math.random() * catalog.length)];
         }
 
-        const itemDef = catalog[Math.floor(Math.random() * catalog.length)];
         const mesh = cloneTemplate(itemDef.container);
 
         // Спавн по всей верхней части экрана (от левого до правого края)
@@ -2969,12 +3018,18 @@
         targetWorldX = 0;
         targetWorldY = PLAYER_BASE_Y;
 
-        // Инкремент счетчика раундов и 100% гарантия появления золотой туфли в каждом раунде
+        // Инкремент счетчика раундов
         roundGameCounter++;
         localStorage.setItem('flexy_round_counter', roundGameCounter.toString());
-        isGoldenShoeRound = true;
+        // Золотая туфля раз в 2-3 игры (~42% шанс)
+        isGoldenShoeRound = (roundGameCounter % 2 === 0) || (Math.random() < 0.42);
         spawnedGoldenShoeThisRound = false;
         caughtGoldenShoe = false;
+
+        // Огромный пончик раз в 2-3 игры (~38% шанс) в последние 5 секунд
+        isGiantDonutRound = (roundGameCounter % 3 === 0) || (Math.random() < 0.38);
+        spawnedGiantDonutThisRound = false;
+
         timeSinceLastBadSpawn = 0;
 
         spawnInterval = 0.42;
