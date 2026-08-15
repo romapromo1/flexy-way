@@ -3290,8 +3290,8 @@
           const timeElapsedRatio = Math.min(1.0, Math.max(0.0, (20 - roundTimeRemaining) / 20));
           const speedMultiplier = 1.0 + (0.875 * timeElapsedRatio);
 
-          // Частота выпадения предметов: количество падающих предметов уменьшено на 30% (базовый интервал увеличен с 0.38с до 0.54с)
-          const baseSpawnInterval = 0.54;
+          // Частота выпадения предметов: предметы стали реже на 10% (базовый интервал увеличен с 0.54с до 0.60с)
+          const baseSpawnInterval = 0.60;
           const currentSpawnInterval = baseSpawnInterval / speedMultiplier;
           if (spawnAccumulator >= currentSpawnInterval) {
             spawnAccumulator -= currentSpawnInterval;
