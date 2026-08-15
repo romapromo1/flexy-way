@@ -9,10 +9,10 @@
   <style>
     :root {
       --bg-dark: #070913;
-      --card-bg: rgba(20, 26, 45, 0.85);
-      --card-border: rgba(99, 102, 241, 0.3);
-      --accent-cyan: #06b6d4;
-      --accent-purple: #8b5cf6;
+      --card-bg: rgba(20, 26, 45, 0.88);
+      --card-border: rgba(99, 102, 241, 0.35);
+      --accent-cyan: #38bdf8;
+      --accent-purple: #818cf8;
       --accent-pink: #ec4899;
       --accent-green: #10b981;
       --text-main: #f8fafc;
@@ -33,13 +33,14 @@
       color: var(--text-main);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       min-height: 100vh;
+      min-height: -webkit-fill-available;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: space-between;
       padding: 0.75rem;
       overflow-x: hidden;
-      touch-action: manipulation;
+      touch-action: none;
     }
 
     .header {
@@ -106,44 +107,36 @@
       50% { transform: scale(1.3); opacity: 0.6; }
     }
 
-    .room-bar {
+    /* Live Game HUD */
+    .game-hud {
       width: 100%;
       max-width: 440px;
-      background: rgba(15, 23, 42, 0.7);
-      border: 1px dashed rgba(56, 189, 248, 0.3);
-      border-radius: 14px;
-      padding: 0.4rem 0.8rem;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
       gap: 0.5rem;
-      font-size: 0.82rem;
       margin-top: 0.25rem;
     }
 
-    .room-input {
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(56, 189, 248, 0.4);
-      border-radius: 8px;
-      color: #38bdf8;
-      font-weight: 800;
-      font-size: 1.05rem;
-      text-transform: uppercase;
-      padding: 0.2rem 0.5rem;
-      width: 90px;
+    .hud-box {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 14px;
+      padding: 0.4rem 0.6rem;
       text-align: center;
-      letter-spacing: 0.1em;
     }
 
-    .room-btn {
-      background: #38bdf8;
-      color: #0f172a;
-      border: none;
-      border-radius: 8px;
-      font-weight: 800;
-      padding: 0.35rem 0.75rem;
-      cursor: pointer;
-      font-size: 0.8rem;
+    .hud-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .hud-value {
+      font-size: 1.15rem;
+      font-weight: 900;
+      color: #38bdf8;
+      margin-top: 0.1rem;
     }
 
     /* Переключатель режимов */
@@ -184,35 +177,40 @@
     }
 
     .sensor-info-bar {
-      font-size: 0.72rem;
+      font-size: 0.75rem;
       color: #38bdf8;
       text-align: center;
-      background: rgba(14, 165, 233, 0.1);
-      border-radius: 8px;
-      padding: 0.3rem 0.6rem;
+      background: rgba(14, 165, 233, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 10px;
+      padding: 0.4rem 0.6rem;
       width: 100%;
       max-width: 440px;
       margin-top: 0.25rem;
+      font-weight: 600;
     }
 
-    .gyro-container {
+    /* Сенсорный радар-тачпад */
+    .touch-area-wrapper {
       width: 100%;
       max-width: 440px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.6rem;
-      margin: 0.25rem 0;
+      gap: 0.5rem;
+      margin: 0.3rem 0;
+      flex: 1;
+      justify-content: center;
     }
 
     .radar-card {
-      width: 210px;
-      height: 210px;
+      width: 100%;
+      height: 220px;
       position: relative;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, rgba(15, 23, 42, 0.8) 70%);
+      border-radius: 24px;
+      background: radial-gradient(circle at center, rgba(14, 165, 233, 0.18) 0%, rgba(15, 23, 42, 0.85) 75%);
       border: 2px solid rgba(56, 189, 248, 0.4);
-      box-shadow: 0 0 40px rgba(14, 165, 233, 0.25), inset 0 0 30px rgba(14, 165, 233, 0.15);
+      box-shadow: 0 0 40px rgba(14, 165, 233, 0.2), inset 0 0 30px rgba(14, 165, 233, 0.15);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -221,88 +219,63 @@
       cursor: crosshair;
     }
 
-    .radar-card.manual-mode {
-      border-color: rgba(16, 185, 129, 0.5);
-      box-shadow: 0 0 40px rgba(16, 185, 129, 0.25), inset 0 0 30px rgba(16, 185, 129, 0.15);
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, rgba(15, 23, 42, 0.8) 70%);
+    .radar-guideline-x {
+      position: absolute;
+      width: 80%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.5), transparent);
+      pointer-events: none;
     }
 
-    .radar-ring {
+    .radar-guideline-y {
       position: absolute;
+      height: 70%;
+      width: 2px;
+      background: linear-gradient(180deg, transparent, rgba(56, 189, 248, 0.4), transparent);
+      pointer-events: none;
+    }
+
+    .radar-center-ring {
+      position: absolute;
+      width: 70px;
+      height: 70px;
       border-radius: 50%;
-      border: 1px dashed rgba(56, 189, 248, 0.25);
-      pointer-events: none;
-    }
-    .radar-ring.r1 { width: 68px; height: 68px; }
-    .radar-ring.r2 { width: 136px; height: 136px; }
-    
-    .radar-crosshair-x {
-      position: absolute;
-      width: 100%;
-      height: 1px;
-      background: rgba(56, 189, 248, 0.2);
-      pointer-events: none;
-    }
-    .radar-crosshair-y {
-      position: absolute;
-      height: 100%;
-      width: 1px;
-      background: rgba(56, 189, 248, 0.2);
+      border: 1px dashed rgba(56, 189, 248, 0.35);
       pointer-events: none;
     }
 
     .laser-reticle {
       position: absolute;
-      width: 32px;
-      height: 32px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      background: radial-gradient(circle, #38bdf8 0%, rgba(56, 189, 248, 0.2) 70%);
+      background: radial-gradient(circle, #38bdf8 0%, rgba(56, 189, 248, 0.25) 70%);
       border: 2px solid #ffffff;
-      box-shadow: 0 0 18px #38bdf8, 0 0 36px #0ea5e9;
+      box-shadow: 0 0 20px #38bdf8, 0 0 40px #0ea5e9;
       transform: translate(0px, 0px);
       pointer-events: none;
       transition: transform 0.04s ease-out;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .laser-reticle::after {
-      content: '';
+      content: '👜';
+      font-size: 1.2rem;
+    }
+
+    .touch-hint {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 6px;
-      height: 6px;
-      background: #fff;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-    }
-
-    .gyro-stats {
-      display: flex;
-      justify-content: space-around;
-      width: 100%;
-      gap: 0.4rem;
-    }
-
-    .stat-pill {
-      flex: 1;
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 0.45rem 0.25rem;
-      text-align: center;
+      bottom: 12px;
       font-size: 0.72rem;
-      color: var(--text-muted);
+      color: rgba(148, 163, 184, 0.75);
+      pointer-events: none;
       font-weight: 600;
+      letter-spacing: 0.03em;
     }
 
-    .stat-pill span {
-      display: block;
-      font-weight: 800;
-      font-size: 0.9rem;
-      color: #38bdf8;
-      margin-top: 0.15rem;
-    }
-
+    /* Главная кнопка действия */
     .start-btn {
       width: 100%;
       max-width: 440px;
@@ -340,10 +313,11 @@
       backdrop-filter: blur(12px);
       border: 1px solid var(--card-border);
       border-radius: 14px;
-      padding: 0.65rem 0.9rem;
+      padding: 0.6rem 0.9rem;
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 0.45rem;
+      margin-top: 0.25rem;
     }
 
     .control-row {
@@ -371,31 +345,8 @@
       background: rgba(255, 255, 255, 0.15);
     }
 
-    .toggle-group {
-      display: flex;
-      gap: 0.4rem;
-    }
-
-    .toggle-btn {
-      padding: 0.3rem 0.65rem;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: var(--text-muted);
-      font-size: 0.72rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .toggle-btn.active {
-      background: rgba(56, 189, 248, 0.25);
-      border-color: #38bdf8;
-      color: #38bdf8;
-    }
-
     .hint-footer {
-      font-size: 0.74rem;
+      font-size: 0.72rem;
       color: var(--text-muted);
       text-align: center;
       margin-top: 0.2rem;
@@ -413,7 +364,7 @@
         <polyline points="2 17 12 22 22 17"></polyline>
         <polyline points="2 12 12 17 22 12"></polyline>
       </svg>
-      <span>FLEXY REMOTE</span>
+      <span>FLEXY CONTROLLER</span>
     </div>
     <div class="status-badge" id="statusBadge">
       <span class="status-dot"></span>
@@ -421,99 +372,73 @@
     </div>
   </header>
 
-  <!-- Панель PIN комнаты -->
-  <div class="room-bar">
-    <span>PIN комнаты:</span>
-    <input type="text" class="room-input" id="roomInput" maxlength="8" placeholder="PIN">
-    <button class="room-btn" onclick="applyCustomRoom()">Подключить</button>
+  <!-- Live HUD -->
+  <div class="game-hud">
+    <div class="hud-box">
+      <div class="hud-label">Счет</div>
+      <div class="hud-value" id="hudScore">0</div>
+    </div>
+    <div class="hud-box">
+      <div class="hud-label">Время</div>
+      <div class="hud-value" id="hudTime">20 сек</div>
+    </div>
+    <div class="hud-box">
+      <div class="hud-label">Комната</div>
+      <div class="hud-value" id="hudRoom" style="font-size: 0.95rem;">FLEXY</div>
+    </div>
   </div>
 
   <!-- Переключатель режима управления -->
   <div class="mode-switch-container">
-    <button class="mode-switch-btn active" id="modeGyroBtn" onclick="setControlMode('gyro')">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="22" y1="12" x2="18" y2="12"></line>
-        <line x1="6" y1="12" x2="2" y2="12"></line>
-        <line x1="12" y1="6" x2="12" y2="2"></line>
-        <line x1="12" y1="22" x2="12" y2="18"></line>
-      </svg>
-      🎯 Указка (Z-Поворот)
+    <button class="mode-switch-btn active" id="modeSwipeBtn" onclick="setControlMode('swipe')">
+      🕹 Тач / Свайп
     </button>
-    <button class="mode-switch-btn" id="modeManualBtn" onclick="setControlMode('manual')">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2" y="6" width="20" height="12" rx="4"></rect>
-        <circle cx="8" cy="12" r="2"></circle>
-        <path d="M15 9h2v6h-2z"></path>
-      </svg>
-      🕹 Ручной тачпад
+    <button class="mode-switch-btn" id="modeTiltBtn" onclick="setControlMode('tilt')">
+      🎯 Наклон телефона
     </button>
   </div>
 
   <div class="sensor-info-bar" id="sensorInfo">
-    🟢 Нажмите «Калибровать центр» перед экраном
+    🟢 Ведите пальцем влево-вправо для управления сумкой
   </div>
 
-  <!-- Интерактивный радар + Тачпад -->
-  <div class="gyro-container">
+  <!-- Сенсорный радар-тачпад -->
+  <div class="touch-area-wrapper">
     <div class="radar-card" id="radar">
-      <div class="radar-crosshair-x"></div>
-      <div class="radar-crosshair-y"></div>
-      <div class="radar-ring r1"></div>
-      <div class="radar-ring r2"></div>
+      <div class="radar-guideline-x"></div>
+      <div class="radar-guideline-y"></div>
+      <div class="radar-center-ring"></div>
       <div class="laser-reticle" id="laserReticle"></div>
-    </div>
-
-    <!-- Показания -->
-    <div class="gyro-stats">
-      <div class="stat-pill">
-        Z-Поворот (X)
-        <span id="statX">0°</span>
-      </div>
-      <div class="stat-pill">
-        Наклон (Y)
-        <span id="statY">0°</span>
-      </div>
-      <div class="stat-pill">
-        Пакеты
-        <span id="statPackets">0</span>
-      </div>
+      <div class="touch-hint" id="radarHint">СВАЙП / ТАЧ ВЛЕВО-ВПРАВО</div>
     </div>
   </div>
 
   <!-- Главная кнопка старта / калибровки -->
-  <button class="start-btn" id="startBtn" onclick="activateAndCalibrate()">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <button class="start-btn" id="startBtn" onclick="onMainActionClick()">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="10"></circle>
       <line x1="22" y1="12" x2="18" y2="12"></line>
       <line x1="6" y1="12" x2="2" y2="12"></line>
       <line x1="12" y1="6" x2="12" y2="2"></line>
       <line x1="12" y1="22" x2="12" y2="18"></line>
     </svg>
-    <span id="btnLabel">🎯 КАЛИБРОВАТЬ ЦЕНТР</span>
+    <span id="btnLabel">🎯 СБРОС В ЦЕНТР / СТАРТ</span>
   </button>
 
-  <!-- Тонкие настройки -->
+  <!-- Настройки чувствительности -->
   <div class="controls-panel">
     <div class="control-row">
       <span>Чувствительность</span>
       <div class="slider-container">
-        <input type="range" id="sensSlider" min="0.5" max="3.0" step="0.1" value="1.4" oninput="updateSensitivity(this.value)">
-        <span id="sensValue" style="color: #38bdf8; min-width: 32px;">1.4x</span>
-      </div>
-    </div>
-    <div class="control-row">
-      <span>Инверсия осей</span>
-      <div class="toggle-group">
-        <button class="toggle-btn" id="invXBtn" onclick="toggleInvert('x')">Инверт X</button>
-        <button class="toggle-btn active" id="invYBtn" onclick="toggleInvert('y')">Инверт Y</button>
+        <input type="range" id="sensSlider" min="0.6" max="2.6" step="0.1" value="1.3" oninput="updateSensitivity(this.value)">
+        <span id="sensValue" style="color: #38bdf8; min-width: 32px;">1.3x</span>
       </div>
     </div>
   </div>
 
-  <div class="hint-footer" id="hintFooter">
-    Держите телефон экраном вверх.<br>
-    Поворачивайте телефон влево-вправо вокруг вертикальной оси Z.
+  <div class="hint-footer">
+    Ловите женские предметы в сумку.<br>
+    Не ловите мусорные детали!
   </div>
 
   <script>
@@ -522,49 +447,29 @@
     const hashRoom = window.location.hash ? window.location.hash.replace('#room=', '').replace('#', '') : null;
     let roomId = (urlParams.get('room') || hashRoom || 'FLEXY').toUpperCase();
 
-    const roomInput = document.getElementById('roomInput');
-    roomInput.value = roomId;
+    document.getElementById('hudRoom').textContent = roomId;
 
-    function applyCustomRoom() {
-      const val = roomInput.value.trim().toUpperCase();
-      if (val && val !== roomId) {
-        roomId = val;
-        window.history.replaceState({}, '', `?room=${roomId}`);
-        initPahoMQTT();
-      }
-    }
-
-    // --- DOM ---
+    // --- DOM Elements ---
     const statusBadge = document.getElementById('statusBadge');
     const statusText = document.getElementById('statusText');
     const startBtn = document.getElementById('startBtn');
     const btnLabel = document.getElementById('btnLabel');
     const laserReticle = document.getElementById('laserReticle');
     const radar = document.getElementById('radar');
-    const statX = document.getElementById('statX');
-    const statY = document.getElementById('statY');
-    const statPackets = document.getElementById('statPackets');
+    const hudScore = document.getElementById('hudScore');
+    const hudTime = document.getElementById('hudTime');
     const sensSlider = document.getElementById('sensSlider');
     const sensValue = document.getElementById('sensValue');
-    const invXBtn = document.getElementById('invXBtn');
-    const invYBtn = document.getElementById('invYBtn');
     const sensorInfo = document.getElementById('sensorInfo');
-    const hintFooter = document.getElementById('hintFooter');
-    const modeGyroBtn = document.getElementById('modeGyroBtn');
-    const modeManualBtn = document.getElementById('modeManualBtn');
+    const modeSwipeBtn = document.getElementById('modeSwipeBtn');
+    const modeTiltBtn = document.getElementById('modeTiltBtn');
+    const radarHint = document.getElementById('radarHint');
 
-    // --- State & Options ---
-    let controlMode = 'gyro'; // 'gyro' | 'manual'
-    let sensitivity = 1.4;
-    let invertX = false;
-    let invertY = true; // Инвертирован по дефолту
-
-    // Baseline angles for pure center calibration
-    let baseAlpha = null;
-    let baseBeta = null;
-    let isCalibrated = false;
-    let packetsSent = 0;
-
+    // --- State ---
+    let controlMode = 'swipe'; // 'swipe' | 'tilt'
+    let sensitivity = 1.3;
+    let currentNormX = 0;
+    let baseGamma = null;
     let pahoClient = null;
     let isConnected = false;
 
@@ -590,27 +495,23 @@
       controlMode = mode;
       vibratePhone(30);
 
-      if (mode === 'gyro') {
-        modeGyroBtn.classList.add('active');
-        modeManualBtn.classList.remove('active');
-        radar.classList.remove('manual-mode');
-        btnLabel.textContent = '🎯 КАЛИБРОВАТЬ ЦЕНТР';
-        sensorInfo.textContent = '🟢 Режим: Указка (Поворот Z влево/вправо + Наклон)';
-        hintFooter.innerHTML = 'Держите телефон экраном вверх.<br>Поворачивайте телефон влево-вправо вокруг вертикальной оси Z.';
-        activateAndCalibrate();
+      if (mode === 'tilt') {
+        modeTiltBtn.classList.add('active');
+        modeSwipeBtn.classList.remove('active');
+        radarHint.textContent = 'НАКЛОНЯЙТЕ ТЕЛЕФОН ВЛЕВО / ВПРАВО';
+        sensorInfo.textContent = '🟢 Режим: Наклон телефона влево-вправо';
+        requestSensorPermission();
       } else {
-        modeManualBtn.classList.add('active');
-        modeGyroBtn.classList.remove('active');
-        radar.classList.add('manual-mode');
-        btnLabel.textContent = '🕹 СБРОС В ЦЕНТР';
-        sensorInfo.textContent = '🕹 Ручной режим: ведите пальцем по кругу радара';
-        hintFooter.innerHTML = 'Ведите пальцем по экрану как по тачпаду.<br>Гироскоп отключен — руки не влияют на куб.';
-        updateRadarUI(0, 0, 0, 0);
-        sendMotion(0, 0);
+        modeSwipeBtn.classList.add('active');
+        modeTiltBtn.classList.remove('active');
+        radarHint.textContent = 'СВАЙП / ТАЧ ВЛЕВО-ВПРАВО';
+        sensorInfo.textContent = '🟢 Режим: Ведите пальцем влево-вправо';
+        updateVisualReticle(0);
+        sendMotion(0);
       }
     }
 
-    // --- Paho MQTT WebSocket Connection ---
+    // --- Paho MQTT Client ---
     function initPahoMQTT() {
       try {
         if (typeof Paho === 'undefined' || !Paho.MQTT) return;
@@ -621,7 +522,7 @@
         const clientId = 'c_' + Math.random().toString(36).substring(2, 10);
         pahoClient = new Paho.MQTT.Client('broker.hivemq.com', 8884, '/mqtt', clientId);
 
-        pahoClient.onConnectionLost = (responseObject) => {
+        pahoClient.onConnectionLost = () => {
           setConnectedUI(false);
           setTimeout(initPahoMQTT, 2000);
         };
@@ -629,9 +530,17 @@
         pahoClient.onMessageArrived = (message) => {
           try {
             const data = JSON.parse(message.payloadString);
-            if (data.type === 'haptic') {
-              if (data.pattern === 'coin') vibratePhone([30, 40, 50]);
-              else if (data.pattern === 'gameover') vibratePhone([100, 50, 150]);
+            if (data.type === 'state') {
+              if (data.score !== undefined) hudScore.textContent = data.score;
+              if (data.timeLeft !== undefined) hudTime.textContent = `${data.timeLeft} сек`;
+              if (data.state === 'gameover') {
+                btnLabel.textContent = '🔄 СЫГРАТЬ ЕЩЕ РАЗ';
+              } else {
+                btnLabel.textContent = '🎯 СБРОС В ЦЕНТР / СТАРТ';
+              }
+            } else if (data.type === 'haptic') {
+              if (data.pattern === 'coin') vibratePhone([35, 30, 45]);
+              else if (data.pattern === 'gameover') vibratePhone([120, 60, 160]);
             }
           } catch (e) {}
         };
@@ -648,13 +557,13 @@
             msg.destinationName = `flexy/events/${roomId}`;
             pahoClient.send(msg);
           },
-          onFailure: (err) => {
+          onFailure: () => {
             setConnectedUI(false);
-            setTimeout(initFallbackMQTT, 1000);
+            setTimeout(initFallbackMQTT, 1500);
           }
         });
       } catch (e) {
-        console.warn('Paho error:', e);
+        console.warn('Paho init failed:', e);
       }
     }
 
@@ -679,21 +588,18 @@
       } catch (e) {}
     }
 
-    // Send motion packet to PC screen
+    // Send motion packet to PC screen (60 FPS throttle)
     let lastSendTime = 0;
-    function sendMotion(normX, normY) {
+    function sendMotion(normX) {
       const now = performance.now();
-      if (now - lastSendTime < 16) return; // 60 FPS
+      if (now - lastSendTime < 16) return;
       lastSendTime = now;
-
-      packetsSent++;
-      statPackets.textContent = packetsSent;
 
       if (pahoClient && pahoClient.isConnected()) {
         const payload = JSON.stringify({
           type: 'motion',
           x: normX,
-          y: normY
+          y: 0
         });
         const msg = new Paho.MQTT.Message(payload);
         msg.destinationName = `flexy/motion/${roomId}`;
@@ -701,149 +607,96 @@
       }
     }
 
-    function updateRadarUI(normX, normY, dispX, dispY) {
-      const radarRadius = 82;
-      laserReticle.style.transform = `translate(${normX * radarRadius}px, ${-normY * radarRadius}px)`;
-
-      statX.textContent = `${Math.round(dispX)}°`;
-      statY.textContent = `${Math.round(dispY)}°`;
+    function updateVisualReticle(normX) {
+      const radarWidth = radar.clientWidth || 300;
+      const maxOffset = (radarWidth / 2) - 30;
+      laserReticle.style.transform = `translateX(${normX * maxOffset}px)`;
     }
 
-    // Разница углов по модулю 360°
-    function angleDiff(a, b) {
-      let d = (a - b) % 360;
-      if (d > 180) d -= 360;
-      if (d < -180) d += 360;
-      return d;
-    }
-
-    // --- ОБРАБОТЧИК ОРИЕНТАЦИИ: ТОЧНЫЙ ОТНОСИТЕЛЬНЫЙ Z-ПОВОРОТ ---
-    function handleOrientation(e) {
-      if (controlMode !== 'gyro') return;
-
-      let alpha = e.alpha; // Поворот вокруг оси Z [0..360°]
-      let beta = e.beta;   // Наклон носа вверх/вниз [-180..180°]
-
-      if (alpha === null || beta === null) return;
-
-      // Если калибровка еще не была выполнена пользователем:
-      if (!isCalibrated || baseAlpha === null || baseBeta === null) {
-        baseAlpha = alpha;
-        baseBeta = beta;
-        isCalibrated = true;
-      }
-
-      // Отклонение от откалиброванного угла (ровно 0° в момент калибровки):
-      // Поворот вправо (по часовой) -> deltaZ > 0 (normX > 0)
-      // Поворот влево (против часовой) -> deltaZ < 0 (normX < 0)
-      let deltaZ = -angleDiff(alpha, baseAlpha);
-
-      // Наклон носа вверх/вниз:
-      let deltaY = (baseBeta - beta);
-
-      const MAX_Z = 24.0; // 24 градуса на полный ход влево/вправо
-      const MAX_Y = 24.0; // 24 градуса на полный ход вверх/вниз
-
-      let normX = (deltaZ / MAX_Z) * sensitivity;
-      let normY = (deltaY / MAX_Y) * sensitivity;
-
-      if (invertX) normX = -normX;
-      if (invertY) normY = -normY;
-
-      normX = Math.max(-1.0, Math.min(1.0, normX));
-      normY = Math.max(-1.0, Math.min(1.0, normY));
-
-      updateRadarUI(normX, normY, deltaZ, deltaY);
-      sendMotion(normX, normY);
-    }
-
-    // --- Ручной сенсорный тачпад (Manual Mode) ---
-    function handleTouchRadar(clientX, clientY) {
+    // --- Touch / Swipe Handling ---
+    function handleTouchInput(clientX) {
       const rect = radar.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const maxR = rect.width / 2;
+      const halfW = rect.width / 2;
 
-      let dx = (clientX - centerX) / maxR;
-      let dy = -(clientY - centerY) / maxR;
-
+      let dx = (clientX - centerX) / (halfW * 0.9);
       dx = Math.max(-1.0, Math.min(1.0, dx * sensitivity));
-      dy = Math.max(-1.0, Math.min(1.0, dy * sensitivity));
+      currentNormX = dx;
 
-      if (invertX) dx = -dx;
-      if (invertY) dy = -dy;
-
-      updateRadarUI(dx, dy, dx * 100, dy * 100);
-      sendMotion(dx, dy);
+      updateVisualReticle(currentNormX);
+      sendMotion(currentNormX);
     }
 
     radar.addEventListener('pointerdown', (e) => {
-      handleTouchRadar(e.clientX, e.clientY);
+      radar.setPointerCapture(e.pointerId);
+      handleTouchInput(e.clientX);
     });
 
     radar.addEventListener('pointermove', (e) => {
       if (e.buttons > 0 || e.pointerType === 'touch') {
-        handleTouchRadar(e.clientX, e.clientY);
+        handleTouchInput(e.clientX);
       }
     });
 
-    // --- Калибровка центра ---
-    async function activateAndCalibrate() {
-      vibratePhone(40);
+    // --- Device Tilt / Gyro Handling ---
+    function handleOrientation(e) {
+      if (controlMode !== 'tilt') return;
+      let gamma = e.gamma; // Наклон влево/вправо [-90..90°]
+      if (gamma === null || gamma === undefined) return;
 
-      if (controlMode === 'manual') {
-        updateRadarUI(0, 0, 0, 0);
-        sendMotion(0, 0);
-        startBtn.classList.add('calibrating');
-        btnLabel.textContent = '🕹 ЦЕНТР СБРОШЕН';
-        setTimeout(() => {
-          btnLabel.textContent = '🕹 СБРОС В ЦЕНТР';
-          startBtn.classList.remove('calibrating');
-        }, 500);
-        return;
+      if (baseGamma === null) {
+        baseGamma = gamma;
       }
 
-      // Сбрасываем калибровку, чтобы следующее событие зафиксировало текущий угол как (0, 0)
-      isCalibrated = false;
-      baseAlpha = null;
-      baseBeta = null;
+      let deltaGamma = (gamma - baseGamma);
+      const MAX_TILT = 28.0; // 28 градусов полный ход
 
-      startBtn.classList.add('calibrating');
-      btnLabel.textContent = '🎯 ЦЕНТР ЗАФИКСИРОВАН!';
-      setTimeout(() => {
-        btnLabel.textContent = '🎯 КАЛИБРОВАТЬ ЦЕНТР';
-        startBtn.classList.remove('calibrating');
-      }, 600);
+      let normX = (deltaGamma / MAX_TILT) * sensitivity;
+      normX = Math.max(-1.0, Math.min(1.0, normX));
+      currentNormX = normX;
 
-      // Screen WakeLock
+      updateVisualReticle(currentNormX);
+      sendMotion(currentNormX);
+    }
+
+    async function requestSensorPermission() {
       if ('wakeLock' in navigator) {
         try { await navigator.wakeLock.request('screen'); } catch (err) {}
       }
 
-      // iOS permission
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
           const state = await DeviceOrientationEvent.requestPermission();
           if (state === 'granted') {
-            attachSensorListener();
+            window.addEventListener('deviceorientation', handleOrientation, true);
           }
         } catch (e) {}
       } else {
-        attachSensorListener();
-      }
-
-      if (pahoClient && pahoClient.isConnected()) {
-        const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'recalibrate' }));
-        msg.destinationName = `flexy/events/${roomId}`;
-        pahoClient.send(msg);
+        window.addEventListener('deviceorientation', handleOrientation, true);
       }
     }
 
-    let isListenerAttached = false;
-    function attachSensorListener() {
-      if (!isListenerAttached) {
-        window.addEventListener('deviceorientation', handleOrientation, true);
-        isListenerAttached = true;
+    // --- Action Button Click ---
+    async function onMainActionClick() {
+      vibratePhone(40);
+      baseGamma = null; // Сброс нуля для наклона
+
+      await requestSensorPermission();
+
+      startBtn.classList.add('calibrating');
+      btnLabel.textContent = '⚡ СИГНАЛ ОТПРАВЛЕН!';
+      setTimeout(() => {
+        btnLabel.textContent = '🎯 СБРОС В ЦЕНТР / СТАРТ';
+        startBtn.classList.remove('calibrating');
+      }, 500);
+
+      updateVisualReticle(0);
+      sendMotion(0);
+
+      if (pahoClient && pahoClient.isConnected()) {
+        const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'restart' }));
+        msg.destinationName = `flexy/events/${roomId}`;
+        pahoClient.send(msg);
       }
     }
 
@@ -852,20 +705,15 @@
       sensValue.textContent = `${val}x`;
     }
 
-    function toggleInvert(axis) {
-      if (axis === 'x') {
-        invertX = !invertX;
-        invXBtn.classList.toggle('active', invertX);
-      } else if (axis === 'y') {
-        invertY = !invertY;
-        invYBtn.classList.toggle('active', invertY);
-      }
-    }
-
     window.addEventListener('DOMContentLoaded', () => {
       initPahoMQTT();
-      attachSensorListener();
+      requestSensorPermission();
     });
+
+    // Touch anywhere on screen on iOS requests sensor permission seamlessly
+    window.addEventListener('touchstart', () => {
+      requestSensorPermission();
+    }, { once: true });
   </script>
 </body>
 </html>

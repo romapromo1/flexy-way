@@ -2156,7 +2156,14 @@
             player.position.set(0, PLAYER_BASE_Y, 0);
             targetWorldX = 0;
             targetWorldY = PLAYER_BASE_Y;
-            resetGame();
+
+            // Если телефон уже подключен, стартуем сразу, иначе ждем сканирования QR
+            if (isPhoneConnected) {
+              toggleQrModal(false);
+              resetGame();
+            } else {
+              prepareGameReady();
+            }
           }
         }
 
@@ -2199,104 +2206,76 @@
         if (hitFlashTimeout) clearTimeout(hitFlashTimeout);
         hitFlashTimeout = setTimeout(() => {
           hitFlashEl.classList.remove('visible');
-        }, 160);
+        }, 180);
       }
 
-      function spawnFloatingScore(text, worldX, worldY, type = 'good') {
-        const screenX = ((worldX / halfW) * 0.5 + 0.5) * 100;
-        const screenY = ((-worldY / halfH) * 0.5 + 0.5) * 100;
+      function spawnFloatingScore(text, wx, wy, type) {
+        const span = document.createElement('span');
+        span.className = `floating-score score-${type}`;
+        span.textContent = text;
 
-        const el = document.createElement('div');
-        el.className = `floating-score ${type}`;
-        el.textContent = text;
-        el.style.left = `${screenX}%`;
-        el.style.top = `${screenY}%`;
+        const screenX = (wx / halfW) * (container.clientWidth / 2) + (container.clientWidth / 2);
+        const screenY = (-wy / halfH) * (container.clientHeight / 2) + (container.clientHeight / 2);
 
-        container.appendChild(el);
+        span.style.left = `${screenX}px`;
+        span.style.top = `${screenY}px`;
+        container.appendChild(span);
+
         setTimeout(() => {
-          if (el.parentNode) el.parentNode.removeChild(el);
+          if (span.parentNode) span.parentNode.removeChild(span);
         }, 850);
       }
 
-      function spawnGoodCollectParticles(x, y) {
-        const count = 14;
-        const geo = new THREE.BoxGeometry(10, 10, 10);
+      function spawnGoodCollectParticles(originX, originY) {
+        const count = 16;
         for (let i = 0; i < count; i++) {
-          const mat = new THREE.MeshStandardMaterial({
-            color: Math.random() < 0.6 ? 0xfbbf24 : 0x38bdf8,
-            roughness: 0.2,
-            metalness: 0.8,
-            emissive: 0xf59e0b,
-            emissiveIntensity: 0.6
-          });
-          const p = new THREE.Mesh(geo, mat);
-          p.position.set(x + randRange(-20, 20), y + randRange(-10, 20), 0);
-          const theta = Math.random() * Math.PI * 2;
-          const speed = randRange(90, 240);
-          const vel = new THREE.Vector3(
-            Math.cos(theta) * speed,
-            Math.sin(theta) * speed + 50,
-            randRange(-40, 80)
-          );
-          scene.add(p);
-          particles.push({ mesh: p, vel, gravity: -350, life: 0.6 });
+          const geom = new THREE.DodecahedronGeometry(randRange(4, 8));
+          const color = Math.random() > 0.3 ? 0xfbbf24 : 0x38bdf8;
+          const mat = new THREE.MeshBasicMaterial({ color });
+          const mesh = new THREE.Mesh(geom, mat);
+          mesh.position.set(originX, originY, 0);
+
+          const angle = Math.random() * Math.PI * 2;
+          const speed = randRange(120, 320);
+          const vel = new THREE.Vector3(Math.cos(angle) * speed, Math.sin(angle) * speed + 60, 0);
+
+          scene.add(mesh);
+          particles.push({ mesh, vel, life: 0.55, gravity: -380 });
         }
       }
 
-      function spawnBadEruptionParticles(x, y) {
+      function spawnBadEruptionParticles(originX, originY) {
         const count = 22;
-        const geo = new THREE.TetrahedronGeometry(12);
         for (let i = 0; i < count; i++) {
-          const mat = new THREE.MeshStandardMaterial({
-            color: Math.random() < 0.6 ? 0xef4444 : 0xf97316,
-            roughness: 0.3,
-            metalness: 0.4,
-            emissive: 0x991b1b,
-            emissiveIntensity: 0.8
-          });
-          const p = new THREE.Mesh(geo, mat);
-          p.position.set(x + randRange(-25, 25), y + randRange(-5, 15), 0);
-          // Вектор направлен мощно ВВЕРХ и в стороны (вылетает из сумки!)
-          const vx = randRange(-260, 260);
-          const vy = randRange(380, 750);
-          const vz = randRange(-50, 250);
-          const vel = new THREE.Vector3(vx, vy, vz);
-          scene.add(p);
-          particles.push({ mesh: p, vel, gravity: -1100, life: 0.85 });
+          const geom = new THREE.BoxGeometry(randRange(6, 12), randRange(6, 12), randRange(6, 12));
+          const color = Math.random() > 0.4 ? 0xef4444 : 0x475569;
+          const mat = new THREE.MeshBasicMaterial({ color });
+          const mesh = new THREE.Mesh(geom, mat);
+          mesh.position.set(originX + randRange(-20, 20), originY + 10, 0);
+
+          const angle = Math.PI * 0.5 + randRange(-0.85, 0.85);
+          const speed = randRange(260, 520);
+          const vel = new THREE.Vector3(Math.cos(angle) * speed, Math.sin(angle) * speed, 0);
+
+          scene.add(mesh);
+          particles.push({ mesh, vel, life: 0.85, gravity: -620 });
         }
       }
 
       function spawnFallingItem() {
-        // 70% шанс правильного предмета (good), 30% шанс мусорного (bad)
-        const isGood = Math.random() < 0.70;
-        let templateObj = null;
+        if (!running) return;
 
-        if (isGood && goodTemplates.length > 0) {
-          templateObj = goodTemplates[Math.floor(Math.random() * goodTemplates.length)];
-        } else if (!isGood && badTemplates.length > 0) {
-          templateObj = badTemplates[Math.floor(Math.random() * badTemplates.length)];
-        }
+        const isGood = Math.random() < 0.68;
+        const catalog = isGood ? goodTemplates : badTemplates;
+        if (catalog.length === 0) return;
 
-        let mesh;
-        let itemDef = templateObj || { isGood, name: isGood ? 'good' : 'bad', points: isGood ? 1 : 0, penalty: isGood ? 0 : 5 };
+        const itemDef = catalog[Math.floor(Math.random() * catalog.length)];
+        const mesh = cloneTemplate(itemDef.container);
 
-        if (templateObj && templateObj.container) {
-          mesh = cloneTemplate(templateObj.container);
-        } else {
-          const geom = isGood ? new THREE.TorusGeometry(36, 14, 16, 24) : new THREE.DodecahedronGeometry(UNIFORM_ITEM_SIZE * 0.42);
-          const mat = new THREE.MeshStandardMaterial({
-            color: isGood ? 0xf59e0b : 0x475569,
-            roughness: 0.3,
-            metalness: 0.7,
-            emissive: isGood ? 0xd97706 : 0x000000
-          });
-          mesh = new THREE.Mesh(geom, mat);
-          mesh.castShadow = true;
-        }
+        const margin = 80;
+        const originX = randRange(-halfW * 0.80 + margin, halfW * 0.80 - margin);
+        const originY = TOP_Y + 40;
 
-        const originX = randRange(-halfW * 0.78, halfW * 0.78);
-        const originY = TOP_Y + 60;
-        // Все объекты падают строго в одной плоскости XY (Z = 0)
         mesh.position.set(originX, originY, 0);
 
         const vx = randRange(-30, 30);
@@ -2321,6 +2300,25 @@
         });
       }
 
+      function prepareGameReady() {
+        for (const o of objects) scene.remove(o.mesh);
+        objects.length = 0;
+        for (const p of particles) scene.remove(p.mesh);
+        particles.length = 0;
+
+        player.position.set(0, PLAYER_BASE_Y, 0);
+        player.rotation.set(0, 0, 0);
+        player.visible = true;
+        targetWorldX = 0;
+        targetWorldY = PLAYER_BASE_Y;
+
+        coinCount = 0;
+        coinTotalEl.textContent = '0';
+        roundTimeRemaining = 20.0;
+        if (gameTimerEl) gameTimerEl.textContent = '20';
+        running = false;
+      }
+
       function resetGame() {
         gameoverEl.classList.remove('visible');
         for (const o of objects) scene.remove(o.mesh);
@@ -2342,6 +2340,7 @@
         if (gameTimerEl) gameTimerEl.textContent = '20';
         elapsed = 0;
         running = true;
+        broadcastGameStateToPhone();
       }
 
       function endGame() {
@@ -2367,6 +2366,7 @@
           prizeText = 'Попробуй еще раз, чтобы выиграть суперприз и не ловить лишнее!';
         }
         if (prizeSummaryEl) prizeSummaryEl.textContent = prizeText;
+        broadcastGameStateToPhone();
       }
 
       window.restartGame = function() {
@@ -2433,10 +2433,21 @@
               const data = JSON.parse(message.payloadString);
               setPhoneConnected(true);
 
-              if (data.type === 'motion') {
-                const wx = data.x * (halfW * 0.90);
+              if (data.type === 'controller_joined') {
+                setPhoneConnected(true);
+                if (gameState === 'playing' && !running) {
+                  resetGame();
+                }
+              } else if (data.type === 'motion') {
+                const wx = data.x * (halfW * 0.88);
                 setPlayerWorld(wx);
-              } else if (data.type === 'recalibrate') {
+                if (gameState === 'playing' && !running) {
+                  resetGame();
+                }
+              } else if (data.type === 'recalibrate' || data.type === 'restart') {
+                if (gameState === 'gameover' || (gameState === 'playing' && !running)) {
+                  restartGame();
+                }
                 targetWorldX = 0;
                 targetWorldY = PLAYER_BASE_Y;
               }
