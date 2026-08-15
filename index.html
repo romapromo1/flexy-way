@@ -1543,16 +1543,29 @@
 
       const renderer = new THREE.WebGLRenderer({ 
         antialias: true, 
+        alpha: false,
         powerPreference: 'high-performance',
+        stencil: false,
+        depth: true,
         logarithmicDepthBuffer: true 
       });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-      renderer.setSize(RENDER_WIDTH, RENDER_HEIGHT, false);
+      // Поддержка сверхчеткого 4K рендеринга для гигантских 86-дюймовых дисплеев
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 3));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.0;
+      renderer.toneMappingExposure = 1.04;
       container.appendChild(renderer.domElement);
+
+      function resizeRenderer() {
+        const rect = container.getBoundingClientRect();
+        const width = Math.round(rect.width || window.innerWidth);
+        const height = Math.round(rect.height || window.innerHeight);
+        renderer.setSize(width, height, false);
+      }
+      resizeRenderer();
+      window.addEventListener('resize', resizeRenderer);
 
       // Студийная HDRI карта отражений (Studio Environment Map)
       try {
@@ -1565,42 +1578,43 @@
         console.warn('RoomEnvironment fallback:', e);
       }
 
-      // Мягкий полусферический свет: ровное, не слепящее окружение
-      const hemi = new THREE.HemisphereLight(0xffffff, 0xcfdceb, 0.75);
+      // Мягкий полусферический свет: ровное, светлое, воздушное окружение
+      const hemi = new THREE.HemisphereLight(0xffffff, 0xdbeafe, 0.85);
       scene.add(hemi);
 
       // Основной студийный направленный свет:
-      // Все тени падают СТРОГО ЛЕВЕЕ и НИЖЕ ВСЕХ объектов (параллельные лучи с правого верхнего угла)
-      const dir = new THREE.DirectionalLight(0xffffff, 0.90);
+      // Тени падают СТРОГО ЛЕВЕЕ и НИЖЕ ВСЕХ объектов (4K Ultra-HD Shadow Map)
+      const dir = new THREE.DirectionalLight(0xffffff, 0.95);
       dir.position.set(320, 480, 1350);
       dir.target.position.set(0, 0, 0);
       dir.castShadow = true;
-      dir.shadow.mapSize.set(2048, 2048);
-      dir.shadow.radius = 9;
+      dir.shadow.mapSize.set(4096, 4096); // Сверхвысокая четкость теней для 86" панели
+      dir.shadow.radius = 12; // Мягкий бархатистый край тени
       dir.shadow.camera.left = -halfW * 2.5;
       dir.shadow.camera.right = halfW * 2.5;
       dir.shadow.camera.top = halfH * 2.5;
       dir.shadow.camera.bottom = -halfH * 2.5;
       dir.shadow.camera.near = 100;
       dir.shadow.camera.far = 4500;
-      dir.shadow.bias = -0.00015;
+      dir.shadow.bias = -0.00008;
+      dir.shadow.normalBias = 0.02;
       dir.shadow.camera.updateProjectionMatrix();
       scene.add(dir);
       scene.add(dir.target);
 
       // Дополнительный мягкий заполняющий свет слева
-      const fillLightLeft = new THREE.DirectionalLight(0xffffff, 0.40);
+      const fillLightLeft = new THREE.DirectionalLight(0xffffff, 0.45);
       fillLightLeft.position.set(-halfW * 0.8, 150, 1200);
       scene.add(fillLightLeft);
 
       // Нижний мягкий заполняющий свет
-      const bottomFillLight = new THREE.DirectionalLight(0xffffff, 0.25);
+      const bottomFillLight = new THREE.DirectionalLight(0xffffff, 0.28);
       bottomFillLight.position.set(0, -halfH * 0.5, 1200);
       scene.add(bottomFillLight);
 
-      // Задний Plane (в 2.5 раза больше экрана, прозрачный, принимает мягкие параллельные тени)
+      // Задний Plane: тень сделана значительно светлее, мягче и деликатнее (opacity: 0.12)
       const shadowPlaneGeom = new THREE.PlaneGeometry(halfW * 5.0, halfH * 5.0);
-      const shadowPlaneMat = new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.30 });
+      const shadowPlaneMat = new THREE.ShadowMaterial({ color: 0x1e293b, opacity: 0.12 });
       const shadowPlane = new THREE.Mesh(shadowPlaneGeom, shadowPlaneMat);
       shadowPlane.position.set(0, 0, -35);
       shadowPlane.receiveShadow = true;
@@ -1874,9 +1888,27 @@
               const fixMat = (mat) => {
                 mat.side = THREE.FrontSide; // Предотвращает Z-файтинг и наложение внутренней/внешней стенок
                 mat.shadowSide = THREE.DoubleSide; // Тени отбрасываются надежно
+                
+                const maxAniso = renderer.capabilities.getMaxAnisotropy();
                 if (mat.map) {
                   mat.map.colorSpace = THREE.SRGBColorSpace;
+                  mat.map.anisotropy = maxAniso;
+                  mat.map.generateMipmaps = true;
+                  mat.map.minFilter = THREE.LinearMipmapLinearFilter;
+                  mat.map.magFilter = THREE.LinearFilter;
                   mat.map.needsUpdate = true;
+                }
+                if (mat.normalMap) {
+                  mat.normalMap.anisotropy = maxAniso;
+                  mat.normalMap.needsUpdate = true;
+                }
+                if (mat.roughnessMap) {
+                  mat.roughnessMap.anisotropy = maxAniso;
+                  mat.roughnessMap.needsUpdate = true;
+                }
+                if (mat.metalnessMap) {
+                  mat.metalnessMap.anisotropy = maxAniso;
+                  mat.metalnessMap.needsUpdate = true;
                 }
                 mat.depthWrite = true;
                 mat.depthTest = true;
@@ -2280,9 +2312,27 @@
               const fixMat = (mat) => {
                 mat.side = THREE.FrontSide;
                 mat.shadowSide = THREE.DoubleSide;
+                
+                const maxAniso = renderer.capabilities.getMaxAnisotropy();
                 if (mat.map) {
                   mat.map.colorSpace = THREE.SRGBColorSpace;
+                  mat.map.anisotropy = maxAniso;
+                  mat.map.generateMipmaps = true;
+                  mat.map.minFilter = THREE.LinearMipmapLinearFilter;
+                  mat.map.magFilter = THREE.LinearFilter;
                   mat.map.needsUpdate = true;
+                }
+                if (mat.normalMap) {
+                  mat.normalMap.anisotropy = maxAniso;
+                  mat.normalMap.needsUpdate = true;
+                }
+                if (mat.roughnessMap) {
+                  mat.roughnessMap.anisotropy = maxAniso;
+                  mat.roughnessMap.needsUpdate = true;
+                }
+                if (mat.metalnessMap) {
+                  mat.metalnessMap.anisotropy = maxAniso;
+                  mat.metalnessMap.needsUpdate = true;
                 }
                 mat.depthWrite = true;
                 mat.depthTest = true;
