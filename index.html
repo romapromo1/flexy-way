@@ -79,15 +79,15 @@
       }
 
       .quick-restart-btn {
-        width: 44px;
-        height: 44px;
+        width: clamp(44px, 6.5vmin, 88px);
+        height: clamp(44px, 6.5vmin, 88px);
         border-radius: 50%;
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(224, 242, 254, 0.18) 100%);
         backdrop-filter: blur(20px) saturate(180%);
         -webkit-backdrop-filter: blur(20px) saturate(180%);
         border: 1.5px solid rgba(255, 255, 255, 0.85);
         color: #0284c7;
-        font-size: 1.35rem;
+        font-size: clamp(22px, 3.2vmin, 44px);
         font-weight: 900;
         display: flex;
         align-items: center;
@@ -108,7 +108,7 @@
         transform: scale(0.95);
       }
 
-      /* Liquid Frosted Glass End Game Card */
+      /* Liquid Frosted Glass End Game Card - масштабируется до 2.5х для 86" 4K экранов */
       .gameover-liquid-overlay {
         position: fixed;
         inset: 0;
@@ -123,7 +123,7 @@
         pointer-events: none;
         visibility: hidden;
         transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s;
-        padding: 1.2rem;
+        padding: clamp(1rem, 3vmin, 3rem);
       }
 
       .gameover-liquid-overlay.visible {
@@ -136,16 +136,16 @@
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.38) 0%, rgba(240, 249, 255, 0.24) 50%, rgba(224, 242, 254, 0.28) 100%);
         backdrop-filter: blur(36px) saturate(200%) brightness(106%);
         -webkit-backdrop-filter: blur(36px) saturate(200%) brightness(106%);
-        border: 1.5px solid rgba(255, 255, 255, 0.85);
-        border-radius: 36px;
-        padding: clamp(1.4rem, 3.5vmin, 2.2rem);
-        max-width: 440px;
+        border: 2px solid rgba(255, 255, 255, 0.85);
+        border-radius: clamp(28px, 4.8vmin, 62px);
+        padding: clamp(1.8rem, 4.5vmin, 4.6rem);
+        max-width: min(94vw, 940px);
         width: 92%;
         text-align: center;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 0.85rem;
+        gap: clamp(0.9rem, 2vmin, 2.2rem);
         box-shadow: 
           0 32px 80px rgba(0, 0, 0, 0.16),
           0 8px 24px rgba(2, 132, 199, 0.08),
@@ -161,20 +161,20 @@
 
       .gameover-badge {
         font-family: 'Outfit', sans-serif;
-        font-size: 0.75rem;
+        font-size: clamp(14px, 2.2vmin, 26px);
         font-weight: 800;
         letter-spacing: 0.14em;
         text-transform: uppercase;
         color: #0284c7;
         background: rgba(2, 132, 199, 0.08);
         border: 1px solid rgba(2, 132, 199, 0.2);
-        padding: 0.35rem 1.1rem;
+        padding: clamp(0.4rem, 1vmin, 0.9rem) clamp(1.1rem, 2.5vmin, 2.4rem);
         border-radius: 9999px;
       }
 
       .gameover-headline {
         margin: 0;
-        font-size: clamp(24px, 4.2vmin, 32px);
+        font-size: clamp(26px, 5.5vmin, 66px);
         line-height: 1.15;
         font-family: 'Aeroport', 'Outfit', sans-serif;
         font-weight: 900;
@@ -185,18 +185,18 @@
       .gameover-score-pill {
         display: inline-flex;
         align-items: center;
-        gap: 0.45rem;
+        gap: clamp(0.45rem, 1vmin, 1.2rem);
         background: rgba(2, 132, 199, 0.08);
-        border: 1px solid rgba(2, 132, 199, 0.2);
-        padding: 0.35rem 1rem;
+        border: 1.5px solid rgba(2, 132, 199, 0.2);
+        padding: clamp(0.4rem, 1vmin, 1rem) clamp(1.1rem, 2.5vmin, 2.4rem);
         border-radius: 9999px;
-        font-size: 0.95rem;
+        font-size: clamp(16px, 2.8vmin, 34px);
         font-weight: 800;
         color: #0284c7;
       }
 
       .gameover-score-pill strong {
-        font-size: 1.15rem;
+        font-size: clamp(20px, 3.6vmin, 44px);
         color: #0284c7;
       }
 
@@ -204,32 +204,32 @@
         width: 100%;
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.38) 0%, rgba(224, 242, 254, 0.22) 100%);
         backdrop-filter: blur(20px);
-        border: 1.5px solid rgba(255, 255, 255, 0.85);
-        border-radius: 20px;
-        padding: 0.9rem 1.1rem;
+        border: 2px solid rgba(255, 255, 255, 0.85);
+        border-radius: clamp(18px, 3vmin, 38px);
+        padding: clamp(1rem, 2.6vmin, 2.6rem) clamp(1.2rem, 3vmin, 3rem);
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 0.35rem;
+        gap: clamp(0.4rem, 1vmin, 1.1rem);
         box-shadow: 0 8px 24px rgba(2, 132, 199, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.9);
       }
 
       .prize-level-tag {
-        font-size: 0.7rem;
+        font-size: clamp(12px, 2vmin, 24px);
         font-weight: 900;
         letter-spacing: 0.12em;
         text-transform: uppercase;
         color: #0284c7;
         background: rgba(2, 132, 199, 0.12);
         border: 1px solid rgba(2, 132, 199, 0.2);
-        padding: 0.2rem 0.75rem;
+        padding: clamp(0.25rem, 0.6vmin, 0.6rem) clamp(0.8rem, 1.8vmin, 1.8rem);
         border-radius: 9999px;
       }
 
       .prize-title-text {
         margin: 0;
         font-family: 'Aeroport', 'Outfit', sans-serif;
-        font-size: clamp(16px, 2.6vmin, 19px);
+        font-size: clamp(18px, 3.8vmin, 44px);
         font-weight: 900;
         color: #0284c7;
         line-height: 1.3;
@@ -238,7 +238,7 @@
 
       .prize-desc-text {
         margin: 0;
-        font-size: clamp(12px, 1.8vmin, 13.5px);
+        font-size: clamp(14px, 2.5vmin, 28px);
         font-weight: 700;
         color: #0369a1;
         line-height: 1.35;
@@ -247,12 +247,12 @@
       .tg-bot-section {
         display: flex;
         align-items: center;
-        gap: 1rem;
+        gap: clamp(1rem, 2.8vmin, 2.8rem);
         background: rgba(255, 255, 255, 0.35);
         backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.8);
-        border-radius: 20px;
-        padding: 0.75rem 1rem;
+        border: 1.5px solid rgba(255, 255, 255, 0.8);
+        border-radius: clamp(18px, 3vmin, 38px);
+        padding: clamp(0.9rem, 2.4vmin, 2.4rem) clamp(1.1rem, 2.8vmin, 2.8rem);
         width: 100%;
         text-align: left;
         box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.9);
@@ -260,12 +260,12 @@
 
       .tg-qr-box {
         position: relative;
-        width: 110px;
-        height: 110px;
-        min-width: 110px;
+        width: clamp(115px, 19vmin, 230px);
+        height: clamp(115px, 19vmin, 230px);
+        min-width: clamp(115px, 19vmin, 230px);
         background: #ffffff;
-        border-radius: 14px;
-        padding: 6px;
+        border-radius: clamp(14px, 2.2vmin, 28px);
+        padding: clamp(6px, 1vmin, 14px);
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
         display: flex;
         align-items: center;
@@ -273,17 +273,18 @@
       }
 
       #prizeQrcode {
-        width: 98px;
-        height: 98px;
+        width: 100%;
+        height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
       }
 
       #prizeQrcode canvas, #prizeQrcode img {
-        width: 98px !important;
-        height: 98px !important;
-        border-radius: 6px;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        border-radius: 8px;
       }
 
       .tg-qr-loading {
@@ -296,15 +297,15 @@
         align-items: center;
         justify-content: center;
         gap: 0.3rem;
-        font-size: 0.65rem;
+        font-size: clamp(11px, 1.6vmin, 18px);
         font-weight: 700;
         color: #0284c7;
       }
 
       .spinner {
-        width: 22px;
-        height: 22px;
-        border: 2.5px solid rgba(2, 132, 199, 0.2);
+        width: clamp(22px, 3.5vmin, 44px);
+        height: clamp(22px, 3.5vmin, 44px);
+        border: 3px solid rgba(2, 132, 199, 0.2);
         border-top-color: #0284c7;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
@@ -317,34 +318,34 @@
       .tg-instruction {
         display: flex;
         flex-direction: column;
-        gap: 0.3rem;
+        gap: 0.4rem;
       }
 
       .tg-instruction p {
         margin: 0;
-        font-size: clamp(12px, 1.8vmin, 13.5px);
+        font-size: clamp(14px, 2.4vmin, 28px);
         font-weight: 700;
         color: #0284c7;
-        line-height: 1.35;
+        line-height: 1.4;
       }
 
       .gameover-btn-group {
         display: flex;
-        gap: 0.6rem;
+        gap: clamp(0.6rem, 1.5vmin, 1.6rem);
         width: 100%;
-        margin-top: 0.2rem;
+        margin-top: clamp(0.3rem, 1vmin, 1rem);
       }
 
       .btn-play-again {
         flex: 1.2;
-        padding: 0.85rem;
+        padding: clamp(0.9rem, 2.4vmin, 2.2rem);
         background: linear-gradient(135deg, rgba(2, 132, 199, 0.88) 0%, rgba(3, 105, 161, 0.88) 100%);
         backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.5);
+        border: 1.5px solid rgba(255, 255, 255, 0.5);
         border-radius: 9999px;
         color: #ffffff;
         font-family: 'Aeroport', 'Outfit', sans-serif;
-        font-size: clamp(14px, 2.2vmin, 16px);
+        font-size: clamp(16px, 2.8vmin, 34px);
         font-weight: 800;
         cursor: pointer;
         box-shadow: 0 8px 20px rgba(2, 132, 199, 0.35);
@@ -358,14 +359,14 @@
 
       .btn-back-home {
         flex: 1;
-        padding: 0.85rem;
+        padding: clamp(0.9rem, 2.4vmin, 2.2rem);
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(224, 242, 254, 0.20) 100%);
         backdrop-filter: blur(16px);
         border: 1.5px solid rgba(255, 255, 255, 0.85);
         border-radius: 9999px;
         color: #0284c7;
         font-family: 'Aeroport', 'Outfit', sans-serif;
-        font-size: clamp(13px, 2vmin, 15px);
+        font-size: clamp(15px, 2.6vmin, 32px);
         font-weight: 800;
         cursor: pointer;
         transition: all 0.2s;
@@ -379,9 +380,9 @@
 
       .top-bar {
         position: absolute;
-        top: 1.25rem;
-        left: 1.25rem;
-        right: 1.25rem;
+        top: clamp(1rem, 2.5vmin, 2.5rem);
+        left: clamp(1rem, 2.5vmin, 2.5rem);
+        right: clamp(1rem, 2.5vmin, 2.5rem);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -398,13 +399,13 @@
       .timer-badge {
         background: var(--bg-glass);
         backdrop-filter: blur(12px);
-        border: 1px solid var(--border-glass);
+        border: 1.5px solid var(--border-glass);
         border-radius: 9999px;
-        padding: 0.5rem 1.1rem;
+        padding: clamp(0.5rem, 1.4vmin, 1.2rem) clamp(1rem, 2.5vmin, 2.4rem);
         display: inline-flex;
         align-items: center;
-        gap: 0.45rem;
-        font-size: clamp(14px, 2vmin, 20px);
+        gap: clamp(0.45rem, 1vmin, 1rem);
+        font-size: clamp(14px, 2.4vmin, 28px);
         font-weight: 800;
         color: #38bdf8;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
@@ -423,7 +424,7 @@
       .floating-score.score-gold {
         color: #f59e0b;
         text-shadow: 0 0 20px rgba(245, 158, 11, 0.9), 0 2px 10px rgba(0, 0, 0, 0.7);
-        font-size: clamp(26px, 5vmin, 42px);
+        font-size: clamp(26px, 5vmin, 52px);
       }
 
       .screen-hit-flash.visible {
@@ -436,7 +437,7 @@
         pointer-events: none;
         font-family: 'Aeroport', 'Outfit', sans-serif;
         font-weight: 900;
-        font-size: clamp(24px, 4.5vmin, 38px);
+        font-size: clamp(24px, 4.5vmin, 48px);
         transform: translate(-50%, -50%);
         animation: floatScoreUp 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         z-index: 50;
@@ -462,13 +463,13 @@
       .remote-pill {
         background: var(--bg-glass);
         backdrop-filter: blur(12px);
-        border: 1px solid var(--border-glass);
+        border: 1.5px solid var(--border-glass);
         border-radius: 9999px;
-        padding: 0.5rem 1.1rem;
+        padding: clamp(0.5rem, 1.4vmin, 1.2rem) clamp(1rem, 2.5vmin, 2.4rem);
         display: inline-flex;
         align-items: center;
-        gap: 0.65rem;
-        font-size: clamp(12px, 1.8vmin, 18px);
+        gap: clamp(0.6rem, 1.2vmin, 1.4rem);
+        font-size: clamp(13px, 2.2vmin, 26px);
         font-weight: 700;
         color: #f8fafc;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3);
@@ -483,8 +484,8 @@
       }
 
       .status-dot {
-        width: 10px;
-        height: 10px;
+        width: clamp(10px, 1.5vmin, 18px);
+        height: clamp(10px, 1.5vmin, 18px);
         border-radius: 50%;
         background: #ef4444;
         box-shadow: 0 0 8px #ef4444;
@@ -504,13 +505,13 @@
       .coins-badge {
         background: var(--bg-glass);
         backdrop-filter: blur(12px);
-        border: 1px solid var(--border-glass);
+        border: 1.5px solid var(--border-glass);
         border-radius: 9999px;
-        padding: 0.5rem 1.1rem;
+        padding: clamp(0.5rem, 1.4vmin, 1.2rem) clamp(1rem, 2.5vmin, 2.4rem);
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        font-size: clamp(14px, 2vmin, 20px);
+        gap: clamp(0.5rem, 1vmin, 1.2rem);
+        font-size: clamp(14px, 2.4vmin, 28px);
         font-weight: 800;
         color: #fbbf24;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3);
@@ -685,16 +686,16 @@
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.38) 0%, rgba(240, 249, 255, 0.24) 50%, rgba(224, 242, 254, 0.28) 100%);
         backdrop-filter: blur(32px) saturate(190%) brightness(106%);
         -webkit-backdrop-filter: blur(32px) saturate(190%) brightness(106%);
-        border: 1.5px solid rgba(255, 255, 255, 0.85);
-        border-radius: 32px;
-        padding: clamp(1.6rem, 4vmin, 2.4rem);
-        max-width: 450px;
-        width: 88%;
+        border: 2px solid rgba(255, 255, 255, 0.85);
+        border-radius: clamp(24px, 4vmin, 56px);
+        padding: clamp(1.8rem, 4.5vmin, 4.8rem);
+        max-width: min(92vw, 880px);
+        width: 90%;
         text-align: center;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 1.25rem;
+        gap: clamp(1.2rem, 2.5vmin, 2.8rem);
         box-shadow: 
           0 32px 70px rgba(0, 0, 0, 0.14),
           0 8px 24px rgba(2, 132, 199, 0.08),
@@ -710,25 +711,25 @@
 
       .rules-badge {
         font-family: 'Outfit', -apple-system, sans-serif;
-        font-size: 0.75rem;
+        font-size: clamp(14px, 2.2vmin, 26px);
         font-weight: 800;
         letter-spacing: 0.14em;
         text-transform: uppercase;
         color: #0284c7;
         background: rgba(2, 132, 199, 0.08);
-        border: 1px solid rgba(2, 132, 199, 0.2);
-        padding: 0.35rem 1.1rem;
+        border: 1.5px solid rgba(2, 132, 199, 0.2);
+        padding: clamp(0.4rem, 1vmin, 0.9rem) clamp(1.1rem, 2.5vmin, 2.4rem);
         border-radius: 9999px;
       }
 
       .rules-content {
         display: flex;
         flex-direction: column;
-        gap: 0.9rem;
+        gap: clamp(0.9rem, 2vmin, 2.2rem);
         font-family: 'Aeroport', 'Outfit', sans-serif;
         color: #0284c7;
-        font-size: clamp(14px, 2.2vmin, 16.5px);
-        line-height: 1.55;
+        font-size: clamp(16px, 2.8vmin, 34px);
+        line-height: 1.5;
         font-weight: 700;
         text-align: center;
         text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
@@ -739,19 +740,19 @@
         padding: 0;
       }
 
-      /* Кнопка "Ну всё, поняла" в стиле Frosted Liquid Glass */
+      /* Кнопка "Ну всё, поняла" в стиле Frosted Liquid Glass - увеличена до 2.5х */
       .rules-confirm-btn {
-        margin-top: 0.4rem;
+        margin-top: clamp(0.4rem, 1vmin, 1.2rem);
         position: relative;
-        padding: 0.95rem 2.8rem;
+        padding: clamp(1rem, 2.6vmin, 2.4rem) clamp(2.5rem, 6vmin, 5.5rem);
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0%, rgba(224, 242, 254, 0.16) 50%, rgba(56, 189, 248, 0.20) 100%);
         backdrop-filter: blur(24px) saturate(190%) brightness(105%);
         -webkit-backdrop-filter: blur(24px) saturate(190%) brightness(105%);
-        border: 1.5px solid rgba(255, 255, 255, 0.85);
+        border: 2px solid rgba(255, 255, 255, 0.85);
         border-radius: 9999px;
         color: #0284c7;
         font-family: 'Aeroport', 'Outfit', sans-serif;
-        font-size: clamp(16px, 2.6vmin, 19px);
+        font-size: clamp(18px, 3.4vmin, 38px);
         font-weight: 800;
         letter-spacing: 0.04em;
         cursor: pointer;
@@ -802,11 +803,11 @@
       /* Шестеренка настроек сцены (Liquid Glass Gear Button) */
       .settings-gear-btn {
         position: absolute;
-        top: 1.2rem;
-        right: 1.2rem;
+        top: clamp(1rem, 2.5vmin, 2.5rem);
+        right: clamp(1rem, 2.5vmin, 2.5rem);
         z-index: 30;
-        width: 46px;
-        height: 46px;
+        width: clamp(46px, 6.5vmin, 92px);
+        height: clamp(46px, 6.5vmin, 92px);
         border-radius: 50%;
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(224, 242, 254, 0.18) 100%);
         backdrop-filter: blur(16px);
@@ -819,6 +820,11 @@
         cursor: pointer;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), inset 0 1.5px 2px rgba(255, 255, 255, 0.95);
         transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s, box-shadow 0.2s, color 0.2s;
+      }
+
+      .settings-gear-btn svg {
+        width: clamp(24px, 3.5vmin, 48px);
+        height: clamp(24px, 3.5vmin, 48px);
       }
 
       .settings-gear-btn:hover {
@@ -1144,34 +1150,34 @@
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.38) 0%, rgba(240, 249, 255, 0.24) 50%, rgba(224, 242, 254, 0.28) 100%);
         backdrop-filter: blur(32px) saturate(190%) brightness(106%);
         -webkit-backdrop-filter: blur(32px) saturate(190%) brightness(106%);
-        border: 1.5px solid rgba(255, 255, 255, 0.85);
-        border-radius: 32px;
-        padding: 2rem;
-        max-width: 360px;
-        width: 100%;
+        border: 2px solid rgba(255, 255, 255, 0.85);
+        border-radius: clamp(28px, 4.5vmin, 58px);
+        padding: clamp(2rem, 5vmin, 4.8rem);
+        max-width: min(92vw, 840px);
+        width: 92%;
         text-align: center;
         box-shadow: 0 32px 70px rgba(0, 0, 0, 0.14), 0 8px 24px rgba(2, 132, 199, 0.08), inset 0 1.5px 2px rgba(255, 255, 255, 0.95);
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 1.1rem;
+        gap: clamp(1.2rem, 2.6vmin, 2.8rem);
         position: relative;
       }
 
       .qr-badge {
-        font-size: 0.75rem;
+        font-size: clamp(14px, 2.2vmin, 26px);
         font-weight: 800;
         letter-spacing: 0.15em;
         text-transform: uppercase;
         color: #0284c7;
         background: rgba(2, 132, 199, 0.08);
-        padding: 0.35rem 0.9rem;
+        padding: clamp(0.4rem, 1vmin, 0.9rem) clamp(1.1rem, 2.5vmin, 2.4rem);
         border-radius: 9999px;
-        border: 1px solid rgba(2, 132, 199, 0.2);
+        border: 1.5px solid rgba(2, 132, 199, 0.2);
       }
 
       .qr-title {
-        font-size: clamp(20px, 3.5vmin, 26px);
+        font-size: clamp(24px, 4.8vmin, 58px);
         font-weight: 900;
         margin: 0;
         color: #0284c7;
@@ -1182,48 +1188,48 @@
 
       .qr-box {
         background: #ffffff;
-        padding: 0.85rem;
-        border-radius: 20px;
+        padding: clamp(0.85rem, 1.8vmin, 2rem);
+        border-radius: clamp(20px, 3vmin, 40px);
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 175px;
-        height: 175px;
+        width: clamp(180px, 30vmin, 380px);
+        height: clamp(180px, 30vmin, 380px);
       }
 
       #qrcode {
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 155px;
-        height: 155px;
+        width: 100%;
+        height: 100%;
       }
 
       #qrcode canvas, #qrcode img {
-        border-radius: 8px;
-        width: 155px !important;
-        height: 155px !important;
-        max-width: 155px !important;
-        max-height: 155px !important;
+        border-radius: 12px;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
       }
 
       .room-pin-display {
         background: rgba(255, 255, 255, 0.35);
         border: 1.5px solid rgba(255, 255, 255, 0.85);
-        border-radius: 12px;
-        padding: 0.4rem 1rem;
+        border-radius: clamp(12px, 2vmin, 24px);
+        padding: clamp(0.5rem, 1.4vmin, 1.4rem) clamp(1.1rem, 2.6vmin, 2.6rem);
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        font-size: 0.9rem;
+        gap: clamp(0.5rem, 1.2vmin, 1.4rem);
+        font-size: clamp(16px, 2.6vmin, 32px);
         color: #0284c7;
         box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.9);
       }
 
       .room-pin-code {
         font-family: monospace;
-        font-size: 1.2rem;
+        font-size: clamp(22px, 3.8vmin, 46px);
         font-weight: 900;
         color: #0284c7;
         letter-spacing: 0.15em;
@@ -1231,21 +1237,21 @@
 
       .qr-desc {
         color: #0369a1;
-        font-size: clamp(12px, 1.8vmin, 14px);
-        line-height: 1.4;
+        font-size: clamp(14px, 2.4vmin, 28px);
+        line-height: 1.45;
         margin: 0;
         font-weight: 700;
       }
 
       .qr-btn-play {
         width: 100%;
-        padding: 0.95rem;
+        padding: clamp(1rem, 2.5vmin, 2.4rem);
         background: linear-gradient(135deg, rgba(2, 132, 199, 0.88) 0%, rgba(3, 105, 161, 0.88) 100%);
         backdrop-filter: blur(16px);
         border: 1px solid rgba(255, 255, 255, 0.5);
-        border-radius: 16px;
+        border-radius: clamp(16px, 2.5vmin, 32px);
         color: #fff;
-        font-size: 1rem;
+        font-size: clamp(16px, 2.8vmin, 34px);
         font-weight: 800;
         cursor: pointer;
         box-shadow: 0 8px 24px rgba(2, 132, 199, 0.35);
@@ -1259,35 +1265,41 @@
 
       .close-qr-btn {
         position: absolute;
-        top: 1rem;
-        right: 1rem;
+        top: clamp(1rem, 2vmin, 2.2rem);
+        right: clamp(1rem, 2vmin, 2.2rem);
         background: rgba(255, 255, 255, 0.4);
-        border: 1px solid rgba(255, 255, 255, 0.8);
+        border: 1.5px solid rgba(255, 255, 255, 0.8);
         color: #0284c7;
-        width: 32px;
-        height: 32px;
+        width: clamp(34px, 5.5vmin, 68px);
+        height: clamp(34px, 5.5vmin, 68px);
         border-radius: 50%;
-        font-size: 1.2rem;
+        font-size: clamp(16px, 3vmin, 36px);
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
+        transition: all 0.2s;
+      }
+
+      .close-qr-btn:hover {
+        background: rgba(255, 255, 255, 0.7);
+        transform: scale(1.08);
       }
 
       .hint {
         position: absolute;
         left: 50%;
-        bottom: 1.5rem;
+        bottom: clamp(1.5rem, 3.5vmin, 4rem);
         transform: translateX(-50%);
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(224, 242, 254, 0.18) 100%);
         backdrop-filter: blur(20px) saturate(180%);
         -webkit-backdrop-filter: blur(20px) saturate(180%);
         border: 1.5px solid rgba(255, 255, 255, 0.85);
         border-radius: 9999px;
-        padding: 0.6rem 1.6rem;
+        padding: clamp(0.75rem, 1.8vmin, 1.8rem) clamp(1.8rem, 4.2vmin, 4.5rem);
         color: #0284c7;
         font-family: 'Aeroport', 'Outfit', sans-serif;
-        font-size: clamp(12px, 2vmin, 16px);
+        font-size: clamp(16px, 2.8vmin, 34px);
         font-weight: 800;
         z-index: 10;
         pointer-events: none;
@@ -1648,13 +1660,13 @@
           id: 'flexyway',
           name: '🌟 Логотип Flexy Way',
           type: '3d',
-          size: 305,
+          size: 398,
           x: 0,
-          y: 170,
+          y: 245,
           z: 140,
-          defaultSize: 305,
+          defaultSize: 398,
           defaultX: 0,
-          defaultY: 170,
+          defaultY: 245,
           defaultZ: 140,
           minSize: 50,
           maxSize: 800,
@@ -1664,32 +1676,32 @@
           id: 'tagline',
           name: '📝 Фраза «Играй...» (Aeroport)',
           type: 'dom',
-          size: 1.0,
+          size: 3.0,
           x: 0,
-          y: -180,
+          y: -475,
           z: 0,
-          defaultSize: 1.0,
+          defaultSize: 3.0,
           defaultX: 0,
-          defaultY: -180,
+          defaultY: -475,
           defaultZ: 0,
           minSize: 0.4,
-          maxSize: 3.0,
+          maxSize: 5.0,
           stepSize: 0.05
         },
         startButton: {
           id: 'startButton',
           name: '▶️ Кнопка «Начать» (Liquid Glass)',
           type: 'dom',
-          size: 0.85,
+          size: 2.5,
           x: 0,
           y: 25,
           z: 0,
-          defaultSize: 0.85,
+          defaultSize: 2.5,
           defaultX: 0,
           defaultY: 25,
           defaultZ: 0,
           minSize: 0.4,
-          maxSize: 2.5,
+          maxSize: 4.0,
           stepSize: 0.05
         },
         dress: {
@@ -2628,11 +2640,11 @@
         if (typeof QRCode !== 'undefined') {
           new QRCode(qrcodeContainer, {
             text: deepLink,
-            width: 98,
-            height: 98,
+            width: 300,
+            height: 300,
             colorDark: '#0f172a',
             colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.M
+            correctLevel: QRCode.CorrectLevel.H
           });
         }
       }
@@ -3169,11 +3181,11 @@
           qrcodeEl.innerHTML = '';
           new QRCode(qrcodeEl, {
             text: permanentControllerUrl,
-            width: 155,
-            height: 155,
+            width: 380,
+            height: 380,
             colorDark: "#070913",
             colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.M
+            correctLevel: QRCode.CorrectLevel.H
           });
         }
       }
