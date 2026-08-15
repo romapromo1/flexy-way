@@ -1330,7 +1330,7 @@
           y: -235,
           z: 140,
           delay: 0.12,
-          rotSpeed: -0.35,
+          rotSpeed: 0.35,
           phase: 1.2,
           defaultSize: 195,
           defaultX: -330,
@@ -1370,7 +1370,7 @@
           y: -315,
           z: 140,
           delay: 0.32,
-          rotSpeed: -0.4,
+          rotSpeed: 0.35,
           phase: 2.8,
           defaultSize: 125,
           defaultX: 320,
@@ -1387,14 +1387,14 @@
           file: 'good/sun glasses.glb',
           size: 176,
           x: -115,
-          y: -305,
+          y: -230,
           z: 70,
           delay: 0.42,
-          rotSpeed: -0.12,
+          rotSpeed: 0.12,
           phase: 4.2,
           defaultSize: 176,
           defaultX: -115,
-          defaultY: -305,
+          defaultY: -230,
           defaultZ: 70,
           minSize: 40,
           maxSize: 600,
@@ -1406,15 +1406,15 @@
           type: '3d',
           file: 'good/iphone.glb',
           size: 163,
-          x: 170,
-          y: -235,
+          x: -300,
+          y: -555,
           z: 140,
           delay: 0.52,
           rotSpeed: 0.25,
           phase: 1.8,
           defaultSize: 163,
-          defaultX: 170,
-          defaultY: -235,
+          defaultX: -300,
+          defaultY: -555,
           defaultZ: 140,
           minSize: 40,
           maxSize: 600,
@@ -1426,14 +1426,14 @@
           type: '3d',
           file: 'good/bag.glb',
           size: 177,
-          x: 0,
+          x: -60,
           y: -450,
           z: 140,
           delay: 0.62,
           rotSpeed: 0.0,
           phase: 0.0,
           defaultSize: 177,
-          defaultX: 0,
+          defaultX: -60,
           defaultY: -450,
           defaultZ: 140,
           minSize: 50,
@@ -1446,15 +1446,15 @@
           type: '3d',
           file: 'good/sport_wear.glb',
           size: 283,
-          x: -290,
-          y: -555,
+          x: 175,
+          y: -270,
           z: 140,
           delay: 0.72,
           rotSpeed: 0.25,
           phase: 5.0,
           defaultSize: 283,
-          defaultX: -290,
-          defaultY: -555,
+          defaultX: 175,
+          defaultY: -270,
           defaultZ: 140,
           minSize: 40,
           maxSize: 600,
@@ -2189,17 +2189,13 @@
       }
 
       function renderQrCode() {
-        const pathName = window.location.pathname;
-        let dirPath = pathName.substring(0, pathName.lastIndexOf('/') + 1);
-        if (!dirPath.endsWith('/')) dirPath += '/';
-        const fullBase = `${window.location.origin}${dirPath}`;
-
-        const controllerUrl = `${fullBase}controller.html?room=${roomId}`;
+        // Постоянная надежная ссылка на пульт (всегда открывается на смартфоне без привязки к локальной сети)
+        const permanentControllerUrl = `https://romapromo1.github.io/flexy-way/controller.html?room=${roomId}`;
 
         const qrcodeEl = document.getElementById('qrcode');
         qrcodeEl.innerHTML = '';
         new QRCode(qrcodeEl, {
-          text: controllerUrl,
+          text: permanentControllerUrl,
           width: 155,
           height: 155,
           colorDark: "#070913",
