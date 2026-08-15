@@ -2418,13 +2418,13 @@
         });
       });
 
-      // "Плохие" предметы: bolt уменьшен в 2 раза (108), donut_2.0 уменьшен на 55% (97), остальные 216
-      const BAD_ITEM_SIZE = 216;
+      // "Плохие" предметы: bolt увеличен в 1.5 раза (162), остальные увеличены в 2 раза (donut: 194, wrench: 432, man_dumbbell: 432)
+      const BAD_ITEM_SIZE = 432;
       const BAD_MODELS_DEF = [
-        { file: 'bad/bolt.glb', name: 'bolt', size: 108, penalty: 5 },          // В 2 раза меньше (108)
-        { file: 'bad/donut_2.0 (1).glb', name: 'donut', size: 97, penalty: 5 }, // На 55% меньше (97)
-        { file: 'bad/low_poly_wrench.glb', name: 'wrench', size: BAD_ITEM_SIZE, penalty: 5 },
-        { file: 'bad/man_dumbbell.glb', name: 'man_dumbbell', size: BAD_ITEM_SIZE, penalty: 5 }
+        { file: 'bad/bolt.glb', name: 'bolt', size: 162, penalty: 5 },          // Увеличен в 1.5 раза (108 -> 162)
+        { file: 'bad/donut_2.0 (1).glb', name: 'donut', size: 194, penalty: 5 }, // Увеличен в 2 раза (97 -> 194)
+        { file: 'bad/low_poly_wrench.glb', name: 'wrench', size: 432, penalty: 5 }, // Увеличен в 2 раза (216 -> 432)
+        { file: 'bad/man_dumbbell.glb', name: 'man_dumbbell', size: 432, penalty: 5 } // Увеличен в 2 раза (216 -> 432)
       ];
 
       BAD_MODELS_DEF.forEach((item) => {
@@ -2433,7 +2433,7 @@
           badTemplates.push({ container, name: item.name, penalty: item.penalty, isGood: false });
         }, undefined, () => {
           // Fallback геометрия при сбое
-          const geom = new THREE.DodecahedronGeometry(BAD_ITEM_SIZE * 0.42);
+          const geom = new THREE.DodecahedronGeometry(item.size * 0.42);
           const mat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3, metalness: 0.85 });
           const mesh = new THREE.Mesh(geom, mat);
           const container = prepare3DTemplate(mesh, item.size, item.name);
@@ -2753,6 +2753,7 @@
       let isGoldenShoeRound = false;
       let spawnedGoldenShoeThisRound = false;
       let caughtGoldenShoe = false;
+      let timeSinceLastBadSpawn = 0;
 
       const randRange = (a, b) => a + Math.random() * (b - a);
 
@@ -2885,10 +2886,18 @@
           return;
         }
 
-        // Частота плохих предметов увеличена на 50% (шанс препятствия увеличен с 21% до 32%)
-        const isGood = Math.random() < 0.68;
+        // Плохие предметы: шанс снижен на 30% (базовый шанс 22.4%), но не реже 1 шт раз в 3 секунды
+        let isGood = Math.random() < 0.776;
+        if (timeSinceLastBadSpawn >= 3.0 && badTemplates.length > 0) {
+          isGood = false; // Гарантированный спавн препятствия раз в 3 секунды
+        }
+
         const catalog = (isGood || badTemplates.length === 0) ? goodTemplates : badTemplates;
         if (catalog.length === 0) return;
+
+        if (catalog === badTemplates) {
+          timeSinceLastBadSpawn = 0;
+        }
 
         const itemDef = catalog[Math.floor(Math.random() * catalog.length)];
         const mesh = cloneTemplate(itemDef.container);
@@ -2966,6 +2975,7 @@
         isGoldenShoeRound = true;
         spawnedGoldenShoeThisRound = false;
         caughtGoldenShoe = false;
+        timeSinceLastBadSpawn = 0;
 
         spawnInterval = 0.42;
         fallSpeed = BASE_FALL_SPEED;
@@ -3233,6 +3243,7 @@
         if (running && gameState === 'playing') {
           elapsed += dt;
           spawnAccumulator += dt;
+          timeSinceLastBadSpawn += dt;
 
           // Таймер раунда 20 секунд
           roundTimeRemaining -= dt;
