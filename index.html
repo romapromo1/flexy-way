@@ -2545,35 +2545,32 @@
         }
 
         if (score <= 30) {
-          // Уровень 1 (0-30 очков) — ранжирование по очкам
-          if (score <= 10) {
-            const pool = ['BONUS-L1-TRIAL-3FOR2', 'BONUS-L1-FREEZE', 'BONUS-L1-PLUS7'];
-            return PRIZES_TABLE[pool[Math.floor(Math.random() * pool.length)]];
-          } else if (score <= 20) {
-            const pool = ['SUB-L1-04-10', 'BONUS-L1-FRIEND-15', 'BONUS-L1-PLUS7'];
-            return PRIZES_TABLE[pool[Math.floor(Math.random() * pool.length)]];
-          } else {
-            const pool = ['SUB-L1-08-10', 'SUB-L1-04-10', 'BONUS-L1-FRIEND-15'];
-            return PRIZES_TABLE[pool[Math.floor(Math.random() * pool.length)]];
-          }
+          // УРОВЕНЬ 1 (0 - 30 очков): равновероятный шанс для каждого из 6 призов (1/6 = 16.67%)
+          const poolL1 = [
+            'SUB-L1-04-10',
+            'SUB-L1-08-10',
+            'BONUS-L1-TRIAL-3FOR2',
+            'BONUS-L1-PLUS7',
+            'BONUS-L1-FREEZE',
+            'BONUS-L1-FRIEND-15'
+          ];
+          return PRIZES_TABLE[poolL1[Math.floor(Math.random() * poolL1.length)]];
         } else if (score <= 50) {
-          // Уровень 2 (31-50 очков)
-          if (score <= 40) {
-            const pool = ['SUB-L2-08-12-15', 'BONUS-L2-PAIR'];
-            return PRIZES_TABLE[pool[Math.floor(Math.random() * pool.length)]];
-          } else {
-            const pool = ['SUB-L2-12-20', 'BONUS-L2-PAIR'];
-            return PRIZES_TABLE[pool[Math.floor(Math.random() * pool.length)]];
-          }
+          // УРОВЕНЬ 2 (31 - 50 очков): равновероятный шанс для каждого из 3 призов (1/3 = 33.33%)
+          const poolL2 = [
+            'SUB-L2-08-12-15',
+            'SUB-L2-12-20',
+            'BONUS-L2-PAIR'
+          ];
+          return PRIZES_TABLE[poolL2[Math.floor(Math.random() * poolL2.length)]];
         } else {
-          // Уровень 3 (51-65+ очков)
-          if (score <= 55) {
-            return PRIZES_TABLE['SUB-L3-12-25'];
-          } else if (score <= 60) {
-            return PRIZES_TABLE['SUB-L3-12-30'];
-          } else {
-            return PRIZES_TABLE['SUB-L3-12-40'];
-          }
+          // УРОВЕНЬ 3 (51+ очков): равновероятный шанс для каждого из 3 призов (1/3 = 33.33%)
+          const poolL3 = [
+            'SUB-L3-12-25',
+            'SUB-L3-12-30',
+            'SUB-L3-12-40'
+          ];
+          return PRIZES_TABLE[poolL3[Math.floor(Math.random() * poolL3.length)]];
         }
       }
 
