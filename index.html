@@ -2431,21 +2431,21 @@
           const container = prepare3DTemplate(gltf.scene, item.size, item.name);
           goodTemplates.push({ container, name: item.name, points: item.points, isGood: true });
 
-          // Создаем шаблон Золотой Туфли из shoe.glb
+          // Создаем шаблон Золотой Туфли из shoe.glb (крупнее на 25%, сияющий золотой материал)
           if (item.name === 'shoe') {
             const goldScene = gltf.scene.clone(true);
-            const goldContainer = prepare3DTemplate(goldScene, item.size * 1.05, 'golden_shoe');
+            const goldContainer = prepare3DTemplate(goldScene, item.size * 1.25, 'golden_shoe');
             goldContainer.traverse((child) => {
               if (child.isMesh) {
                 child.material = new THREE.MeshPhysicalMaterial({
                   color: 0xffd700,
-                  emissive: 0x4a3700,
-                  emissiveIntensity: 0.35,
+                  emissive: 0x664800,
+                  emissiveIntensity: 0.55,
                   roughness: 0.12,
                   metalness: 0.98,
                   clearcoat: 1.0,
-                  clearcoatRoughness: 0.1,
-                  envMapIntensity: 2.2
+                  clearcoatRoughness: 0.08,
+                  envMapIntensity: 2.5
                 });
               }
             });
@@ -2896,9 +2896,9 @@
       function spawnFallingItem() {
         if (!running) return;
 
-        // Появление Золотой Туфли примерно на 8-12 секунде игры
+        // Появление Золотой Туфли гарантированно на 7-8 секунде каждого раунда
         const timePassed = 20 - roundTimeRemaining;
-        if (isGoldenShoeRound && !spawnedGoldenShoeThisRound && timePassed >= 7.5 && goldenShoeTemplate) {
+        if (!spawnedGoldenShoeThisRound && timePassed >= 7.0 && goldenShoeTemplate) {
           spawnedGoldenShoeThisRound = true;
           const mesh = cloneTemplate(goldenShoeTemplate);
           const originX = getDistributedSpawnX();
@@ -2908,21 +2908,21 @@
           scene.add(mesh);
           objects.push({
             mesh,
-            vx: randRange(-25, 25),
-            vy: randRange(-10, 10),
-            rot: new THREE.Vector3(0, 2.2, 0),
-            radius: 64,
+            vx: randRange(-20, 20),
+            vy: randRange(-8, 8),
+            rot: new THREE.Vector3(0, 2.8, 0),
+            radius: 70,
             isGood: true,
             isGoldenShoe: true,
             points: 5,
             name: 'golden_shoe',
-            speedVariance: 0.95
+            speedVariance: 0.90
           });
           return;
         }
 
-        const isGood = Math.random() < 0.68;
-        const catalog = isGood ? goodTemplates : badTemplates;
+        // Препятствия временно отключены (падают только полезные предметы из каталога good)
+        const catalog = goodTemplates;
         if (catalog.length === 0) return;
 
         const itemDef = catalog[Math.floor(Math.random() * catalog.length)];
@@ -2995,10 +2995,10 @@
         targetWorldX = 0;
         targetWorldY = PLAYER_BASE_Y;
 
-        // Инкремент счетчика раундов и определение золотой туфли
+        // Инкремент счетчика раундов и 100% гарантия появления золотой туфли в каждом раунде
         roundGameCounter++;
         localStorage.setItem('flexy_round_counter', roundGameCounter.toString());
-        isGoldenShoeRound = (roundGameCounter % 11 === 0) || (Math.random() < 0.09);
+        isGoldenShoeRound = true;
         spawnedGoldenShoeThisRound = false;
         caughtGoldenShoe = false;
 
@@ -3320,6 +3320,16 @@
             m.rotation.z += o.rot.z * dt;
             m.rotation.x += o.rot.x * 0.35 * dt;
             m.rotation.y += o.rot.y * 0.35 * dt;
+
+            // Золотая туфля испускает сияющие золотые искры в полете
+            if (o.isGoldenShoe && Math.random() < 0.45) {
+              const sparkGeom = new THREE.BoxGeometry(randRange(4, 9), randRange(4, 9), randRange(4, 9));
+              const sparkMat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.3 ? 0xfcd34d : 0xffffff });
+              const sparkMesh = new THREE.Mesh(sparkGeom, sparkMat);
+              sparkMesh.position.set(m.position.x + randRange(-25, 25), m.position.y + randRange(-25, 25), 0);
+              scene.add(sparkMesh);
+              particles.push({ mesh: sparkMesh, vel: new THREE.Vector3(randRange(-25, 25), randRange(20, 55), 0), life: 0.55, maxLife: 0.55, gravity: -140 });
+            }
 
             if (m.position.y <= BOTTOM_Y) {
               scene.remove(m);
