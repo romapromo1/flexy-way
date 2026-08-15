@@ -1268,7 +1268,7 @@
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.24;
+      renderer.toneMappingExposure = 1.0;
       container.appendChild(renderer.domElement);
 
       // Студийная HDRI карта отражений (Studio Environment Map)
@@ -1282,13 +1282,13 @@
         console.warn('RoomEnvironment fallback:', e);
       }
 
-      // Мягкий полусферический свет: делает темные предметы чистыми, читаемыми и контрастными
-      const hemi = new THREE.HemisphereLight(0xffffff, 0xcfdceb, 1.6);
+      // Мягкий полусферический свет: ровное, не слепящее окружение
+      const hemi = new THREE.HemisphereLight(0xffffff, 0xcfdceb, 0.75);
       scene.add(hemi);
 
       // Основной студийный направленный свет:
       // Все тени падают СТРОГО ЛЕВЕЕ и НИЖЕ ВСЕХ объектов (параллельные лучи с правого верхнего угла)
-      const dir = new THREE.DirectionalLight(0xffffff, 1.45);
+      const dir = new THREE.DirectionalLight(0xffffff, 0.90);
       dir.position.set(320, 480, 1350);
       dir.target.position.set(0, 0, 0);
       dir.castShadow = true;
@@ -1305,13 +1305,13 @@
       scene.add(dir);
       scene.add(dir.target);
 
-      // Дополнительный заполняющий фронтальный свет слева (проявляет детали темных объектов)
-      const fillLightLeft = new THREE.DirectionalLight(0xffffff, 0.90);
+      // Дополнительный мягкий заполняющий свет слева
+      const fillLightLeft = new THREE.DirectionalLight(0xffffff, 0.40);
       fillLightLeft.position.set(-halfW * 0.8, 150, 1200);
       scene.add(fillLightLeft);
 
-      // Нижний заполняющий свет (подсвечивает низ моделей: кроссовок, шорты, сумку, смартфон)
-      const bottomFillLight = new THREE.DirectionalLight(0xffffff, 0.70);
+      // Нижний мягкий заполняющий свет
+      const bottomFillLight = new THREE.DirectionalLight(0xffffff, 0.25);
       bottomFillLight.position.set(0, -halfH * 0.5, 1200);
       scene.add(bottomFillLight);
 
@@ -1557,7 +1557,7 @@
         }
       };
 
-      function normalizeModel(object, targetSize) {
+      function normalizeModel(object, targetSize, isLipstick = false) {
         const box = new THREE.Box3().setFromObject(object);
         const size = new THREE.Vector3();
         box.getSize(size);
@@ -1586,14 +1586,30 @@
             // Сохраняем исходные материалы и текстуры из GLB
             if (child.material) {
               const fixMat = (mat) => {
-                mat.side = THREE.FrontSide; // Предотвращает Z-файтинг и наложение внутренней/внешней стенок (туфля shoe)
-                mat.shadowSide = THREE.DoubleSide; // Тени от тонкой ткани и мешей отбрасываются надежно
+                mat.side = THREE.FrontSide; // Предотвращает Z-файтинг и наложение внутренней/внешней стенок
+                mat.shadowSide = THREE.DoubleSide; // Тени отбрасываются надежно
                 if (mat.map) {
                   mat.map.colorSpace = THREE.SRGBColorSpace;
                   mat.map.needsUpdate = true;
                 }
                 mat.depthWrite = true;
                 mat.depthTest = true;
+
+                if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
+                  if (isLipstick) {
+                    // Для помады оставляем сочные контрастные параметры
+                    mat.envMapIntensity = 1.25;
+                  } else {
+                    // Для остальных моделей приглушаем пересвет и убираем ослепляющие блики
+                    mat.envMapIntensity = 0.40;
+                    if (mat.roughness !== undefined && mat.roughness < 0.35) {
+                      mat.roughness = 0.35;
+                    }
+                    if (mat.metalness !== undefined && mat.metalness > 0.70) {
+                      mat.metalness = 0.70;
+                    }
+                  }
+                }
                 mat.needsUpdate = true;
               };
 
@@ -1614,7 +1630,7 @@
         'flexyway.glb',
         (gltf) => {
           const cfg = sceneConfig.flexyway;
-          const logo = normalizeModel(gltf.scene, cfg.size);
+          const logo = normalizeModel(gltf.scene, cfg.size, false);
           logo.position.set(cfg.x, cfg.y, cfg.z);
           logo.userData.baseX = cfg.x;
           logo.userData.baseY = cfg.y;
@@ -1638,7 +1654,7 @@
           gltfLoader.load(
             cfg.file,
             (gltf) => {
-              const model = normalizeModel(gltf.scene, cfg.size);
+              const model = normalizeModel(gltf.scene, cfg.size, key === 'lipstick');
               model.position.set(cfg.x, cfg.y, cfg.z);
               model.userData.configId = key;
               model.userData.baseX = cfg.x;
@@ -1946,7 +1962,7 @@
       const UNIFORM_ITEM_SIZE = 120; // Все падающие объекты строго одного размера
       const PLAYER_BASE_Y = -560;    // Сумка зафиксирована внизу экрана и только ловит предметы
 
-      function prepare3DTemplate(object, targetSize = UNIFORM_ITEM_SIZE) {
+      function prepare3DTemplate(object, targetSize = UNIFORM_ITEM_SIZE, isLipstick = false) {
         const box = new THREE.Box3().setFromObject(object);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
@@ -1963,10 +1979,36 @@
             child.castShadow = true;
             child.receiveShadow = false;
             if (child.material) {
-              child.material.side = THREE.FrontSide;
-              child.material.depthWrite = true;
-              if (child.material.isMeshStandardMaterial || child.material.isMeshPhysicalMaterial) {
-                child.material.envMapIntensity = 1.1;
+              const fixMat = (mat) => {
+                mat.side = THREE.FrontSide;
+                mat.shadowSide = THREE.DoubleSide;
+                if (mat.map) {
+                  mat.map.colorSpace = THREE.SRGBColorSpace;
+                  mat.map.needsUpdate = true;
+                }
+                mat.depthWrite = true;
+                mat.depthTest = true;
+
+                if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
+                  if (isLipstick) {
+                    mat.envMapIntensity = 1.25;
+                  } else {
+                    mat.envMapIntensity = 0.40;
+                    if (mat.roughness !== undefined && mat.roughness < 0.35) {
+                      mat.roughness = 0.35;
+                    }
+                    if (mat.metalness !== undefined && mat.metalness > 0.70) {
+                      mat.metalness = 0.70;
+                    }
+                  }
+                }
+                mat.needsUpdate = true;
+              };
+
+              if (Array.isArray(child.material)) {
+                child.material.forEach(fixMat);
+              } else {
+                fixMat(child.material);
               }
             }
           }
@@ -1996,7 +2038,7 @@
 
       // Загружаем 3D сумку для игрока (размер корзины 195, зафиксирована внизу)
       gltfLoader.load('good/bag.glb', (gltf) => {
-        playerBagMesh = prepare3DTemplate(gltf.scene, 195);
+        playerBagMesh = prepare3DTemplate(gltf.scene, 195, false);
         player.add(playerBagMesh);
       });
 
@@ -2016,7 +2058,7 @@
 
       GOOD_MODELS_DEF.forEach((item) => {
         gltfLoader.load(item.file, (gltf) => {
-          const container = prepare3DTemplate(gltf.scene, item.size);
+          const container = prepare3DTemplate(gltf.scene, item.size, item.name === 'lipstick');
           goodTemplates.push({ container, name: item.name, points: item.points, isGood: true });
         });
       });
@@ -2029,14 +2071,14 @@
 
       BAD_MODELS_DEF.forEach((item) => {
         fbxLoader.load(item.file, (fbx) => {
-          const container = prepare3DTemplate(fbx, item.size);
+          const container = prepare3DTemplate(fbx, item.size, false);
           badTemplates.push({ container, name: item.name, penalty: item.penalty, isGood: false });
         }, undefined, () => {
           // Fallback геометрия при сбое FBX
           const geom = new THREE.DodecahedronGeometry(UNIFORM_ITEM_SIZE * 0.42);
           const mat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3, metalness: 0.85 });
           const mesh = new THREE.Mesh(geom, mat);
-          const container = prepare3DTemplate(mesh, item.size);
+          const container = prepare3DTemplate(mesh, item.size, false);
           badTemplates.push({ container, name: item.name, penalty: item.penalty, isGood: false });
         });
       });
