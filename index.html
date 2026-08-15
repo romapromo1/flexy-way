@@ -397,18 +397,22 @@
       }
 
       .timer-badge {
-        background: var(--bg-glass);
-        backdrop-filter: blur(12px);
-        border: 1.5px solid var(--border-glass);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.40) 0%, rgba(240, 249, 255, 0.25) 50%, rgba(224, 242, 254, 0.30) 100%);
+        backdrop-filter: blur(24px) saturate(190%) brightness(106%);
+        -webkit-backdrop-filter: blur(24px) saturate(190%) brightness(106%);
+        border: 1.5px solid rgba(255, 255, 255, 0.85);
         border-radius: 9999px;
-        padding: clamp(0.5rem, 1.4vmin, 1.2rem) clamp(1rem, 2.5vmin, 2.4rem);
+        padding: clamp(0.5rem, 1.4vmin, 1.2rem) clamp(1.2rem, 2.8vmin, 2.6rem);
         display: inline-flex;
         align-items: center;
         gap: clamp(0.45rem, 1vmin, 1rem);
-        font-size: clamp(14px, 2.4vmin, 28px);
-        font-weight: 800;
-        color: #38bdf8;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        font-family: 'Aeroport', 'Outfit', sans-serif;
+        font-size: clamp(15px, 2.6vmin, 30px);
+        font-weight: 900;
+        color: #0284c7;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), inset 0 1.5px 2px rgba(255, 255, 255, 0.95), inset 0 -1.5px 4px rgba(2, 132, 199, 0.15);
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
+        pointer-events: auto;
       }
 
       .screen-hit-flash {
@@ -460,61 +464,23 @@
         100% { opacity: 0; transform: translate(-50%, -95px) scale(0.8); }
       }
 
-      .remote-pill {
-        background: var(--bg-glass);
-        backdrop-filter: blur(12px);
-        border: 1.5px solid var(--border-glass);
-        border-radius: 9999px;
-        padding: clamp(0.5rem, 1.4vmin, 1.2rem) clamp(1rem, 2.5vmin, 2.4rem);
-        display: inline-flex;
-        align-items: center;
-        gap: clamp(0.6rem, 1.2vmin, 1.4rem);
-        font-size: clamp(13px, 2.2vmin, 26px);
-        font-weight: 700;
-        color: #f8fafc;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        pointer-events: auto;
-        cursor: pointer;
-        transition: transform 0.2s, background 0.2s;
-      }
-
-      .remote-pill:hover {
-        transform: scale(1.04);
-        background: rgba(30, 41, 59, 0.95);
-      }
-
-      .status-dot {
-        width: clamp(10px, 1.5vmin, 18px);
-        height: clamp(10px, 1.5vmin, 18px);
-        border-radius: 50%;
-        background: #ef4444;
-        box-shadow: 0 0 8px #ef4444;
-      }
-
-      .remote-pill.connected .status-dot {
-        background: #10b981;
-        box-shadow: 0 0 12px #10b981;
-        animation: pulseDot 2s infinite;
-      }
-
-      @keyframes pulseDot {
-        0%, 100% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.3); opacity: 0.7; }
-      }
-
       .coins-badge {
-        background: var(--bg-glass);
-        backdrop-filter: blur(12px);
-        border: 1.5px solid var(--border-glass);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.40) 0%, rgba(240, 249, 255, 0.25) 50%, rgba(224, 242, 254, 0.30) 100%);
+        backdrop-filter: blur(24px) saturate(190%) brightness(106%);
+        -webkit-backdrop-filter: blur(24px) saturate(190%) brightness(106%);
+        border: 1.5px solid rgba(255, 255, 255, 0.85);
         border-radius: 9999px;
-        padding: clamp(0.5rem, 1.4vmin, 1.2rem) clamp(1rem, 2.5vmin, 2.4rem);
+        padding: clamp(0.5rem, 1.4vmin, 1.2rem) clamp(1.2rem, 2.8vmin, 2.6rem);
         display: inline-flex;
         align-items: center;
         gap: clamp(0.5rem, 1vmin, 1.2rem);
-        font-size: clamp(14px, 2.4vmin, 28px);
-        font-weight: 800;
-        color: #fbbf24;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        font-family: 'Aeroport', 'Outfit', sans-serif;
+        font-size: clamp(15px, 2.6vmin, 30px);
+        font-weight: 900;
+        color: #0284c7;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08), inset 0 1.5px 2px rgba(255, 255, 255, 0.95), inset 0 -1.5px 4px rgba(2, 132, 199, 0.15);
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
+        pointer-events: auto;
       }
 
       .coin-icon {
@@ -1321,13 +1287,8 @@
       <!-- Верхний HUD -->
       <div class="top-bar" id="topBar">
         <button class="quick-restart-btn" id="quickRestartBtn" onclick="returnToStartScreen()" title="Вернуться на стартовый экран">↺</button>
-        <div class="remote-pill" id="remotePill" onclick="toggleQrModal(true)" title="Нажмите для QR-кода подключения">
-          <span class="status-dot"></span>
-          <span id="remoteStatusText">📱 Подключить телефон</span>
-        </div>
         <div class="timer-badge" id="timerBadge">
-          <span>⏱️</span>
-          <span id="gameTimer">20</span>s
+          <span id="gameTimer">20</span> сек
         </div>
         <div class="coins-badge">
           <span class="coin-icon"></span>
@@ -1352,7 +1313,7 @@
       <!-- Модальное окно подсказки/правил (Frosted Liquid Glass) -->
       <div class="rules-modal-overlay" id="rulesModal">
         <div class="rules-modal-card">
-          <div class="rules-badge">✨ КАК ИГРАТЬ</div>
+          <div class="rules-badge">КАК ИГРАТЬ</div>
           <div class="rules-content">
             <p class="rules-p">Собирай все женские атрибуты в сумку. Все не женские пропускай.</p>
             <p class="rules-p">Чем больше соберешь "правильных" предметов за 20 секунд, тем ценнее будет твой приз. Чтобы выиграть суперприз, собери все туфли и не поймай ничего лишнего.</p>
@@ -1389,14 +1350,14 @@
           <div class="settings-modal-footer">
             <div class="settings-btn-group">
               <button class="btn-save-txt" onclick="downloadConfigTxt()">
-                💾 Скачать TXT
+                Скачать TXT
               </button>
               <button class="btn-copy-config" onclick="copyConfigTxt()">
-                📋 Скопировать
+                Скопировать
               </button>
             </div>
             <button class="btn-reset-defaults" onclick="resetSceneDefaults()">
-              🔄 Сброс
+              Сброс
             </button>
           </div>
         </div>
@@ -1408,11 +1369,11 @@
       <!-- Игровой оверлей окончания игры (Liquid Glass) -->
       <div class="gameover-liquid-overlay" id="gameover">
         <div class="gameover-liquid-card">
-          <div class="gameover-badge">🏆 РЕЗУЛЬТАТ ИГРЫ</div>
-          <h1 class="gameover-headline" id="gameoverHeadline">ПОЗДРАВЛЯЕМ! 🎉</h1>
+          <div class="gameover-badge">РЕЗУЛЬТАТ ИГРЫ</div>
+          <h1 class="gameover-headline" id="gameoverHeadline">ПОЗДРАВЛЯЕМ!</h1>
           
           <div class="gameover-score-pill">
-            <span>🎯 Набрано очков:</span>
+            <span>Набрано очков:</span>
             <strong id="finalScoreVal">0</strong>
           </div>
 
@@ -1433,17 +1394,17 @@
               </div>
             </div>
             <div class="tg-instruction">
-              <p>📱 Отсканируйте QR-код смартфоном, чтобы перейти в Telegram и забрать промокод</p>
+              <p>Отсканируйте QR-код смартфоном, чтобы перейти в Telegram и забрать промокод</p>
             </div>
           </div>
 
           <!-- Кнопки действий -->
           <div class="gameover-btn-group">
             <button class="btn-play-again" onclick="restartGame()">
-              <span>🎮 Сыграть ещё раз</span>
+              <span>Сыграть ещё раз</span>
             </button>
             <button class="btn-back-home" onclick="returnToStartScreen()">
-              <span>🏠 На главный экран</span>
+              <span>На главный экран</span>
             </button>
           </div>
         </div>
@@ -1473,7 +1434,7 @@
           </p>
           
           <button class="qr-btn-play" onclick="toggleQrModal(false)">
-            🎮 Играть / Закрыть QR
+            Играть / Закрыть QR
           </button>
         </div>
       </div>
@@ -1658,7 +1619,7 @@
       const sceneConfig = {
         flexyway: {
           id: 'flexyway',
-          name: '🌟 Логотип Flexy Way',
+          name: 'Логотип Flexy Way',
           type: '3d',
           size: 398,
           x: 0,
@@ -1674,7 +1635,7 @@
         },
         tagline: {
           id: 'tagline',
-          name: '📝 Фраза «Играй...» (Aeroport)',
+          name: 'Фраза «Играй...» (Aeroport)',
           type: 'dom',
           size: 3.0,
           x: 0,
@@ -1690,7 +1651,7 @@
         },
         startButton: {
           id: 'startButton',
-          name: '▶️ Кнопка «Начать» (Liquid Glass)',
+          name: 'Кнопка «Начать» (Liquid Glass)',
           type: 'dom',
           size: 2.5,
           x: 0,
@@ -1706,7 +1667,7 @@
         },
         dress: {
           id: 'dress',
-          name: '👗 Платье (dress.glb)',
+          name: 'Платье (dress.glb)',
           type: '3d',
           file: 'good/dress.glb',
           size: 235,
@@ -1726,7 +1687,7 @@
         },
         shoe2: {
           id: 'shoe2',
-          name: '👠 Туфля 2 (SHOE 2.glb)',
+          name: 'Туфля 2 (SHOE 2.glb)',
           type: '3d',
           file: 'good/SHOE 2.glb',
           size: 151,
@@ -1746,7 +1707,7 @@
         },
         shoe3: {
           id: 'shoe3',
-          name: '👠 Туфля 3 (SHOE 3.glb)',
+          name: 'Туфля 3 (SHOE 3.glb)',
           type: '3d',
           file: 'good/SHOE 3.glb',
           size: 136,
@@ -1766,7 +1727,7 @@
         },
         bag: {
           id: 'bag',
-          name: '👜 Сумка (bag.glb)',
+          name: 'Сумка (bag.glb)',
           type: '3d',
           file: 'good/bag.glb',
           size: 252,
@@ -1786,7 +1747,7 @@
         },
         dumbbell: {
           id: 'dumbbell',
-          name: '🏋️‍♀️ Гантель (dumbbell.glb)',
+          name: 'Гантель (dumbbell.glb)',
           type: '3d',
           file: 'good/dumbbell.glb',
           size: 128,
@@ -1806,7 +1767,7 @@
         },
         sport_wear: {
           id: 'sport_wear',
-          name: '🎽 Спорт костюм (sport_wear.glb)',
+          name: 'Спорт костюм (sport_wear.glb)',
           type: '3d',
           file: 'good/sport_wear.glb',
           size: 283,
@@ -1826,7 +1787,7 @@
         },
         lipstick: {
           id: 'lipstick',
-          name: '💄 Помада (lipstick.glb)',
+          name: 'Помада (lipstick.glb)',
           type: '3d',
           file: 'good/lipstick.glb',
           size: 125,
@@ -1846,7 +1807,7 @@
         },
         shoe: {
           id: 'shoe',
-          name: '👠 Туфля 1 (shoe.glb)',
+          name: 'Туфля 1 (shoe.glb)',
           type: '3d',
           file: 'good/shoe.glb',
           size: 136,
@@ -2135,7 +2096,7 @@
       // Формирование текстового конфига для скачивания и отправки
       function generateConfigTxt() {
         let txt = `==================================================\n`;
-        txt += `🎮 FLEXY WAY — НАСТРОЙКИ СЦЕНЫ И ОБЪЕКТОВ\n`;
+        txt += `FLEXY WAY — НАСТРОЙКИ СЦЕНЫ И ОБЪЕКТОВ\n`;
         txt += `Дата сохранения: ${new Date().toLocaleString()}\n`;
         txt += `==================================================\n\n`;
 
@@ -2183,7 +2144,7 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showToast('💾 Файл flexyway_scene_config.txt успешно скачан!');
+        showToast('Файл flexyway_scene_config.txt успешно скачан!');
       };
 
       // Копирование конфига в буфер обмена
@@ -2191,7 +2152,7 @@
         const content = generateConfigTxt();
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(content).then(() => {
-            showToast('📋 Настройки скопированы в буфер обмена!');
+            showToast('Настройки скопированы в буфер обмена!');
           }).catch(() => {
             showToast('Скопировано!');
           });
@@ -2210,7 +2171,7 @@
           applyObjectConfig(id);
         }
         buildSettingsUI();
-        showToast('🔄 Настройки сброшены по умолчанию');
+        showToast('Настройки сброшены по умолчанию');
       };
 
       // Всплывающее уведомление (Toast)
@@ -3074,13 +3035,8 @@
         if (isPhoneConnected === connected) return;
         isPhoneConnected = connected;
         if (connected) {
-          remotePillEl.classList.add('connected');
-          remoteStatusTextEl.textContent = '📱 Пульт подключен';
           AudioFX.playConnect();
           toggleQrModal(false);
-        } else {
-          remotePillEl.classList.remove('connected');
-          remoteStatusTextEl.textContent = '📱 Подключить телефон';
         }
       }
 
@@ -3379,7 +3335,7 @@
 
                 if (o.isGoldenShoe) {
                   caughtGoldenShoe = true;
-                  spawnFloatingScore('👑 ЗОЛОТАЯ ТУФЛЯ! +5', bagMouthX, bagMouthY, 'gold');
+                  spawnFloatingScore('ЗОЛОТАЯ ТУФЛЯ! +5', bagMouthX, bagMouthY, 'gold');
                   spawnFireworks(bagMouthX, bagMouthY);
                   playerBagPulse = 1.35;
                 } else {
