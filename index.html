@@ -2088,17 +2088,12 @@
       });
 
       const BAD_MODELS_DEF = [
-        { file: 'bad/bolt.glb', name: 'bolt', size: UNIFORM_ITEM_SIZE, penalty: 5 },
-        { file: 'bad/donut.fbx', name: 'donut', size: UNIFORM_ITEM_SIZE, penalty: 5 },
-        { file: 'bad/nut bolt.glb', name: 'nut_bolt', size: UNIFORM_ITEM_SIZE, penalty: 5 }
+        { file: 'bad/bolt.glb', name: 'bolt', size: UNIFORM_ITEM_SIZE, penalty: 5 }
       ];
 
       BAD_MODELS_DEF.forEach((item) => {
-        const isGlb = item.file.endsWith('.glb') || item.file.endsWith('.gltf');
-        const loader = isGlb ? gltfLoader : fbxLoader;
-        loader.load(item.file, (loaded) => {
-          const rootObj = loaded.scene || loaded;
-          const container = prepare3DTemplate(rootObj, item.size, item.name);
+        gltfLoader.load(item.file, (gltf) => {
+          const container = prepare3DTemplate(gltf.scene, item.size, item.name);
           badTemplates.push({ container, name: item.name, penalty: item.penalty, isGood: false });
         }, undefined, () => {
           // Fallback геометрия при сбое
