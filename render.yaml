@@ -2,6 +2,7 @@ services:
   - type: web
     name: flexy-way-relay
     runtime: node
+    plan: free
     rootDir: relay
     buildCommand: npm ci
     startCommand: npm start

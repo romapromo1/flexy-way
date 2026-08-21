@@ -23,6 +23,7 @@ Only one Render instance must be used because active sessions are intentionally 
 The repository includes `render.yaml`. Equivalent manual settings are:
 
 - Runtime: Node
+- Instance type: Free (the relay can cold-start after a long idle period)
 - Root directory: `relay`
 - Build command: `npm ci`
 - Start command: `npm start`
