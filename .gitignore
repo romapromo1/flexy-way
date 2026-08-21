@@ -1,8 +1,10 @@
 node_modules/
+.runtime/
 scratch/
 outputs/
 .vercel
 .env
+/Flexy_Way_промокоды.xlsx
 telegram_bot/data/
 telegram_bot/logs/
 telegram_bot/__pycache__/

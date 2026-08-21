@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Пульт Управления — Flexy Way</title>
-  <!-- Paho MQTT -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
   <style>
     :root {
       --bg-dark: #070913;
@@ -442,14 +440,11 @@
   </div>
 
   <script>
-    // --- Room ID ---
-    const urlParams = new URLSearchParams(window.location.search);
-    const hashRoom = window.location.hash ? window.location.hash.replace('#room=', '').replace('#', '') : null;
-    let roomId = (urlParams.get('room') || hashRoom || 'FLEXY').toUpperCase();
+    const params = new URLSearchParams(window.location.search);
+    const relayUrl = params.get('relay') || '';
+    const pairToken = params.get('pair') || '';
+    const requestedSessionId = params.get('session') || '';
 
-    document.getElementById('hudRoom').textContent = roomId;
-
-    // --- DOM Elements ---
     const statusBadge = document.getElementById('statusBadge');
     const statusText = document.getElementById('statusText');
     const startBtn = document.getElementById('startBtn');
@@ -458,262 +453,310 @@
     const radar = document.getElementById('radar');
     const hudScore = document.getElementById('hudScore');
     const hudTime = document.getElementById('hudTime');
-    const sensSlider = document.getElementById('sensSlider');
+    const hudRoom = document.getElementById('hudRoom');
     const sensValue = document.getElementById('sensValue');
     const sensorInfo = document.getElementById('sensorInfo');
     const modeSwipeBtn = document.getElementById('modeSwipeBtn');
     const modeTiltBtn = document.getElementById('modeTiltBtn');
     const radarHint = document.getElementById('radarHint');
 
-    // --- State ---
-    let controlMode = 'swipe'; // 'swipe' | 'tilt'
+    let controlMode = 'swipe';
     let sensitivity = 1.3;
     let currentNormX = 0;
-    let baseGamma = null;
-    let pahoClient = null;
-    let isConnected = false;
+    let baseTilt = null;
+    let relaySocket = null;
+    let reconnectTimer = null;
+    let reconnectDelay = 800;
+    let sequence = 0;
+    let connected = false;
+    let sessionEnded = false;
+    let orientationAttached = false;
+    let orientationSamples = 0;
+    let orientationProbeTimer = null;
+
+    const resumeKey = requestedSessionId && relayUrl
+      ? `flexy-resume:${relayUrl}:${requestedSessionId}`
+      : '';
 
     function vibratePhone(pattern = 35) {
       if ('vibrate' in navigator) {
-        try { navigator.vibrate(pattern); } catch (e) {}
+        try { navigator.vibrate(pattern); } catch (_) {}
       }
     }
 
-    function setConnectedUI(connected) {
-      isConnected = connected;
-      if (connected) {
-        statusBadge.classList.add('connected');
-        statusText.textContent = 'Подключено ⚡';
-      } else {
-        statusBadge.classList.remove('connected');
-        statusText.textContent = 'Поиск экрана...';
-      }
+    function setConnectionUI(isConnected, text) {
+      connected = isConnected;
+      statusBadge.classList.toggle('connected', isConnected);
+      statusText.textContent = text || (isConnected ? 'Подключено ⚡' : 'Поиск экрана...');
     }
 
-    // --- Mode Switcher ---
-    function setControlMode(mode) {
-      controlMode = mode;
+    function setControllerError(message) {
+      setConnectionUI(false, 'Нет подключения');
+      sensorInfo.textContent = `🔴 ${message}`;
+    }
+
+    function sendRelay(payload) {
+      if (!connected || !relaySocket || relaySocket.readyState !== WebSocket.OPEN) return false;
+      relaySocket.send(JSON.stringify(payload));
+      return true;
+    }
+
+    function storedResume() {
+      if (!resumeKey) return null;
+      try { return JSON.parse(sessionStorage.getItem(resumeKey) || 'null'); } catch (_) { return null; }
+    }
+
+    function saveResume(data) {
+      if (!resumeKey) return;
+      sessionStorage.setItem(resumeKey, JSON.stringify({
+        sessionId: data.sessionId,
+        resumeToken: data.resumeToken,
+      }));
+    }
+
+    function clearResume() {
+      if (resumeKey) sessionStorage.removeItem(resumeKey);
+    }
+
+    function connectRelay() {
+      clearTimeout(reconnectTimer);
+      if (!/^wss:\/\//i.test(relayUrl) || !pairToken || !requestedSessionId) {
+        setControllerError('QR-ссылка неполная. Отсканируйте новый QR-код на экране игры.');
+        return;
+      }
+
+      setConnectionUI(false, 'Соединение...');
+      relaySocket = new WebSocket(relayUrl);
+      let handshakeComplete = false;
+      relaySocket.addEventListener('open', () => {
+        const resume = storedResume();
+        if (resume?.sessionId === requestedSessionId && resume.resumeToken) {
+          relaySocket.send(JSON.stringify({
+            type: 'controller_resume',
+            sessionId: resume.sessionId,
+            resumeToken: resume.resumeToken,
+          }));
+        } else {
+          relaySocket.send(JSON.stringify({ type: 'controller_hello', pairToken }));
+        }
+      });
+      relaySocket.addEventListener('message', (event) => {
+        let data;
+        try { data = JSON.parse(event.data); } catch (_) { return; }
+        if (data.type === 'controller_ready') {
+          handshakeComplete = true;
+          reconnectDelay = 800;
+          saveResume(data);
+          hudRoom.textContent = String(data.displayId || 'FLEXY').slice(0, 10);
+          setConnectionUI(true, data.resumed ? 'Связь восстановлена ⚡' : 'Подключено ⚡');
+          sensorInfo.textContent = controlMode === 'tilt'
+            ? '🟢 Наклоняйте телефон влево-вправо'
+            : '🟢 Ведите пальцем влево-вправо для управления сумкой';
+          vibratePhone(40);
+          return;
+        }
+        if (data.type === 'game_state') {
+          if (data.score !== undefined) hudScore.textContent = data.score;
+          if (data.timeLeft !== undefined) hudTime.textContent = `${data.timeLeft} сек`;
+          btnLabel.textContent = data.state === 'gameover'
+            ? '🔄 СЫГРАТЬ ЕЩЕ РАЗ'
+            : '🎯 СБРОС В ЦЕНТР / СТАРТ';
+          return;
+        }
+        if (data.type === 'haptic') {
+          if (data.pattern === 'coin') vibratePhone([35, 30, 45]);
+          if (data.pattern === 'gameover') vibratePhone([120, 60, 160]);
+          return;
+        }
+        if (data.type === 'host_offline') setControllerError('Игровой экран отключился.');
+        if (data.type === 'session_ended') {
+          sessionEnded = true;
+          clearResume();
+          setControllerError('Раунд завершён. Следующему гостю нужен новый QR-код.');
+        }
+      });
+      relaySocket.addEventListener('close', (event) => {
+        setConnectionUI(false, 'Связь потеряна');
+        if (sessionEnded) return;
+        const canResume = Boolean(storedResume());
+        if (!handshakeComplete && [4403, 4404, 4409].includes(event.code)) {
+          clearResume();
+          const messages = {
+            4403: 'QR-код уже использован или устарел. Отсканируйте новый.',
+            4404: 'Игровой экран сейчас не в сети.',
+            4409: 'Сейчас уже играет другой гость.',
+          };
+          setControllerError(messages[event.code]);
+          return;
+        }
+        const retryableClose = ![4000, 4004, 4403, 4404, 4409].includes(event.code);
+        if (canResume || retryableClose) {
+          statusText.textContent = 'Восстановление...';
+          reconnectTimer = setTimeout(connectRelay, reconnectDelay);
+          reconnectDelay = Math.min(reconnectDelay * 1.7, 5000);
+        }
+      });
+      relaySocket.addEventListener('error', () => {
+        if (!handshakeComplete) statusText.textContent = 'Ошибка сети';
+      });
+    }
+
+    let lastSendTime = 0;
+    function sendMotion(normX) {
+      const now = performance.now();
+      if (now - lastSendTime < 33) return;
+      lastSendTime = now;
+      sendRelay({
+        type: 'motion',
+        x: Math.max(-1, Math.min(1, normX)),
+        y: 0,
+        sequence: ++sequence,
+        clientTime: Math.trunc(performance.timeOrigin + now),
+      });
+    }
+
+    function updateVisualReticle(normX) {
+      const maxOffset = ((radar.clientWidth || 300) / 2) - 30;
+      laserReticle.style.transform = `translateX(${normX * maxOffset}px)`;
+    }
+
+    function updateModeUi(mode) {
+      const tilt = mode === 'tilt';
+      modeTiltBtn.classList.toggle('active', tilt);
+      modeSwipeBtn.classList.toggle('active', !tilt);
+      radarHint.textContent = tilt
+        ? 'НАКЛОНЯЙТЕ ТЕЛЕФОН ВЛЕВО / ВПРАВО'
+        : 'СВАЙП / ТАЧ ВЛЕВО-ВПРАВО';
+      sensorInfo.textContent = tilt
+        ? '🟡 Разрешите доступ к датчикам движения'
+        : '🟢 Режим: ведите пальцем влево-вправо';
+    }
+
+    async function enableTiltFromGesture() {
+      if (!window.isSecureContext) {
+        setControllerError('Наклон работает только на HTTPS. Используйте тачпад.');
+        return false;
+      }
+      if (typeof DeviceOrientationEvent === 'undefined') {
+        sensorInfo.textContent = '🟠 Этот браузер не предоставляет датчик. Используйте тачпад.';
+        return false;
+      }
+      try {
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+          const result = await DeviceOrientationEvent.requestPermission();
+          if (result !== 'granted') {
+            sensorInfo.textContent = '🟠 Доступ к наклону запрещён. Используйте тачпад.';
+            return false;
+          }
+        }
+      } catch (_) {
+        sensorInfo.textContent = '🟠 Браузер не дал доступ к наклону. Используйте тачпад.';
+        return false;
+      }
+
+      if (!orientationAttached) {
+        orientationAttached = true;
+        window.addEventListener('deviceorientation', handleOrientation, true);
+      }
+      orientationSamples = 0;
+      clearTimeout(orientationProbeTimer);
+      orientationProbeTimer = setTimeout(() => {
+        if (controlMode === 'tilt' && orientationSamples === 0) {
+          controlMode = 'swipe';
+          updateModeUi('swipe');
+          sensorInfo.textContent = '🟠 Датчик не отвечает. Включён универсальный тачпад.';
+        }
+      }, 1800);
+      return true;
+    }
+
+    async function setControlMode(mode) {
       vibratePhone(30);
-
       if (mode === 'tilt') {
-        modeTiltBtn.classList.add('active');
-        modeSwipeBtn.classList.remove('active');
-        radarHint.textContent = 'НАКЛОНЯЙТЕ ТЕЛЕФОН ВЛЕВО / ВПРАВО';
-        sensorInfo.textContent = '🟢 Режим: Наклон телефона влево-вправо';
-        requestSensorPermission();
+        controlMode = 'tilt';
+        baseTilt = null;
+        updateModeUi('tilt');
+        if (!(await enableTiltFromGesture())) {
+          controlMode = 'swipe';
+          updateModeUi('swipe');
+        }
       } else {
-        modeSwipeBtn.classList.add('active');
-        modeTiltBtn.classList.remove('active');
-        radarHint.textContent = 'СВАЙП / ТАЧ ВЛЕВО-ВПРАВО';
-        sensorInfo.textContent = '🟢 Режим: Ведите пальцем влево-вправо';
+        controlMode = 'swipe';
+        updateModeUi('swipe');
         updateVisualReticle(0);
         sendMotion(0);
       }
     }
 
-    // --- Paho MQTT Client ---
-    function initPahoMQTT() {
-      try {
-        if (typeof Paho === 'undefined' || !Paho.MQTT) return;
-        if (pahoClient && pahoClient.isConnected()) {
-          try { pahoClient.disconnect(); } catch (e) {}
-        }
-
-        const clientId = 'c_' + Math.random().toString(36).substring(2, 10);
-        pahoClient = new Paho.MQTT.Client('broker.hivemq.com', 8884, '/mqtt', clientId);
-
-        pahoClient.onConnectionLost = () => {
-          setConnectedUI(false);
-          setTimeout(initPahoMQTT, 2000);
-        };
-
-        pahoClient.onMessageArrived = (message) => {
-          try {
-            const data = JSON.parse(message.payloadString);
-            if (data.type === 'state') {
-              if (data.score !== undefined) hudScore.textContent = data.score;
-              if (data.timeLeft !== undefined) hudTime.textContent = `${data.timeLeft} сек`;
-              if (data.state === 'gameover') {
-                btnLabel.textContent = '🔄 СЫГРАТЬ ЕЩЕ РАЗ';
-              } else {
-                btnLabel.textContent = '🎯 СБРОС В ЦЕНТР / СТАРТ';
-              }
-            } else if (data.type === 'haptic') {
-              if (data.pattern === 'coin') vibratePhone([35, 30, 45]);
-              else if (data.pattern === 'gameover') vibratePhone([120, 60, 160]);
-            }
-          } catch (e) {}
-        };
-
-        pahoClient.connect({
-          useSSL: true,
-          timeout: 4,
-          onSuccess: () => {
-            setConnectedUI(true);
-            vibratePhone(40);
-            pahoClient.subscribe(`flexy/events/${roomId}`);
-
-            const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'controller_joined' }));
-            msg.destinationName = `flexy/events/${roomId}`;
-            pahoClient.send(msg);
-          },
-          onFailure: () => {
-            setConnectedUI(false);
-            setTimeout(initFallbackMQTT, 1500);
-          }
-        });
-      } catch (e) {
-        console.warn('Paho init failed:', e);
-      }
-    }
-
-    function initFallbackMQTT() {
-      try {
-        const clientId = 'c_' + Math.random().toString(36).substring(2, 10);
-        pahoClient = new Paho.MQTT.Client('broker.emqx.io', 8084, '/mqtt', clientId);
-        pahoClient.connect({
-          useSSL: true,
-          timeout: 4,
-          onSuccess: () => {
-            setConnectedUI(true);
-            pahoClient.subscribe(`flexy/events/${roomId}`);
-            const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'controller_joined' }));
-            msg.destinationName = `flexy/events/${roomId}`;
-            pahoClient.send(msg);
-          },
-          onFailure: () => {
-            setTimeout(initPahoMQTT, 2500);
-          }
-        });
-      } catch (e) {}
-    }
-
-    // Send motion packet to PC screen (60 FPS throttle)
-    let lastSendTime = 0;
-    function sendMotion(normX) {
-      const now = performance.now();
-      if (now - lastSendTime < 16) return;
-      lastSendTime = now;
-
-      if (pahoClient && pahoClient.isConnected()) {
-        const payload = JSON.stringify({
-          type: 'motion',
-          x: normX,
-          y: 0
-        });
-        const msg = new Paho.MQTT.Message(payload);
-        msg.destinationName = `flexy/motion/${roomId}`;
-        pahoClient.send(msg);
-      }
-    }
-
-    function updateVisualReticle(normX) {
-      const radarWidth = radar.clientWidth || 300;
-      const maxOffset = (radarWidth / 2) - 30;
-      laserReticle.style.transform = `translateX(${normX * maxOffset}px)`;
-    }
-
-    // --- Touch / Swipe Handling ---
     function handleTouchInput(clientX) {
+      if (controlMode !== 'swipe') return;
       const rect = radar.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const halfW = rect.width / 2;
-
-      let dx = (clientX - centerX) / (halfW * 0.9);
-      dx = Math.max(-1.0, Math.min(1.0, dx * sensitivity));
-      currentNormX = dx;
-
-      updateVisualReticle(currentNormX);
-      sendMotion(currentNormX);
+      let value = (clientX - (rect.left + rect.width / 2)) / ((rect.width / 2) * 0.9);
+      value = Math.max(-1, Math.min(1, value * sensitivity));
+      currentNormX = value;
+      updateVisualReticle(value);
+      sendMotion(value);
     }
 
-    radar.addEventListener('pointerdown', (e) => {
-      radar.setPointerCapture(e.pointerId);
-      handleTouchInput(e.clientX);
+    radar.addEventListener('pointerdown', (event) => {
+      radar.setPointerCapture(event.pointerId);
+      handleTouchInput(event.clientX);
+    });
+    radar.addEventListener('pointermove', (event) => {
+      if (event.buttons > 0 || event.pointerType === 'touch') handleTouchInput(event.clientX);
     });
 
-    radar.addEventListener('pointermove', (e) => {
-      if (e.buttons > 0 || e.pointerType === 'touch') {
-        handleTouchInput(e.clientX);
-      }
-    });
+    function orientationLateral(event) {
+      const angle = Number(screen.orientation?.angle ?? window.orientation ?? 0);
+      if (angle === 90) return event.beta == null ? null : -event.beta;
+      if (angle === 270 || angle === -90) return event.beta == null ? null : event.beta;
+      if (angle === 180) return event.gamma == null ? null : -event.gamma;
+      return event.gamma;
+    }
 
-    // --- Device Tilt / Gyro Handling ---
-    function handleOrientation(e) {
+    function handleOrientation(event) {
       if (controlMode !== 'tilt') return;
-      let gamma = e.gamma; // Наклон влево/вправо [-90..90°]
-      if (gamma === null || gamma === undefined) return;
-
-      if (baseGamma === null) {
-        baseGamma = gamma;
+      const lateral = orientationLateral(event);
+      if (!Number.isFinite(lateral)) return;
+      orientationSamples += 1;
+      if (orientationSamples === 1) {
+        clearTimeout(orientationProbeTimer);
+        sensorInfo.textContent = '🟢 Датчик работает. Наклоняйте телефон влево-вправо.';
       }
-
-      let deltaGamma = (gamma - baseGamma);
-      const MAX_TILT = 28.0; // 28 градусов полный ход
-
-      let normX = (deltaGamma / MAX_TILT) * sensitivity;
-      normX = Math.max(-1.0, Math.min(1.0, normX));
-      currentNormX = normX;
-
-      updateVisualReticle(currentNormX);
-      sendMotion(currentNormX);
+      if (baseTilt === null) baseTilt = lateral;
+      let delta = lateral - baseTilt;
+      if (delta > 180) delta -= 360;
+      if (delta < -180) delta += 360;
+      const value = Math.max(-1, Math.min(1, (delta / 28) * sensitivity));
+      currentNormX = value;
+      updateVisualReticle(value);
+      sendMotion(value);
     }
 
-    async function requestSensorPermission() {
-      if ('wakeLock' in navigator) {
-        try { await navigator.wakeLock.request('screen'); } catch (err) {}
-      }
-
-      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        try {
-          const state = await DeviceOrientationEvent.requestPermission();
-          if (state === 'granted') {
-            window.addEventListener('deviceorientation', handleOrientation, true);
-          }
-        } catch (e) {}
-      } else {
-        window.addEventListener('deviceorientation', handleOrientation, true);
-      }
-    }
-
-    // --- Action Button Click ---
     async function onMainActionClick() {
       vibratePhone(40);
-      baseGamma = null; // Сброс нуля для наклона
-
-      await requestSensorPermission();
-
+      if ('wakeLock' in navigator) {
+        try { await navigator.wakeLock.request('screen'); } catch (_) {}
+      }
+      if (controlMode === 'tilt') await enableTiltFromGesture();
+      baseTilt = null;
+      updateVisualReticle(0);
+      sendMotion(0);
+      sendRelay({ type: 'action', action: 'restart' });
       startBtn.classList.add('calibrating');
       btnLabel.textContent = '⚡ СИГНАЛ ОТПРАВЛЕН!';
       setTimeout(() => {
         btnLabel.textContent = '🎯 СБРОС В ЦЕНТР / СТАРТ';
         startBtn.classList.remove('calibrating');
       }, 500);
-
-      updateVisualReticle(0);
-      sendMotion(0);
-
-      if (pahoClient && pahoClient.isConnected()) {
-        const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'restart' }));
-        msg.destinationName = `flexy/events/${roomId}`;
-        pahoClient.send(msg);
-      }
     }
 
-    function updateSensitivity(val) {
-      sensitivity = parseFloat(val);
-      sensValue.textContent = `${val}x`;
+    function updateSensitivity(value) {
+      sensitivity = Number(value);
+      sensValue.textContent = `${value}x`;
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      initPahoMQTT();
-      requestSensorPermission();
-    });
-
-    // Touch anywhere on screen on iOS requests sensor permission seamlessly
-    window.addEventListener('touchstart', () => {
-      requestSensorPermission();
-    }, { once: true });
+    window.addEventListener('DOMContentLoaded', connectRelay);
   </script>
 </body>
 </html>

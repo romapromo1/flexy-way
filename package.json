@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "test": "node --test test/server.test.js",
+    "relay:test": "npm --prefix relay test",
     "bot:init": "python -m telegram_bot init",
     "bot:run": "python -m telegram_bot run",
     "bot:test": "python -m unittest discover -s telegram_bot/tests -v"
@@ -20,11 +22,6 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "cloudflared": "^0.7.3",
-    "express": "^4.19.2",
-    "localtunnel": "^2.0.2",
-    "qrcode": "^1.5.3",
-    "selfsigned": "^5.5.0",
-    "ws": "^8.18.0"
+    "express": "^4.22.1"
   }
 }

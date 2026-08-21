@@ -10,9 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
     <!-- QR Code Generator -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- Paho MQTT WebSocket Client -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-
     <!-- Three.js ES Modules via ImportMap -->
     <script type="importmap">
       {
@@ -2585,7 +2582,7 @@
         if (loadingEl) loadingEl.style.display = 'flex';
 
         const sessionId = `fw-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
-        let deepLink = `https://t.me/flexy_way_prize_bot?start=fw_${prizeCode.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+        let deepLink = null;
 
         try {
           const res = await fetch('/api/claim-prize', {
@@ -2593,14 +2590,15 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prizeCode, sessionId })
           });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.deep_link) {
-              deepLink = data.deep_link;
-            }
-          }
+          if (!res.ok) throw new Error(`Prize service returned ${res.status}`);
+          const data = await res.json();
+          if (!data.deep_link) throw new Error('Prize link is missing');
+          deepLink = data.deep_link;
         } catch (e) {
-          console.warn('Using direct bot deep link fallback:', e);
+          console.warn('Prize QR generation failed:', e);
+          if (loadingEl) loadingEl.style.display = 'none';
+          qrcodeContainer.textContent = 'Не удалось создать защищённый QR. Закройте Excel и повторите попытку.';
+          return;
         }
 
         if (loadingEl) loadingEl.style.display = 'none';
@@ -2679,6 +2677,7 @@
 
       // Возврат на стартовый экран (Мгновенно, без перезагрузки 3D моделей)
       window.returnToStartScreen = function() {
+        releaseControllerForNextGuest();
         running = false;
         gameState = 'start';
         startElapsedTime = 0;
@@ -3103,114 +3102,181 @@
         }
       }
 
-      // --- Paho MQTT Client on Game Screen ---
-      let pahoClient = null;
+      // --- Authenticated Render WebSocket relay ---
+      let relaySocket = null;
+      let relayConfig = null;
+      let relaySessionId = null;
+      let currentPairToken = null;
+      let pairExpiresAt = 0;
+      let relayReconnectDelay = 1000;
+      let relayReconnectTimer = null;
+      let pairRefreshTimer = null;
+
+      function sendRelay(payload) {
+        if (relaySocket && relaySocket.readyState === WebSocket.OPEN) {
+          relaySocket.send(JSON.stringify(payload));
+          return true;
+        }
+        return false;
+      }
+
+      function setRelayMessage(message) {
+        if (gameHintEl) gameHintEl.textContent = message;
+      }
 
       function sendHapticToPhone(pattern) {
-        if (pahoClient && pahoClient.isConnected()) {
-          const msg = new Paho.MQTT.Message(JSON.stringify({ type: 'haptic', pattern }));
-          msg.destinationName = `flexy/events/${roomId}`;
-          pahoClient.send(msg);
-        }
+        sendRelay({ type: 'haptic', pattern });
       }
 
       function broadcastGameStateToPhone() {
-        if (pahoClient && pahoClient.isConnected()) {
-          const msg = new Paho.MQTT.Message(JSON.stringify({
-            type: 'game_state',
-            state: gameState,
-            score: coinCount,
-            time: Math.ceil(roundTimeRemaining)
+        sendRelay({
+          type: 'game_state',
+          state: gameState,
+          score: coinCount,
+          timeLeft: Math.ceil(roundTimeRemaining)
+        });
+      }
+
+      function releaseControllerForNextGuest() {
+        sendRelay({ type: 'release_controller' });
+        setPhoneConnected(false);
+      }
+
+      function schedulePairRefresh() {
+        clearTimeout(pairRefreshTimer);
+        if (!pairExpiresAt) return;
+        const delay = Math.max(1000, pairExpiresAt - Date.now() - 15000);
+        pairRefreshTimer = setTimeout(() => {
+          if (!isPhoneConnected) sendRelay({ type: 'rotate_pairing' });
+        }, delay);
+      }
+
+      function applyPairing(data) {
+        relaySessionId = data.sessionId || relaySessionId;
+        currentPairToken = data.pairToken || null;
+        pairExpiresAt = Number(data.pairExpiresAt) || 0;
+        if (currentPairToken) {
+          setPhoneConnected(false);
+          renderQrCode();
+          schedulePairRefresh();
+          setRelayMessage('Отсканируйте QR-код со смартфона для игры');
+        }
+      }
+
+      function handleRelayMessage(data) {
+        if (data.type === 'host_ready') {
+          relayReconnectDelay = 1000;
+          relaySessionId = data.sessionId;
+          roomId = data.displayId || roomId;
+          document.getElementById('roomPinDisplay').textContent = roomId;
+          if (data.controllerConnected) {
+            setPhoneConnected(true);
+            setRelayMessage('Смартфон подключён');
+          } else {
+            applyPairing(data);
+          }
+          return;
+        }
+        if (data.type === 'pair_updated') {
+          applyPairing(data);
+          if (gameState === 'playing' && !running) toggleQrModal(true);
+          return;
+        }
+        if (data.type === 'controller_connected' || data.type === 'controller_reconnected') {
+          currentPairToken = null;
+          pairExpiresAt = 0;
+          clearTimeout(pairRefreshTimer);
+          setPhoneConnected(true);
+          setRelayMessage('Смартфон подключён — управление готово');
+          if (gameState === 'playing' && !running) resetGame();
+          return;
+        }
+        if (data.type === 'controller_disconnected') {
+          setRelayMessage('Восстанавливаем связь со смартфоном...');
+          return;
+        }
+        if (data.type === 'controller_released') {
+          setPhoneConnected(false);
+          return;
+        }
+        if (data.type === 'motion') {
+          setPlayerWorld(Number(data.x) * (halfW * 0.88));
+          if (gameState === 'playing' && !running) resetGame();
+          return;
+        }
+        if (data.type === 'action') {
+          if (data.action === 'restart' || data.action === 'recalibrate') {
+            if (gameState === 'gameover' || (gameState === 'playing' && !running)) restartGame();
+            targetWorldX = 0;
+            targetWorldY = PLAYER_BASE_Y;
+          }
+        }
+      }
+
+      function connectRelayHost() {
+        clearTimeout(relayReconnectTimer);
+        if (!relayConfig) return;
+        setRelayMessage('Подключаем защищённый пульт...');
+        relaySocket = new WebSocket(relayConfig.relayUrl);
+        relaySocket.addEventListener('open', () => {
+          relaySocket.send(JSON.stringify({
+            type: 'host_hello',
+            hostSecret: relayConfig.hostSecret,
+            displayId: relayConfig.displayId
           }));
-          msg.destinationName = `flexy/events/${roomId}`;
-          pahoClient.send(msg);
-        }
+        });
+        relaySocket.addEventListener('message', (event) => {
+          try { handleRelayMessage(JSON.parse(event.data)); } catch (error) {
+            console.warn('Relay message ignored:', error);
+          }
+        });
+        relaySocket.addEventListener('close', () => {
+          setPhoneConnected(false);
+          setRelayMessage('Relay недоступен. Повторное подключение...');
+          relayReconnectTimer = setTimeout(connectRelayHost, relayReconnectDelay);
+          relayReconnectDelay = Math.min(relayReconnectDelay * 1.7, 10000);
+        });
+        relaySocket.addEventListener('error', () => {
+          setRelayMessage('Ошибка подключения relay');
+        });
       }
 
-      function initPahoMQTT() {
+      async function initRelay() {
         try {
-          if (typeof Paho === 'undefined' || !Paho.MQTT) return;
-          const clientId = 'h_' + Math.random().toString(36).substring(2, 10);
-          pahoClient = new Paho.MQTT.Client('broker.hivemq.com', 8884, '/mqtt', clientId);
-
-          pahoClient.onConnectionLost = () => {
-            setTimeout(initPahoMQTT, 2500);
-          };
-
-          pahoClient.onMessageArrived = (message) => {
-            try {
-              const data = JSON.parse(message.payloadString);
-              setPhoneConnected(true);
-
-              if (data.type === 'controller_joined') {
-                setPhoneConnected(true);
-                if (gameState === 'playing' && !running) {
-                  resetGame();
-                }
-              } else if (data.type === 'motion') {
-                const wx = data.x * (halfW * 0.88);
-                setPlayerWorld(wx);
-                if (gameState === 'playing' && !running) {
-                  resetGame();
-                }
-              } else if (data.type === 'recalibrate' || data.type === 'restart') {
-                if (gameState === 'gameover' || (gameState === 'playing' && !running)) {
-                  restartGame();
-                }
-                targetWorldX = 0;
-                targetWorldY = PLAYER_BASE_Y;
-              }
-            } catch (e) {}
-          };
-
-          pahoClient.connect({
-            useSSL: true,
-            timeout: 4,
-            onSuccess: () => {
-              pahoClient.subscribe(`flexy/motion/${roomId}`);
-              pahoClient.subscribe(`flexy/events/${roomId}`);
-            },
-            onFailure: () => {
-              setTimeout(initFallbackMQTT, 1500);
-            }
-          });
-        } catch (e) {
-          console.warn('Paho init failed:', e);
+          const response = await fetch('/api/relay-config', { cache: 'no-store' });
+          if (!response.ok) throw new Error(`Relay config returned ${response.status}`);
+          relayConfig = await response.json();
+          roomId = relayConfig.displayId || roomId;
+          document.getElementById('roomPinDisplay').textContent = roomId;
+          connectRelayHost();
+        } catch (error) {
+          console.error('Relay configuration failed:', error);
+          setRelayMessage('Relay не настроен. Проверьте RELAY_URL в .env');
+          const qrcodeEl = document.getElementById('qrcode');
+          if (qrcodeEl) qrcodeEl.textContent = 'Пульт временно недоступен';
         }
-      }
-
-      function initFallbackMQTT() {
-        try {
-          const clientId = 'h_' + Math.random().toString(36).substring(2, 10);
-          pahoClient = new Paho.MQTT.Client('broker.emqx.io', 8084, '/mqtt', clientId);
-          pahoClient.connect({
-            useSSL: true,
-            timeout: 4,
-            onSuccess: () => {
-              pahoClient.subscribe(`flexy/motion/${roomId}`);
-              pahoClient.subscribe(`flexy/events/${roomId}`);
-            },
-            onFailure: () => {
-              setTimeout(initPahoMQTT, 3000);
-            }
-          });
-        } catch (e) {}
       }
 
       function renderQrCode() {
-        const permanentControllerUrl = `https://romapromo1.github.io/flexy-way/controller.html?room=${roomId}`;
         const qrcodeEl = document.getElementById('qrcode');
-        if (qrcodeEl) {
-          qrcodeEl.innerHTML = '';
-          new QRCode(qrcodeEl, {
-            text: permanentControllerUrl,
-            width: 380,
-            height: 380,
-            colorDark: "#070913",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.H
-          });
+        if (!qrcodeEl) return;
+        qrcodeEl.innerHTML = '';
+        if (!relayConfig || !relaySessionId || !currentPairToken) {
+          qrcodeEl.textContent = 'Подключение relay...';
+          return;
         }
+        const controllerUrl = new URL(relayConfig.controllerUrl);
+        controllerUrl.searchParams.set('relay', relayConfig.relayUrl);
+        controllerUrl.searchParams.set('session', relaySessionId);
+        controllerUrl.searchParams.set('pair', currentPairToken);
+        new QRCode(qrcodeEl, {
+          text: controllerUrl.toString(),
+          width: 380,
+          height: 380,
+          colorDark: '#070913',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.H
+        });
       }
 
       window.toggleQrModal = function(show) {
@@ -3453,8 +3519,8 @@
         requestAnimationFrame(animate);
       }
 
-      initPahoMQTT();
       renderQrCode();
+      initRelay();
       animate();
     </script>
   </body>

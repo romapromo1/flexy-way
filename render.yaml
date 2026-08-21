@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: flexy-way-relay
+    runtime: node
+    rootDir: relay
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: RELAY_HOST_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://romapromo1.github.io,http://localhost:3300,http://127.0.0.1:3300
