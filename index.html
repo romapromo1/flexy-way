@@ -3183,7 +3183,11 @@
         peer.onicecandidate = (event) => {
           const payload = {
             type: 'rtc_ice_candidate',
-            candidate: event.candidate ? event.candidate.toJSON() : null,
+            candidate: event.candidate ? {
+              candidate: event.candidate.candidate,
+              sdpMid: event.candidate.sdpMid,
+              sdpMLineIndex: event.candidate.sdpMLineIndex,
+            } : null,
           };
           if (peer.signalReady) sendRelay(payload);
           else peer.pendingLocalCandidates.push(payload);
@@ -3206,7 +3210,6 @@
           if (!peer) return;
           attachMotionChannel(peer.createDataChannel('motion', {
             ordered: false,
-            maxRetransmits: 0,
           }));
           const offer = await peer.createOffer();
           await peer.setLocalDescription(offer);

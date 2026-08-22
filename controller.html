@@ -549,7 +549,11 @@
       peer.onicecandidate = (event) => {
         sendRelay({
           type: 'rtc_ice_candidate',
-          candidate: event.candidate ? event.candidate.toJSON() : null,
+          candidate: event.candidate ? {
+            candidate: event.candidate.candidate,
+            sdpMid: event.candidate.sdpMid,
+            sdpMLineIndex: event.candidate.sdpMLineIndex,
+          } : null,
         });
       };
       peer.onconnectionstatechange = () => {
@@ -712,9 +716,12 @@
         sequence: ++sequence,
         clientTime: Math.trunc(performance.timeOrigin + now),
       };
-      if (motionChannel?.readyState === 'open') {
-        if (motionChannel.bufferedAmount < 2048) motionChannel.send(JSON.stringify(payload));
-        return;
+      // Send through both paths. The host applies the first sequence it sees and
+      // ignores the duplicate. Some mobile Chromium/Yandex builds report an open
+      // DataChannel but intermittently lose unreliable packets; WebSocket remains
+      // a live fallback instead of becoming disabled after WebRTC connects.
+      if (motionChannel?.readyState === 'open' && motionChannel.bufferedAmount < 2048) {
+        try { motionChannel.send(JSON.stringify(payload)); } catch (_) {}
       }
       if (relaySocket?.bufferedAmount > 8192) return;
       sendRelay(payload);
