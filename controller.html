@@ -444,6 +444,7 @@
     const relayUrl = params.get('relay') || '';
     const pairToken = params.get('pair') || '';
     const requestedSessionId = params.get('session') || '';
+    const forceHttpsRelay = params.get('transport') === 'https';
 
     const statusBadge = document.getElementById('statusBadge');
     const statusText = document.getElementById('statusText');
@@ -480,6 +481,13 @@
     let rtcPeer = null;
     let motionChannel = null;
     let pendingRtcCandidates = [];
+    let transportMode = 'websocket';
+    let relayHandshakeComplete = false;
+    let connectionAttemptTimer = null;
+    let httpConnectInFlight = false;
+    let httpPollRunning = false;
+    let httpSendInFlight = false;
+    let httpOutbound = [];
 
     const rtcConfig = {
       iceServers: [
@@ -510,7 +518,12 @@
     }
 
     function sendRelay(payload) {
-      if (!connected || !relaySocket || relaySocket.readyState !== WebSocket.OPEN) return false;
+      if (!connected) return false;
+      if (transportMode === 'https') {
+        queueHttpEvent(payload);
+        return true;
+      }
+      if (!relaySocket || relaySocket.readyState !== WebSocket.OPEN) return false;
       relaySocket.send(JSON.stringify(payload));
       return true;
     }
@@ -538,7 +551,9 @@
         statusText.textContent = 'Прямая связь ⚡';
       };
       motionChannel.onclose = () => {
-        if (connected) statusText.textContent = 'Подключено ⚡';
+        if (connected) {
+          statusText.textContent = transportMode === 'https' ? 'HTTPS-связь ⚡' : 'Подключено ⚡';
+        }
       };
     }
 
@@ -612,17 +627,228 @@
       if (resumeKey) sessionStorage.removeItem(resumeKey);
     }
 
+    function handleRelayData(data) {
+      if (!data || typeof data !== 'object') return;
+      if (data.type === 'controller_ready') {
+        relayHandshakeComplete = true;
+        clearTimeout(connectionAttemptTimer);
+        reconnectDelay = 800;
+        saveResume(data);
+        hudRoom.textContent = String(data.displayId || 'FLEXY').slice(0, 10);
+        const readyText = transportMode === 'https'
+          ? (data.resumed ? 'HTTPS восстановлен ⚡' : 'HTTPS-связь ⚡')
+          : (data.resumed ? 'Связь восстановлена ⚡' : 'Подключено ⚡');
+        setConnectionUI(true, readyText);
+        showControlStatus();
+        vibratePhone(40);
+        return;
+      }
+      if (data.type === 'game_state') {
+        if (data.score !== undefined) hudScore.textContent = data.score;
+        if (data.timeLeft !== undefined) hudTime.textContent = `${data.timeLeft} сек`;
+        btnLabel.textContent = data.state === 'gameover'
+          ? '🔄 СЫГРАТЬ ЕЩЕ РАЗ'
+          : '🎯 СБРОС В ЦЕНТР / СТАРТ';
+        return;
+      }
+      if (data.type === 'haptic') {
+        if (data.pattern === 'coin') vibratePhone([35, 30, 45]);
+        if (data.pattern === 'gameover') vibratePhone([120, 60, 160]);
+        return;
+      }
+      if (data.type === 'rtc_offer') {
+        void handleRtcOffer(data);
+        return;
+      }
+      if (data.type === 'rtc_ice_candidate') {
+        void handleRtcCandidate(data.candidate);
+        return;
+      }
+      if (data.type === 'host_offline') {
+        closeDirectControl();
+        setControllerError('Игровой экран отключился.');
+      }
+      if (data.type === 'session_ended') {
+        sessionEnded = true;
+        closeDirectControl();
+        clearResume();
+        setControllerError('Раунд завершён. Следующему гостю нужен новый QR-код.');
+      }
+    }
+
+    function httpRelayBase() {
+      try {
+        const url = new URL(relayUrl);
+        url.protocol = url.protocol === 'wss:' ? 'https:' : 'http:';
+        url.pathname = url.pathname.replace(/\/ws\/?$/, '');
+        url.search = '';
+        url.hash = '';
+        return url.toString().replace(/\/$/, '');
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function httpAuthPayload() {
+      const resume = storedResume();
+      if (resume && resume.sessionId === requestedSessionId && resume.resumeToken) {
+        return { sessionId: resume.sessionId, resumeToken: resume.resumeToken };
+      }
+      return { pairToken };
+    }
+
+    function wait(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function postHttpRelay(path, payload) {
+      const base = httpRelayBase();
+      if (!base) throw new Error('Invalid relay URL');
+      return fetch(base + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify(payload),
+      });
+    }
+
+    function queueHttpEvent(payload) {
+      if (payload.type === 'motion') {
+        httpOutbound = httpOutbound.filter((event) => event.type !== 'motion');
+      }
+      httpOutbound.push(payload);
+      if (httpOutbound.length > 80) {
+        const firstMotion = httpOutbound.findIndex((event) => event.type === 'motion');
+        if (firstMotion >= 0) httpOutbound.splice(firstMotion, 1);
+        else httpOutbound.shift();
+      }
+      void flushHttpEvents();
+    }
+
+    async function flushHttpEvents() {
+      if (httpSendInFlight || transportMode !== 'https' || !connected || !httpOutbound.length) return;
+      httpSendInFlight = true;
+      const event = httpOutbound.shift();
+      try {
+        const auth = httpAuthPayload();
+        const response = await postHttpRelay('/api/controller/event', {
+          sessionId: auth.sessionId,
+          resumeToken: auth.resumeToken,
+          event,
+        });
+        if (response.status === 401) {
+          clearResume();
+          setControllerError('Сессия закончилась. Отсканируйте новый QR-код.');
+        } else if (!response.ok && event.type !== 'motion') {
+          httpOutbound.unshift(event);
+        }
+      } catch (_) {
+        if (event.type !== 'motion') httpOutbound.unshift(event);
+        await wait(350);
+      } finally {
+        httpSendInFlight = false;
+        if (httpOutbound.length && connected) void flushHttpEvents();
+      }
+    }
+
+    async function pollHttpRelay() {
+      if (httpPollRunning) return;
+      httpPollRunning = true;
+      while (transportMode === 'https' && connected && !sessionEnded) {
+        try {
+          const response = await postHttpRelay('/api/controller/poll', httpAuthPayload());
+          if (response.status === 401) {
+            clearResume();
+            setControllerError('Сессия закончилась. Отсканируйте новый QR-код.');
+            break;
+          }
+          if (!response.ok) throw new Error('HTTP poll failed');
+          const data = await response.json();
+          const events = Array.isArray(data.events) ? data.events : [];
+          for (const event of events) handleRelayData(event);
+        } catch (_) {
+          if (transportMode !== 'https' || !connected) break;
+          statusText.textContent = 'HTTPS: восстановление...';
+          await wait(650);
+        }
+      }
+      httpPollRunning = false;
+    }
+
+    async function startHttpFallback() {
+      if (httpConnectInFlight || (transportMode === 'https' && connected) || sessionEnded) return;
+      httpConnectInFlight = true;
+      transportMode = 'https';
+      clearTimeout(connectionAttemptTimer);
+      clearTimeout(reconnectTimer);
+      if (relaySocket && relaySocket.readyState < WebSocket.CLOSING) {
+        try { relaySocket.close(); } catch (_) {}
+      }
+      setConnectionUI(false, 'HTTPS-подключение...');
+
+      let retry = false;
+      try {
+        const auth = httpAuthPayload();
+        const response = await postHttpRelay('/api/controller/connect', {
+          sessionId: auth.sessionId,
+          resumeToken: auth.resumeToken,
+          pairToken,
+        });
+        let data = {};
+        try { data = await response.json(); } catch (_) {}
+        if (!response.ok) {
+          const messages = {
+            invalid_pair: 'QR-код повреждён. Отсканируйте новый.',
+            expired_pair: 'QR-код устарел. Отсканируйте новый.',
+            host_offline: 'Игровой экран сейчас не в сети.',
+            controller_busy: 'Сейчас уже играет другой гость.',
+          };
+          setControllerError(messages[data.code] || 'Relay отклонил подключение. Отсканируйте новый QR-код.');
+          return;
+        }
+        handleRelayData(data);
+        void pollHttpRelay();
+        void flushHttpEvents();
+      } catch (_) {
+        statusText.textContent = 'HTTPS: повтор подключения...';
+        retry = true;
+      } finally {
+        httpConnectInFlight = false;
+        if (retry && !connected && !sessionEnded) {
+          reconnectTimer = setTimeout(startHttpFallback, 1200);
+        }
+      }
+    }
+
     function connectRelay() {
       clearTimeout(reconnectTimer);
-      if (!/^wss:\/\//i.test(relayUrl) || !pairToken || !requestedSessionId) {
+      const relayIsSecure = /^wss:\/\//i.test(relayUrl);
+      const relayIsLocal = /^ws:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(relayUrl);
+      if ((!relayIsSecure && !relayIsLocal) || !pairToken || !requestedSessionId) {
         setControllerError('QR-ссылка неполная. Отсканируйте новый QR-код на экране игры.');
         return;
       }
 
+      if (forceHttpsRelay) {
+        void startHttpFallback();
+        return;
+      }
+
       setConnectionUI(false, 'Соединение...');
-      relaySocket = new WebSocket(relayUrl);
-      let handshakeComplete = false;
+      transportMode = 'websocket';
+      relayHandshakeComplete = false;
+      try {
+        relaySocket = new WebSocket(relayUrl);
+      } catch (_) {
+        void startHttpFallback();
+        return;
+      }
+      clearTimeout(connectionAttemptTimer);
+      connectionAttemptTimer = setTimeout(() => {
+        if (!relayHandshakeComplete) void startHttpFallback();
+      }, 3500);
       relaySocket.addEventListener('open', () => {
+        statusText.textContent = 'Авторизация...';
         const resume = storedResume();
         if (resume && resume.sessionId === requestedSessionId && resume.resumeToken) {
           relaySocket.send(JSON.stringify({
@@ -635,56 +861,19 @@
         }
       });
       relaySocket.addEventListener('message', (event) => {
+        if (transportMode !== 'websocket') return;
         let data;
         try { data = JSON.parse(event.data); } catch (_) { return; }
-        if (data.type === 'controller_ready') {
-          handshakeComplete = true;
-          reconnectDelay = 800;
-          saveResume(data);
-          hudRoom.textContent = String(data.displayId || 'FLEXY').slice(0, 10);
-          setConnectionUI(true, data.resumed ? 'Связь восстановлена ⚡' : 'Подключено ⚡');
-          showControlStatus();
-          vibratePhone(40);
-          return;
-        }
-        if (data.type === 'game_state') {
-          if (data.score !== undefined) hudScore.textContent = data.score;
-          if (data.timeLeft !== undefined) hudTime.textContent = `${data.timeLeft} сек`;
-          btnLabel.textContent = data.state === 'gameover'
-            ? '🔄 СЫГРАТЬ ЕЩЕ РАЗ'
-            : '🎯 СБРОС В ЦЕНТР / СТАРТ';
-          return;
-        }
-        if (data.type === 'haptic') {
-          if (data.pattern === 'coin') vibratePhone([35, 30, 45]);
-          if (data.pattern === 'gameover') vibratePhone([120, 60, 160]);
-          return;
-        }
-        if (data.type === 'rtc_offer') {
-          void handleRtcOffer(data);
-          return;
-        }
-        if (data.type === 'rtc_ice_candidate') {
-          void handleRtcCandidate(data.candidate);
-          return;
-        }
-        if (data.type === 'host_offline') {
-          closeDirectControl();
-          setControllerError('Игровой экран отключился.');
-        }
-        if (data.type === 'session_ended') {
-          sessionEnded = true;
-          closeDirectControl();
-          clearResume();
-          setControllerError('Раунд завершён. Следующему гостю нужен новый QR-код.');
-        }
+        handleRelayData(data);
       });
       relaySocket.addEventListener('close', (event) => {
+        if (transportMode === 'https') return;
+        clearTimeout(connectionAttemptTimer);
         closeDirectControl();
         setConnectionUI(false, 'Связь потеряна');
         if (sessionEnded) return;
         const canResume = Boolean(storedResume());
-        if (!handshakeComplete && [4403, 4404, 4409].includes(event.code)) {
+        if (!relayHandshakeComplete && [4403, 4404, 4409].includes(event.code)) {
           clearResume();
           const messages = {
             4403: 'QR-код уже использован или устарел. Отсканируйте новый.',
@@ -702,7 +891,10 @@
         }
       });
       relaySocket.addEventListener('error', () => {
-        if (!handshakeComplete) statusText.textContent = 'Ошибка сети';
+        if (!relayHandshakeComplete && transportMode === 'websocket') {
+          statusText.textContent = 'WebSocket недоступен — переключаемся на HTTPS...';
+          void startHttpFallback();
+        }
       });
     }
 
@@ -728,7 +920,7 @@
       if (motionChannel && motionChannel.readyState === 'open' && motionChannel.bufferedAmount < 2048) {
         try { motionChannel.send(JSON.stringify(payload)); } catch (_) {}
       }
-      if (relaySocket && relaySocket.bufferedAmount > 8192) return;
+      if (transportMode === 'websocket' && relaySocket && relaySocket.bufferedAmount > 8192) return;
       sendRelay(payload);
     }
 

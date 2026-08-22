@@ -30,6 +30,7 @@ function nextMessage(socket) {
 
 let relay;
 let wsUrl;
+let httpUrl;
 let sockets;
 
 beforeEach(async () => {
@@ -42,7 +43,9 @@ beforeEach(async () => {
   });
   relay.server.listen(0, '127.0.0.1');
   await once(relay.server, 'listening');
-  wsUrl = `ws://127.0.0.1:${relay.server.address().port}/ws`;
+  const port = relay.server.address().port;
+  wsUrl = `ws://127.0.0.1:${port}/ws`;
+  httpUrl = `http://127.0.0.1:${port}`;
 });
 
 afterEach(async () => {
@@ -109,6 +112,65 @@ test('relays WebRTC negotiation only between the paired host and controller', as
 
   controller.send(JSON.stringify({ type: 'rtc_ice_candidate', candidate }));
   assert.deepEqual(await nextMessage(host), { type: 'rtc_ice_candidate', candidate });
+});
+
+test('falls back to authenticated HTTPS polling when browser WebSocket is unavailable', async () => {
+  const host = await openSocket(wsUrl, HOST_ORIGIN);
+  sockets.push(host);
+  host.send(JSON.stringify({ type: 'host_hello', hostSecret: HOST_SECRET, displayId: 'FLEXY' }));
+  const ready = await nextMessage(host);
+
+  const connectedPromise = nextMessage(host);
+  const connectResponse = await fetch(`${httpUrl}/api/controller/connect`, {
+    method: 'POST',
+    headers: { origin: CONTROLLER_ORIGIN, 'content-type': 'application/json' },
+    body: JSON.stringify({ pairToken: ready.pairToken }),
+  });
+  assert.equal(connectResponse.status, 200);
+  assert.equal(connectResponse.headers.get('access-control-allow-origin'), CONTROLLER_ORIGIN);
+  const controllerReady = await connectResponse.json();
+  assert.equal(controllerReady.type, 'controller_ready');
+  assert.equal(controllerReady.transport, 'https');
+  assert.equal((await connectedPromise).type, 'controller_connected');
+
+  const auth = {
+    sessionId: controllerReady.sessionId,
+    resumeToken: controllerReady.resumeToken,
+  };
+  host.send(JSON.stringify({ type: 'rtc_offer', sdp: 'https-fallback-offer' }));
+  const pollResponse = await fetch(`${httpUrl}/api/controller/poll`, {
+    method: 'POST',
+    headers: { origin: CONTROLLER_ORIGIN, 'content-type': 'application/json' },
+    body: JSON.stringify(auth),
+  });
+  assert.equal(pollResponse.status, 200);
+  assert.deepEqual(await pollResponse.json(), {
+    events: [{ type: 'rtc_offer', sdp: 'https-fallback-offer' }],
+  });
+
+  const motionPromise = nextMessage(host);
+  const eventResponse = await fetch(`${httpUrl}/api/controller/event`, {
+    method: 'POST',
+    headers: { origin: CONTROLLER_ORIGIN, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      ...auth,
+      event: { type: 'motion', x: 4, y: -4, sequence: 11, clientTime: 456 },
+    }),
+  });
+  assert.equal(eventResponse.status, 202);
+  assert.deepEqual(await motionPromise, {
+    type: 'motion', x: 1, y: -1, sequence: 11, clientTime: 456,
+  });
+});
+
+test('rejects HTTPS fallback requests from untrusted origins', async () => {
+  const response = await fetch(`${httpUrl}/api/controller/connect`, {
+    method: 'POST',
+    headers: { origin: 'https://evil.example', 'content-type': 'application/json' },
+    body: JSON.stringify({ pairToken: 'A'.repeat(32) }),
+  });
+  assert.equal(response.status, 403);
+  assert.equal(response.headers.get('access-control-allow-origin'), null);
 });
 
 test('controller can resume during the grace period', async () => {

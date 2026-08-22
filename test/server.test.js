@@ -68,6 +68,8 @@ test('controller keeps universal browser and touch fallbacks', () => {
   assert.match(controller, /deviceorientationabsolute/);
   assert.match(controller, /'PointerEvent' in window/);
   assert.match(controller, /addEventListener\('touchstart'/);
+  assert.match(controller, /\/api\/controller\/connect/);
+  assert.match(controller, /\/api\/controller\/poll/);
 
   const touchHandler = controller.match(
     /function handleTouchInput\(clientX\) \{([\s\S]*?)\n    \}/,

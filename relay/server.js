@@ -71,6 +71,76 @@ class SlidingRateLimit {
   }
 }
 
+class HttpControllerTransport {
+  constructor(onClose, inactivityMs = 30_000) {
+    this.readyState = OPEN;
+    this.onClose = onClose;
+    this.inactivityMs = inactivityMs;
+    this.queue = [];
+    this.pendingPoll = null;
+    this.inactivityTimer = null;
+    this.touch();
+  }
+
+  touch() {
+    if (this.readyState !== OPEN) return;
+    clearTimeout(this.inactivityTimer);
+    this.inactivityTimer = setTimeout(() => this.close(1001, 'HTTP controller timed out'), this.inactivityMs);
+  }
+
+  send(serialized) {
+    if (this.readyState !== OPEN) return;
+    let payload;
+    try {
+      payload = JSON.parse(serialized);
+    } catch {
+      return;
+    }
+    this.touch();
+    this.queue.push(payload);
+    if (this.queue.length > 100) this.queue.splice(0, this.queue.length - 100);
+    this.flushPoll();
+  }
+
+  flushPoll() {
+    if (!this.pendingPoll || !this.queue.length) return;
+    const pending = this.pendingPoll;
+    this.pendingPoll = null;
+    clearTimeout(pending.timer);
+    const events = this.queue.splice(0, this.queue.length);
+    pending.resolve(events);
+  }
+
+  poll(timeoutMs = 12_000) {
+    this.touch();
+    if (this.queue.length) return Promise.resolve(this.queue.splice(0, this.queue.length));
+    if (this.pendingPoll) {
+      clearTimeout(this.pendingPoll.timer);
+      this.pendingPoll.resolve([]);
+    }
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        if (this.pendingPoll && this.pendingPoll.resolve === resolve) this.pendingPoll = null;
+        resolve([]);
+      }, timeoutMs);
+      this.pendingPoll = { resolve, timer };
+    });
+  }
+
+  close(_code, _reason) {
+    if (this.readyState !== OPEN) return;
+    this.readyState = WebSocket.CLOSED;
+    clearTimeout(this.inactivityTimer);
+    if (this.pendingPoll) {
+      const pending = this.pendingPoll;
+      this.pendingPoll = null;
+      clearTimeout(pending.timer);
+      pending.resolve(this.queue.splice(0, this.queue.length));
+    }
+    if (this.onClose) this.onClose();
+  }
+}
+
 class RelayHub {
   constructor(options) {
     this.hostSecret = String(options.hostSecret || '');
@@ -79,6 +149,7 @@ class RelayHub {
     this.resumeGraceMs = options.resumeGraceMs || 15 * 1000;
     this.sessions = new Map();
     this.pairingIndex = new Map();
+    this.shuttingDown = false;
   }
 
   isOriginAllowed(origin) {
@@ -98,6 +169,101 @@ class RelayHub {
     };
     this.sessions.set(displayId, session);
     return session;
+  }
+
+  findSession(sessionId) {
+    return [...this.sessions.values()].find((item) => item.id === sessionId) || null;
+  }
+
+  createControllerState(session) {
+    return {
+      role: 'controller',
+      session,
+      motionLimit: new SlidingRateLimit(70, 1000),
+      rtcSignalLimit: new SlidingRateLimit(120, 60_000),
+      actionLimit: new SlidingRateLimit(20, 60_000),
+    };
+  }
+
+  attachHttpController(session, { resumed = false } = {}) {
+    let state;
+    const transport = new HttpControllerTransport(() => this.handleClose(transport, state));
+    state = this.createControllerState(session);
+    transport.state = state;
+    session.controller = transport;
+    if (!resumed) session.controllerResumeToken = randomToken();
+    send(session.host, {
+      type: resumed ? 'controller_reconnected' : 'controller_connected',
+      sessionId: session.id,
+    });
+    return {
+      transport,
+      ready: {
+        type: 'controller_ready',
+        sessionId: session.id,
+        displayId: session.displayId,
+        resumeToken: session.controllerResumeToken,
+        resumed,
+        transport: 'https',
+      },
+    };
+  }
+
+  connectHttpController(data) {
+    const resumeSessionId = String(data.sessionId || '');
+    const resumeToken = String(data.resumeToken || '');
+    if (resumeSessionId && resumeToken) {
+      const session = this.findSession(resumeSessionId);
+      if (
+        session
+        && safeEqual(resumeToken, session.controllerResumeToken)
+        && session.host
+        && session.host.readyState === OPEN
+      ) {
+        if (session.controller) {
+          const previousController = session.controller;
+          session.controller = null;
+          close(previousController, 4001, 'Controller transport replaced');
+        }
+        if (session.controllerResumeTimer) {
+          clearTimeout(session.controllerResumeTimer);
+          session.controllerResumeTimer = null;
+        }
+        return { status: 200, ...this.attachHttpController(session, { resumed: true }) };
+      }
+    }
+
+    const token = String(data.pairToken || '');
+    if (!TOKEN_PATTERN.test(token)) {
+      return { status: 403, code: 'invalid_pair', error: 'Invalid pairing token' };
+    }
+    const session = this.pairingIndex.get(token);
+    if (!session || !safeEqual(session.pairToken, token) || session.pairExpiresAt <= Date.now()) {
+      return { status: 403, code: 'expired_pair', error: 'Pairing token expired' };
+    }
+    if (!session.host || session.host.readyState !== OPEN) {
+      return { status: 404, code: 'host_offline', error: 'Game screen is offline' };
+    }
+    if (session.controller || session.controllerResumeTimer) {
+      return { status: 409, code: 'controller_busy', error: 'Another guest is already playing' };
+    }
+
+    this.pairingIndex.delete(token);
+    session.pairToken = null;
+    session.pairExpiresAt = 0;
+    return { status: 200, ...this.attachHttpController(session) };
+  }
+
+  authenticateHttpController(data) {
+    const session = this.findSession(String(data.sessionId || ''));
+    if (
+      !session
+      || !session.controller
+      || !(session.controller instanceof HttpControllerTransport)
+      || !safeEqual(data.resumeToken, session.controllerResumeToken)
+    ) return null;
+    session.controller.touch();
+    return { session, transport: session.controller, state: session.controller.state };
   }
 
   rotatePairing(session) {
@@ -354,6 +520,12 @@ class RelayHub {
     const session = state.session;
     if (!session) return;
 
+    if (this.shuttingDown) {
+      if (state.role === 'host' && session.host === socket) session.host = null;
+      if (state.role === 'controller' && session.controller === socket) session.controller = null;
+      return;
+    }
+
     if (state.role === 'host' && session.host === socket) {
       session.host = null;
       send(session.controller, { type: 'host_offline' });
@@ -380,10 +552,12 @@ class RelayHub {
   }
 
   shutdown() {
+    this.shuttingDown = true;
     for (const session of this.sessions.values()) {
       if (session.controllerResumeTimer) clearTimeout(session.controllerResumeTimer);
       close(session.host, 1001, 'Server shutdown');
       close(session.controller, 1001, 'Server shutdown');
+      if (session.controllerResumeTimer) clearTimeout(session.controllerResumeTimer);
     }
     this.sessions.clear();
     this.pairingIndex.clear();
@@ -408,8 +582,63 @@ function createRelayServer(options = {}) {
 
   const app = express();
   app.disable('x-powered-by');
+  app.use(express.json({ limit: '16kb' }));
   app.get('/', (_req, res) => res.json({ service: 'flexy-way-relay', status: 'ok' }));
   app.get('/health', (_req, res) => res.json({ status: 'ok', sessions: hub.sessions.size }));
+
+  app.use('/api/controller', (req, res, next) => {
+    const origin = req.get('origin');
+    if (!hub.isOriginAllowed(origin)) {
+      res.status(403).json({ code: 'origin_denied', error: 'Origin is not allowed' });
+      return;
+    }
+    res.set({
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Cache-Control': 'no-store',
+      Vary: 'Origin',
+    });
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+
+  app.post('/api/controller/connect', (req, res) => {
+    const result = hub.connectHttpController(req.body || {});
+    if (result.status !== 200) {
+      res.status(result.status).json({ code: result.code, error: result.error });
+      return;
+    }
+    res.status(200).json(result.ready);
+  });
+
+  app.post('/api/controller/event', (req, res) => {
+    const auth = hub.authenticateHttpController(req.body || {});
+    if (!auth) {
+      res.status(401).json({ code: 'session_expired', error: 'Controller session expired' });
+      return;
+    }
+    const event = req.body && req.body.event;
+    if (!event || typeof event !== 'object' || Array.isArray(event)) {
+      res.status(400).json({ code: 'invalid_event', error: 'Invalid controller event' });
+      return;
+    }
+    hub.handleControllerMessage(auth.transport, auth.state, event);
+    res.status(202).json({ ok: true });
+  });
+
+  app.post('/api/controller/poll', async (req, res) => {
+    const auth = hub.authenticateHttpController(req.body || {});
+    if (!auth) {
+      res.status(401).json({ code: 'session_expired', error: 'Controller session expired' });
+      return;
+    }
+    const events = await auth.transport.poll();
+    if (!res.writableEnded) res.status(200).json({ events });
+  });
 
   const server = http.createServer(app);
   const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16_384 });
