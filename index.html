@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="/welcome_logo.png" />
     <title>3D Игра — Flexy Way (Фестивальный Пульт)</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3111,6 +3112,17 @@
       let relayReconnectDelay = 1000;
       let relayReconnectTimer = null;
       let pairRefreshTimer = null;
+      let rtcPeer = null;
+      let motionChannel = null;
+      let pendingRtcCandidates = [];
+      let lastAppliedMotionSequence = 0;
+
+      const rtcConfig = {
+        iceServers: [
+          { urls: 'stun:stun.cloudflare.com:3478' },
+          { urls: 'stun:stun.l.google.com:19302' },
+        ],
+      };
 
       function sendRelay(payload) {
         if (relaySocket && relaySocket.readyState === WebSocket.OPEN) {
@@ -3118,6 +3130,112 @@
           return true;
         }
         return false;
+      }
+
+      function closeDirectControl() {
+        pendingRtcCandidates = [];
+        if (motionChannel) {
+          motionChannel.onopen = null;
+          motionChannel.onclose = null;
+          motionChannel.onmessage = null;
+          try { motionChannel.close(); } catch (_) {}
+        }
+        motionChannel = null;
+        if (rtcPeer) {
+          rtcPeer.onicecandidate = null;
+          rtcPeer.onconnectionstatechange = null;
+          try { rtcPeer.close(); } catch (_) {}
+        }
+        rtcPeer = null;
+      }
+
+      function applyRemoteMotion(data) {
+        const sequence = Math.max(0, Math.trunc(Number(data.sequence) || 0));
+        if (sequence && sequence <= lastAppliedMotionSequence) return;
+        const x = Number(data.x);
+        if (!Number.isFinite(x)) return;
+        if (sequence) lastAppliedMotionSequence = sequence;
+        setPlayerWorld(Math.max(-1, Math.min(1, x)) * (halfW * 0.88));
+        if (gameState === 'playing' && !running) resetGame();
+      }
+
+      function attachMotionChannel(channel) {
+        motionChannel = channel;
+        motionChannel.onopen = () => {
+          setRelayMessage('Смартфон подключён — прямая связь ⚡');
+        };
+        motionChannel.onclose = () => {
+          if (isPhoneConnected) setRelayMessage('Смартфон подключён — резервная связь');
+        };
+        motionChannel.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data?.type === 'motion') applyRemoteMotion(data);
+          } catch (_) {}
+        };
+      }
+
+      function createRtcPeer() {
+        if (typeof RTCPeerConnection === 'undefined') return null;
+        closeDirectControl();
+        const peer = new RTCPeerConnection(rtcConfig);
+        rtcPeer = peer;
+        peer.onicecandidate = (event) => {
+          const payload = {
+            type: 'rtc_ice_candidate',
+            candidate: event.candidate ? event.candidate.toJSON() : null,
+          };
+          if (peer.signalReady) sendRelay(payload);
+          else peer.pendingLocalCandidates.push(payload);
+        };
+        peer.onconnectionstatechange = () => {
+          if (peer !== rtcPeer) return;
+          if (peer.connectionState === 'failed') {
+            setRelayMessage('Прямая связь недоступна — используем Frankfurt relay');
+            closeDirectControl();
+          }
+        };
+        peer.signalReady = false;
+        peer.pendingLocalCandidates = [];
+        return peer;
+      }
+
+      async function startDirectControl() {
+        try {
+          const peer = createRtcPeer();
+          if (!peer) return;
+          attachMotionChannel(peer.createDataChannel('motion', {
+            ordered: false,
+            maxRetransmits: 0,
+          }));
+          const offer = await peer.createOffer();
+          await peer.setLocalDescription(offer);
+          if (!sendRelay({ type: 'rtc_offer', sdp: peer.localDescription.sdp })) return;
+          peer.signalReady = true;
+          for (const payload of peer.pendingLocalCandidates.splice(0)) sendRelay(payload);
+        } catch (_) {
+          closeDirectControl();
+        }
+      }
+
+      async function handleRtcAnswer(data) {
+        if (!rtcPeer) return;
+        try {
+          await rtcPeer.setRemoteDescription({ type: 'answer', sdp: String(data.sdp || '') });
+          const queued = pendingRtcCandidates;
+          pendingRtcCandidates = [];
+          for (const candidate of queued) await rtcPeer.addIceCandidate(candidate);
+        } catch (_) {
+          closeDirectControl();
+        }
+      }
+
+      async function handleRtcCandidate(candidate) {
+        if (!rtcPeer || !rtcPeer.remoteDescription) {
+          pendingRtcCandidates.push(candidate);
+          return;
+        }
+        try { await rtcPeer.addIceCandidate(candidate); } catch (_) {}
       }
 
       function setRelayMessage(message) {
@@ -3172,6 +3290,7 @@
           if (data.controllerConnected) {
             setPhoneConnected(true);
             setRelayMessage('Смартфон подключён');
+            void startDirectControl();
           } else {
             applyPairing(data);
           }
@@ -3186,22 +3305,33 @@
           currentPairToken = null;
           pairExpiresAt = 0;
           clearTimeout(pairRefreshTimer);
+          lastAppliedMotionSequence = 0;
           setPhoneConnected(true);
           setRelayMessage('Смартфон подключён — управление готово');
+          void startDirectControl();
           if (gameState === 'playing' && !running) resetGame();
           return;
         }
         if (data.type === 'controller_disconnected') {
+          closeDirectControl();
           setRelayMessage('Восстанавливаем связь со смартфоном...');
           return;
         }
         if (data.type === 'controller_released') {
+          closeDirectControl();
           setPhoneConnected(false);
           return;
         }
         if (data.type === 'motion') {
-          setPlayerWorld(Number(data.x) * (halfW * 0.88));
-          if (gameState === 'playing' && !running) resetGame();
+          applyRemoteMotion(data);
+          return;
+        }
+        if (data.type === 'rtc_answer') {
+          void handleRtcAnswer(data);
+          return;
+        }
+        if (data.type === 'rtc_ice_candidate') {
+          void handleRtcCandidate(data.candidate);
           return;
         }
         if (data.type === 'action') {
@@ -3231,6 +3361,7 @@
           }
         });
         relaySocket.addEventListener('close', () => {
+          closeDirectControl();
           setPhoneConnected(false);
           setRelayMessage('Relay недоступен. Повторное подключение...');
           relayReconnectTimer = setTimeout(connectRelayHost, relayReconnectDelay);
@@ -3428,7 +3559,9 @@
           }
 
           // Движение и анимация сумки игрока (зафиксирована на PLAYER_BASE_Y)
-          const SMOOTH_FACTOR = 0.22;
+          // Time-based response keeps controls equally fast at 30/60/120 FPS.
+          // 42/s reaches about 90% of the requested position in ~55 ms.
+          const SMOOTH_FACTOR = 1 - Math.exp(-42 * dt);
           const clampedTargetX = THREE.MathUtils.clamp(targetWorldX, -halfW * 0.86, halfW * 0.86);
 
           player.position.x = THREE.MathUtils.lerp(player.position.x, clampedTargetX, SMOOTH_FACTOR);

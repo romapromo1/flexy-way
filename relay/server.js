@@ -29,6 +29,18 @@ function clamp(value, min, max) {
   return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : 0;
 }
 
+function sanitizeRtcCandidate(value) {
+  if (value === null) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const candidate = String(value.candidate || '');
+  const sdpMid = value.sdpMid == null ? null : String(value.sdpMid).slice(0, 64);
+  const sdpMLineIndex = value.sdpMLineIndex == null
+    ? null
+    : Math.max(0, Math.min(32, Math.trunc(Number(value.sdpMLineIndex) || 0)));
+  if (!candidate || candidate.length > 2048) return undefined;
+  return { candidate, sdpMid, sdpMLineIndex };
+}
+
 function send(socket, payload) {
   if (socket && socket.readyState === OPEN) {
     socket.send(JSON.stringify(payload));
@@ -131,6 +143,7 @@ class RelayHub {
       role: null,
       session: null,
       motionLimit: new SlidingRateLimit(70, 1000),
+      rtcSignalLimit: new SlidingRateLimit(120, 60_000),
       actionLimit: new SlidingRateLimit(20, 60_000),
     };
     const helloTimer = setTimeout(() => close(socket, 4408, 'Handshake timeout'), 5000);
@@ -293,6 +306,16 @@ class RelayHub {
         score: Math.max(0, Math.min(9999, Math.trunc(Number(data.score) || 0))),
         timeLeft: Math.max(0, Math.min(3600, Math.trunc(Number(data.timeLeft) || 0))),
       });
+      return;
+    }
+    if (data.type === 'rtc_offer' && state.rtcSignalLimit.allow()) {
+      const sdp = String(data.sdp || '');
+      if (sdp && sdp.length <= 12_000) send(session.controller, { type: 'rtc_offer', sdp });
+      return;
+    }
+    if (data.type === 'rtc_ice_candidate' && state.rtcSignalLimit.allow()) {
+      const candidate = sanitizeRtcCandidate(data.candidate);
+      if (candidate !== undefined) send(session.controller, { type: 'rtc_ice_candidate', candidate });
     }
   }
 
@@ -309,6 +332,16 @@ class RelayHub {
         sequence: Math.max(0, Math.trunc(Number(data.sequence) || 0)),
         clientTime: Math.max(0, Math.trunc(Number(data.clientTime) || 0)),
       });
+      return;
+    }
+    if (data.type === 'rtc_answer' && state.rtcSignalLimit.allow()) {
+      const sdp = String(data.sdp || '');
+      if (sdp && sdp.length <= 12_000) send(session.host, { type: 'rtc_answer', sdp });
+      return;
+    }
+    if (data.type === 'rtc_ice_candidate' && state.rtcSignalLimit.allow()) {
+      const candidate = sanitizeRtcCandidate(data.candidate);
+      if (candidate !== undefined) send(session.host, { type: 'rtc_ice_candidate', candidate });
       return;
     }
     if (data.type === 'action' && state.actionLimit.allow()) {
@@ -379,7 +412,7 @@ function createRelayServer(options = {}) {
   app.get('/health', (_req, res) => res.json({ status: 'ok', sessions: hub.sessions.size }));
 
   const server = http.createServer(app);
-  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 4096 });
+  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16_384 });
   wss.on('connection', (socket, request) => hub.attach(socket, request));
 
   const closeServer = () => new Promise((resolve) => {

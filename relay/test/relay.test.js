@@ -81,6 +81,36 @@ test('pairs exactly one controller and relays validated motion', async () => {
   assert.equal(code, 4403);
 });
 
+test('relays WebRTC negotiation only between the paired host and controller', async () => {
+  const host = await openSocket(wsUrl, HOST_ORIGIN);
+  sockets.push(host);
+  host.send(JSON.stringify({ type: 'host_hello', hostSecret: HOST_SECRET, displayId: 'FLEXY' }));
+  const ready = await nextMessage(host);
+
+  const controller = await openSocket(wsUrl, CONTROLLER_ORIGIN);
+  sockets.push(controller);
+  controller.send(JSON.stringify({ type: 'controller_hello', pairToken: ready.pairToken }));
+  await nextMessage(controller);
+  await nextMessage(host);
+
+  host.send(JSON.stringify({ type: 'rtc_offer', sdp: 'test-offer-sdp' }));
+  assert.deepEqual(await nextMessage(controller), { type: 'rtc_offer', sdp: 'test-offer-sdp' });
+
+  controller.send(JSON.stringify({ type: 'rtc_answer', sdp: 'test-answer-sdp' }));
+  assert.deepEqual(await nextMessage(host), { type: 'rtc_answer', sdp: 'test-answer-sdp' });
+
+  const candidate = {
+    candidate: 'candidate:1 1 udp 2122260223 192.0.2.1 5000 typ host',
+    sdpMid: '0',
+    sdpMLineIndex: 0,
+  };
+  host.send(JSON.stringify({ type: 'rtc_ice_candidate', candidate }));
+  assert.deepEqual(await nextMessage(controller), { type: 'rtc_ice_candidate', candidate });
+
+  controller.send(JSON.stringify({ type: 'rtc_ice_candidate', candidate }));
+  assert.deepEqual(await nextMessage(host), { type: 'rtc_ice_candidate', candidate });
+});
+
 test('controller can resume during the grace period', async () => {
   const host = await openSocket(wsUrl, HOST_ORIGIN);
   sockets.push(host);

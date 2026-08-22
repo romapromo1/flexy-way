@@ -55,6 +55,9 @@ function createApp() {
   app.get('/welcome_logo.png', (_req, res) => {
     res.sendFile(path.join(PROJECT_ROOT, 'public', 'welcome_logo.png'));
   });
+  app.get('/favicon.ico', (_req, res) => {
+    res.sendFile(path.join(PROJECT_ROOT, 'public', 'welcome_logo.png'));
+  });
   app.get('/flexyway.glb', (_req, res) => res.sendFile(path.join(PROJECT_ROOT, 'flexyway.glb')));
   app.use('/good', express.static(path.join(PROJECT_ROOT, 'good'), staticOptions()));
   app.use('/bad', express.static(path.join(PROJECT_ROOT, 'bad'), staticOptions()));

@@ -473,6 +473,16 @@
     let orientationAttached = false;
     let orientationSamples = 0;
     let orientationProbeTimer = null;
+    let rtcPeer = null;
+    let motionChannel = null;
+    let pendingRtcCandidates = [];
+
+    const rtcConfig = {
+      iceServers: [
+        { urls: 'stun:stun.cloudflare.com:3478' },
+        { urls: 'stun:stun.l.google.com:19302' },
+      ],
+    };
 
     const resumeKey = requestedSessionId && relayUrl
       ? `flexy-resume:${relayUrl}:${requestedSessionId}`
@@ -499,6 +509,82 @@
       if (!connected || !relaySocket || relaySocket.readyState !== WebSocket.OPEN) return false;
       relaySocket.send(JSON.stringify(payload));
       return true;
+    }
+
+    function closeDirectControl() {
+      pendingRtcCandidates = [];
+      if (motionChannel) {
+        motionChannel.onopen = null;
+        motionChannel.onclose = null;
+        try { motionChannel.close(); } catch (_) {}
+      }
+      motionChannel = null;
+      if (rtcPeer) {
+        rtcPeer.ondatachannel = null;
+        rtcPeer.onicecandidate = null;
+        rtcPeer.onconnectionstatechange = null;
+        try { rtcPeer.close(); } catch (_) {}
+      }
+      rtcPeer = null;
+    }
+
+    function attachMotionChannel(channel) {
+      motionChannel = channel;
+      motionChannel.onopen = () => {
+        statusText.textContent = 'Прямая связь ⚡';
+      };
+      motionChannel.onclose = () => {
+        if (connected) statusText.textContent = 'Подключено ⚡';
+      };
+    }
+
+    function createRtcPeer() {
+      if (typeof RTCPeerConnection === 'undefined') return null;
+      closeDirectControl();
+      const peer = new RTCPeerConnection(rtcConfig);
+      rtcPeer = peer;
+      peer.ondatachannel = (event) => {
+        if (event.channel?.label === 'motion') attachMotionChannel(event.channel);
+      };
+      peer.onicecandidate = (event) => {
+        sendRelay({
+          type: 'rtc_ice_candidate',
+          candidate: event.candidate ? event.candidate.toJSON() : null,
+        });
+      };
+      peer.onconnectionstatechange = () => {
+        if (peer !== rtcPeer) return;
+        if (['failed', 'closed'].includes(peer.connectionState)) closeDirectControl();
+      };
+      return peer;
+    }
+
+    async function handleRtcOffer(data) {
+      const sdp = String(data.sdp || '');
+      if (!sdp || typeof RTCPeerConnection === 'undefined') return;
+      try {
+        const earlyCandidates = pendingRtcCandidates;
+        const peer = createRtcPeer();
+        if (!peer) return;
+        pendingRtcCandidates = earlyCandidates;
+        await peer.setRemoteDescription({ type: 'offer', sdp });
+        const queued = pendingRtcCandidates;
+        pendingRtcCandidates = [];
+        for (const candidate of queued) await peer.addIceCandidate(candidate);
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+        sendRelay({ type: 'rtc_answer', sdp: peer.localDescription.sdp });
+      } catch (_) {
+        closeDirectControl();
+      }
+    }
+
+    async function handleRtcCandidate(candidate) {
+      if (!rtcPeer || !rtcPeer.remoteDescription) {
+        pendingRtcCandidates.push(candidate);
+        return;
+      }
+      try { await rtcPeer.addIceCandidate(candidate); } catch (_) {}
     }
 
     function storedResume() {
@@ -568,14 +654,27 @@
           if (data.pattern === 'gameover') vibratePhone([120, 60, 160]);
           return;
         }
-        if (data.type === 'host_offline') setControllerError('Игровой экран отключился.');
+        if (data.type === 'rtc_offer') {
+          void handleRtcOffer(data);
+          return;
+        }
+        if (data.type === 'rtc_ice_candidate') {
+          void handleRtcCandidate(data.candidate);
+          return;
+        }
+        if (data.type === 'host_offline') {
+          closeDirectControl();
+          setControllerError('Игровой экран отключился.');
+        }
         if (data.type === 'session_ended') {
           sessionEnded = true;
+          closeDirectControl();
           clearResume();
           setControllerError('Раунд завершён. Следующему гостю нужен новый QR-код.');
         }
       });
       relaySocket.addEventListener('close', (event) => {
+        closeDirectControl();
         setConnectionUI(false, 'Связь потеряна');
         if (sessionEnded) return;
         const canResume = Boolean(storedResume());
@@ -604,15 +703,21 @@
     let lastSendTime = 0;
     function sendMotion(normX) {
       const now = performance.now();
-      if (now - lastSendTime < 33) return;
+      if (now - lastSendTime < 20) return;
       lastSendTime = now;
-      sendRelay({
+      const payload = {
         type: 'motion',
         x: Math.max(-1, Math.min(1, normX)),
         y: 0,
         sequence: ++sequence,
         clientTime: Math.trunc(performance.timeOrigin + now),
-      });
+      };
+      if (motionChannel?.readyState === 'open') {
+        if (motionChannel.bufferedAmount < 2048) motionChannel.send(JSON.stringify(payload));
+        return;
+      }
+      if (relaySocket?.bufferedAmount > 8192) return;
+      sendRelay(payload);
     }
 
     function updateVisualReticle(normX) {

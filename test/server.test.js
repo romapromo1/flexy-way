@@ -30,6 +30,10 @@ test('serves the game and loopback relay configuration', async () => {
   const payload = await config.json();
   assert.equal(payload.relayUrl, 'wss://relay.example/ws');
   assert.equal(payload.displayId, 'FLEXY');
+
+  const favicon = await fetch(`${baseUrl}/favicon.ico`);
+  assert.equal(favicon.status, 200);
+  assert.equal(favicon.headers.get('content-type'), 'image/png');
 });
 
 test('does not expose private project files', async () => {
