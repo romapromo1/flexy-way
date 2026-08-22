@@ -3,6 +3,8 @@
 const assert = require('node:assert/strict');
 const { after, before, test } = require('node:test');
 const { once } = require('node:events');
+const { readFileSync } = require('node:fs');
+const { join } = require('node:path');
 const { createApp } = require('../server');
 
 let server;
@@ -57,4 +59,19 @@ test('rejects malformed prize requests before starting Python', async () => {
     body: JSON.stringify({ prizeCode: '../secret', sessionId: '' }),
   });
   assert.equal(response.status, 400);
+});
+
+test('controller keeps universal browser and touch fallbacks', () => {
+  const controller = readFileSync(join(__dirname, '..', 'controller.html'), 'utf8');
+  assert.doesNotMatch(controller, /\?\.|\?\?/);
+  assert.match(controller, /DeviceOrientationEvent\.requestPermission/);
+  assert.match(controller, /deviceorientationabsolute/);
+  assert.match(controller, /'PointerEvent' in window/);
+  assert.match(controller, /addEventListener\('touchstart'/);
+
+  const touchHandler = controller.match(
+    /function handleTouchInput\(clientX\) \{([\s\S]*?)\n    \}/,
+  );
+  assert.ok(touchHandler, 'touch handler is present');
+  assert.doesNotMatch(touchHandler[1], /controlMode/);
 });

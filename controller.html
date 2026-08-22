@@ -388,16 +388,16 @@
 
   <!-- Переключатель режима управления -->
   <div class="mode-switch-container">
-    <button class="mode-switch-btn active" id="modeSwipeBtn" onclick="setControlMode('swipe')">
+    <button class="mode-switch-btn" id="modeSwipeBtn" onclick="setControlMode('swipe')">
       🕹 Тач / Свайп
     </button>
-    <button class="mode-switch-btn" id="modeTiltBtn" onclick="setControlMode('tilt')">
+    <button class="mode-switch-btn active" id="modeTiltBtn" onclick="setControlMode('tilt')">
       🎯 Наклон телефона
     </button>
   </div>
 
   <div class="sensor-info-bar" id="sensorInfo">
-    🟢 Ведите пальцем влево-вправо для управления сумкой
+    🟡 Наклон включится автоматически. Тач / свайп работает всегда.
   </div>
 
   <!-- Сенсорный радар-тачпад -->
@@ -407,7 +407,7 @@
       <div class="radar-guideline-y"></div>
       <div class="radar-center-ring"></div>
       <div class="laser-reticle" id="laserReticle"></div>
-      <div class="touch-hint" id="radarHint">СВАЙП / ТАЧ ВЛЕВО-ВПРАВО</div>
+      <div class="touch-hint" id="radarHint">НАКЛОНЯЙТЕ ИЛИ ВЕДИТЕ ПАЛЬЦЕМ</div>
     </div>
   </div>
 
@@ -460,7 +460,7 @@
     const modeTiltBtn = document.getElementById('modeTiltBtn');
     const radarHint = document.getElementById('radarHint');
 
-    let controlMode = 'swipe';
+    let controlMode = 'tilt';
     let sensitivity = 1.3;
     let currentNormX = 0;
     let baseTilt = null;
@@ -473,6 +473,10 @@
     let orientationAttached = false;
     let orientationSamples = 0;
     let orientationProbeTimer = null;
+    let orientationEventType = '';
+    let touchInputActive = false;
+    let touchOverrideUntil = 0;
+    let automaticTiltPreferred = true;
     let rtcPeer = null;
     let motionChannel = null;
     let pendingRtcCandidates = [];
@@ -544,7 +548,7 @@
       const peer = new RTCPeerConnection(rtcConfig);
       rtcPeer = peer;
       peer.ondatachannel = (event) => {
-        if (event.channel?.label === 'motion') attachMotionChannel(event.channel);
+        if (event.channel && event.channel.label === 'motion') attachMotionChannel(event.channel);
       };
       peer.onicecandidate = (event) => {
         sendRelay({
@@ -620,7 +624,7 @@
       let handshakeComplete = false;
       relaySocket.addEventListener('open', () => {
         const resume = storedResume();
-        if (resume?.sessionId === requestedSessionId && resume.resumeToken) {
+        if (resume && resume.sessionId === requestedSessionId && resume.resumeToken) {
           relaySocket.send(JSON.stringify({
             type: 'controller_resume',
             sessionId: resume.sessionId,
@@ -639,9 +643,7 @@
           saveResume(data);
           hudRoom.textContent = String(data.displayId || 'FLEXY').slice(0, 10);
           setConnectionUI(true, data.resumed ? 'Связь восстановлена ⚡' : 'Подключено ⚡');
-          sensorInfo.textContent = controlMode === 'tilt'
-            ? '🟢 Наклоняйте телефон влево-вправо'
-            : '🟢 Ведите пальцем влево-вправо для управления сумкой';
+          showControlStatus();
           vibratePhone(40);
           return;
         }
@@ -709,21 +711,24 @@
       const now = performance.now();
       if (now - lastSendTime < 20) return;
       lastSendTime = now;
+      const epochNow = typeof performance.timeOrigin === 'number'
+        ? performance.timeOrigin + now
+        : Date.now();
       const payload = {
         type: 'motion',
         x: Math.max(-1, Math.min(1, normX)),
         y: 0,
         sequence: ++sequence,
-        clientTime: Math.trunc(performance.timeOrigin + now),
+        clientTime: Math.trunc(epochNow),
       };
       // Send through both paths. The host applies the first sequence it sees and
       // ignores the duplicate. Some mobile Chromium/Yandex builds report an open
       // DataChannel but intermittently lose unreliable packets; WebSocket remains
       // a live fallback instead of becoming disabled after WebRTC connects.
-      if (motionChannel?.readyState === 'open' && motionChannel.bufferedAmount < 2048) {
+      if (motionChannel && motionChannel.readyState === 'open' && motionChannel.bufferedAmount < 2048) {
         try { motionChannel.send(JSON.stringify(payload)); } catch (_) {}
       }
-      if (relaySocket?.bufferedAmount > 8192) return;
+      if (relaySocket && relaySocket.bufferedAmount > 8192) return;
       sendRelay(payload);
     }
 
@@ -737,16 +742,60 @@
       modeTiltBtn.classList.toggle('active', tilt);
       modeSwipeBtn.classList.toggle('active', !tilt);
       radarHint.textContent = tilt
-        ? 'НАКЛОНЯЙТЕ ТЕЛЕФОН ВЛЕВО / ВПРАВО'
+        ? 'НАКЛОНЯЙТЕ ИЛИ ВЕДИТЕ ПАЛЬЦЕМ'
         : 'СВАЙП / ТАЧ ВЛЕВО-ВПРАВО';
-      sensorInfo.textContent = tilt
-        ? '🟡 Разрешите доступ к датчикам движения'
-        : '🟢 Режим: ведите пальцем влево-вправо';
+      showControlStatus();
+    }
+
+    function showControlStatus() {
+      if (controlMode !== 'tilt') {
+        sensorInfo.textContent = '🟢 Ведите пальцем влево-вправо';
+        return;
+      }
+      if (orientationSamples > 0) {
+        sensorInfo.textContent = '🟢 Наклон работает. Тач / свайп тоже доступен.';
+        return;
+      }
+      if (typeof DeviceOrientationEvent !== 'undefined'
+        && typeof DeviceOrientationEvent.requestPermission === 'function'
+        && !orientationAttached) {
+        sensorInfo.textContent = '🟡 Нажмите СТАРТ и разрешите датчики. Свайп уже работает.';
+        return;
+      }
+      sensorInfo.textContent = '🟡 Подключаем наклон. Тач / свайп уже работает.';
+    }
+
+    function secureSensorContext() {
+      if (window.isSecureContext === true) return true;
+      return window.location.protocol === 'https:'
+        || window.location.hostname === 'localhost'
+        || window.location.hostname === '127.0.0.1';
+    }
+
+    function attachOrientationListeners() {
+      if (orientationAttached) return;
+      orientationAttached = true;
+      window.addEventListener('deviceorientation', handleOrientation, true);
+      // Some Android/Yandex builds expose only the absolute variant.
+      window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+    }
+
+    function startOrientationProbe() {
+      orientationSamples = 0;
+      orientationEventType = '';
+      clearTimeout(orientationProbeTimer);
+      orientationProbeTimer = setTimeout(() => {
+        if (controlMode === 'tilt' && orientationSamples === 0) {
+          controlMode = 'swipe';
+          updateModeUi('swipe');
+          sensorInfo.textContent = '🟠 Датчик не отвечает. Управляйте пальцем — этот режим работает всегда.';
+        }
+      }, 2200);
     }
 
     async function enableTiltFromGesture() {
-      if (!window.isSecureContext) {
-        setControllerError('Наклон работает только на HTTPS. Используйте тачпад.');
+      if (!secureSensorContext()) {
+        sensorInfo.textContent = '🟠 Наклон требует HTTPS. Управляйте пальцем.';
         return false;
       }
       if (typeof DeviceOrientationEvent === 'undefined') {
@@ -766,25 +815,15 @@
         return false;
       }
 
-      if (!orientationAttached) {
-        orientationAttached = true;
-        window.addEventListener('deviceorientation', handleOrientation, true);
-      }
-      orientationSamples = 0;
-      clearTimeout(orientationProbeTimer);
-      orientationProbeTimer = setTimeout(() => {
-        if (controlMode === 'tilt' && orientationSamples === 0) {
-          controlMode = 'swipe';
-          updateModeUi('swipe');
-          sensorInfo.textContent = '🟠 Датчик не отвечает. Включён универсальный тачпад.';
-        }
-      }, 1800);
+      attachOrientationListeners();
+      startOrientationProbe();
       return true;
     }
 
     async function setControlMode(mode) {
       vibratePhone(30);
       if (mode === 'tilt') {
+        automaticTiltPreferred = true;
         controlMode = 'tilt';
         baseTilt = null;
         updateModeUi('tilt');
@@ -793,6 +832,7 @@
           updateModeUi('swipe');
         }
       } else {
+        automaticTiltPreferred = false;
         controlMode = 'swipe';
         updateModeUi('swipe');
         updateVisualReticle(0);
@@ -801,25 +841,75 @@
     }
 
     function handleTouchInput(clientX) {
-      if (controlMode !== 'swipe') return;
       const rect = radar.getBoundingClientRect();
       let value = (clientX - (rect.left + rect.width / 2)) / ((rect.width / 2) * 0.9);
       value = Math.max(-1, Math.min(1, value * sensitivity));
+      touchOverrideUntil = performance.now() + 450;
+      baseTilt = null;
       currentNormX = value;
       updateVisualReticle(value);
       sendMotion(value);
     }
 
-    radar.addEventListener('pointerdown', (event) => {
-      radar.setPointerCapture(event.pointerId);
-      handleTouchInput(event.clientX);
-    });
-    radar.addEventListener('pointermove', (event) => {
-      if (event.buttons > 0 || event.pointerType === 'touch') handleTouchInput(event.clientX);
-    });
+    function finishTouchInput() {
+      touchInputActive = false;
+      touchOverrideUntil = performance.now() + 450;
+      baseTilt = null;
+    }
+
+    if ('PointerEvent' in window) {
+      radar.addEventListener('pointerdown', (event) => {
+        touchInputActive = true;
+        if (radar.setPointerCapture) {
+          try { radar.setPointerCapture(event.pointerId); } catch (_) {}
+        }
+        handleTouchInput(event.clientX);
+      });
+      radar.addEventListener('pointermove', (event) => {
+        if (touchInputActive || event.buttons > 0 || event.pointerType === 'touch') {
+          handleTouchInput(event.clientX);
+        }
+      });
+      radar.addEventListener('pointerup', finishTouchInput);
+      radar.addEventListener('pointercancel', finishTouchInput);
+    } else {
+      // Touch Events keep control working on older Safari/WebViews without PointerEvent.
+      radar.addEventListener('touchstart', (event) => {
+        touchInputActive = true;
+        if (event.touches && event.touches[0]) handleTouchInput(event.touches[0].clientX);
+        event.preventDefault();
+      }, { passive: false });
+      radar.addEventListener('touchmove', (event) => {
+        if (event.touches && event.touches[0]) handleTouchInput(event.touches[0].clientX);
+        event.preventDefault();
+      }, { passive: false });
+      radar.addEventListener('touchend', finishTouchInput, false);
+      radar.addEventListener('touchcancel', finishTouchInput, false);
+
+      let mouseInputActive = false;
+      radar.addEventListener('mousedown', (event) => {
+        mouseInputActive = true;
+        touchInputActive = true;
+        handleTouchInput(event.clientX);
+      });
+      window.addEventListener('mousemove', (event) => {
+        if (mouseInputActive) handleTouchInput(event.clientX);
+      });
+      window.addEventListener('mouseup', () => {
+        if (!mouseInputActive) return;
+        mouseInputActive = false;
+        finishTouchInput();
+      });
+    }
 
     function orientationLateral(event) {
-      const angle = Number(screen.orientation?.angle ?? window.orientation ?? 0);
+      let rawAngle = 0;
+      if (screen.orientation && typeof screen.orientation.angle !== 'undefined') {
+        rawAngle = screen.orientation.angle;
+      } else if (typeof window.orientation !== 'undefined') {
+        rawAngle = window.orientation;
+      }
+      const angle = Number(rawAngle);
       if (angle === 90) return event.beta == null ? null : -event.beta;
       if (angle === 270 || angle === -90) return event.beta == null ? null : event.beta;
       if (angle === 180) return event.gamma == null ? null : -event.gamma;
@@ -828,6 +918,9 @@
 
     function handleOrientation(event) {
       if (controlMode !== 'tilt') return;
+      if (touchInputActive || performance.now() < touchOverrideUntil) return;
+      if (!orientationEventType) orientationEventType = event.type;
+      if (orientationEventType !== event.type) return;
       const lateral = orientationLateral(event);
       if (!Number.isFinite(lateral)) return;
       orientationSamples += 1;
@@ -847,10 +940,19 @@
 
     async function onMainActionClick() {
       vibratePhone(40);
+      // Safari requires requestPermission() to be the first awaited operation
+      // inside the user's tap. Asking for Wake Lock first loses that gesture.
+      if (automaticTiltPreferred && typeof DeviceOrientationEvent !== 'undefined') {
+        controlMode = 'tilt';
+        updateModeUi('tilt');
+        if (!(await enableTiltFromGesture())) {
+          controlMode = 'swipe';
+          updateModeUi('swipe');
+        }
+      }
       if ('wakeLock' in navigator) {
         try { await navigator.wakeLock.request('screen'); } catch (_) {}
       }
-      if (controlMode === 'tilt') await enableTiltFromGesture();
       baseTilt = null;
       updateVisualReticle(0);
       sendMotion(0);
@@ -868,7 +970,27 @@
       sensValue.textContent = `${value}x`;
     }
 
-    window.addEventListener('DOMContentLoaded', connectRelay);
+    function initializeUniversalControls() {
+      updateModeUi('tilt');
+      if (typeof DeviceOrientationEvent === 'undefined') {
+        controlMode = 'swipe';
+        updateModeUi('swipe');
+        sensorInfo.textContent = '🟢 Управляйте пальцем — датчик наклона недоступен.';
+        return;
+      }
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        showControlStatus();
+        return;
+      }
+      // Android/Chromium/Yandex do not need a permission dialog: listen at once.
+      attachOrientationListeners();
+      startOrientationProbe();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initializeUniversalControls();
+      connectRelay();
+    });
   </script>
 </body>
 </html>
