@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import sys
+import time
 
 from .app import BOT_SHORT_DESCRIPTION, BOT_WELCOME_DESCRIPTION, BotApp, run_polling
 from .config import Config
@@ -162,11 +163,19 @@ def main(argv: list[str] | None = None) -> int:
                 level=logging.INFO,
                 format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
             )
+            logger = logging.getLogger("telegram_bot.main")
             api = TelegramApi(config.bot_token)
             application = BotApp(config, database, workbook, api)
             lock_path = config.database_path.with_suffix(config.database_path.suffix + ".run.lock")
             with SingleInstanceLock(lock_path):
-                run_polling(config, application, api)
+                while True:
+                    try:
+                        run_polling(config, application, api)
+                    except KeyboardInterrupt:
+                        raise
+                    except Exception as error:
+                        logger.exception("Ошибка polling; авто-перезапуск через 3 сек: %s", error)
+                        time.sleep(3)
             return 0
     except (ValueError, WorkbookError, BotDataError, AlreadyRunningError) as error:
         print(f"Ошибка: {error}", file=sys.stderr)
