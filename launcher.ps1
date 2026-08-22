@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 $projectRoot = $PSScriptRoot
 $runtimeDir = Join-Path $projectRoot ".runtime"
-$gameUrl = "http://localhost:3300"
+$gameUrl = "http://127.0.0.1:3300"
 
 New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
 Set-Location -LiteralPath $projectRoot

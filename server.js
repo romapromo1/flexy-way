@@ -7,7 +7,7 @@ const { spawn } = require('child_process');
 
 const PROJECT_ROOT = __dirname;
 const HTTP_PORT = Number(process.env.PORT) || 3300;
-const LOOPBACK_HOST = '127.0.0.1';
+const LOOPBACK_HOST = '0.0.0.0';
 const SESSION_PATTERN = /^[^\x00-\x1f\x7f]{1,128}$/;
 const PRIZE_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
